@@ -2,7 +2,6 @@
 
 #include "BudgetGB.h"
 #include "sm83JsonTest.h"
-
 int main()
 {
 	BudgetGB gameboy;

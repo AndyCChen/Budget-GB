@@ -48,8 +48,10 @@ private:
 	// general purpose registers
 	struct Sm83Register
 	{
-		unsigned int hi : 8;
-		unsigned int lo : 8;
+		uint8_t hi;
+		uint8_t lo;
+
+		
 	};
 
 public:
