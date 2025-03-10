@@ -13,7 +13,7 @@ public:
 
 	};
 
-	void    clear_wram();
+	void    clearWram();
 
 	uint8_t cpu_read(uint16_t position);
 	void    cpu_write(uint16_t position, uint8_t data);

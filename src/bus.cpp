@@ -1,6 +1,6 @@
 #include "bus.h"
 
-void Bus::clear_wram()
+void Bus::clearWram()
 {
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 }
