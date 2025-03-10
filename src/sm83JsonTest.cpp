@@ -80,9 +80,25 @@ bool Sm83JsonTest::checkState(BudgetGB& gameboy, nlohmann::json& item)
 	}                                 \
 }
 
-	SM83_CHECK(gameboy.m_cpu->m_registerAF.accumulator        != static_cast<uint8_t>(item["a"]), "Accumulator Mismatch")
-	SM83_CHECK(gameboy.m_cpu->m_registerAF.flags.getFlagsU8() != static_cast<uint8_t>(item["f"]),      "Cpu flags mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerAF.accumulator != static_cast<uint8_t>(item["a"]), "Accumulator Mismatch");
 	
+	if (gameboy.m_cpu->m_registerAF.flags.getFlagsU8() != static_cast<uint8_t>(item["f"]))
+	{
+		status = false;
+		uint8_t flags = gameboy.m_cpu->m_registerAF.flags.getFlagsU8();
+		uint8_t expectedFlags = static_cast<uint8_t>(item["f"]);
+
+		if ((flags & 0x80) != (expectedFlags & 0x80))
+			std::cout << std::endl << "Zero flag mismatch! Expected: "        << ((expectedFlags & 0x80) >> 7) << " But got: " << gameboy.m_cpu->m_registerAF.flags.Z;
+		if ((flags & 0x40) != (expectedFlags & 0x40))
+			std::cout << std::endl << "Subtraction flag mismatch! Expected: " << ((expectedFlags & 0x40) >> 6) << " But got: " << gameboy.m_cpu->m_registerAF.flags.N;
+		if ((flags & 0x20) != (expectedFlags & 0x20))
+			std::cout << std::endl << "Half carry flag mismatch! Expected: "  << ((expectedFlags & 0x20) >> 5) << " But got: " << gameboy.m_cpu->m_registerAF.flags.H;
+		if ((flags & 0x10) != (expectedFlags & 0x10))
+			std::cout << std::endl << "Carry flag mismatch! Expected: "       << ((expectedFlags & 0x10) >> 4) << " But got: " << gameboy.m_cpu->m_registerAF.flags.C;
+	}
+	
+
 	SM83_CHECK(gameboy.m_cpu->m_programCounter != static_cast<uint16_t>(item["pc"]), "Program counter mismatch!");
 	SM83_CHECK(gameboy.m_cpu->m_stackPointer   != static_cast<uint16_t>(item["sp"]), "Stack pointer mismatch!");
 
