@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <vector>
 
 bool Sm83JsonTest::runJsonTest(BudgetGB& gameboy, const std::string& path)
@@ -102,14 +103,14 @@ bool Sm83JsonTest::checkState(BudgetGB& gameboy, nlohmann::json& item)
 	SM83_CHECK(gameboy.m_cpu->m_programCounter != static_cast<uint16_t>(item["pc"]), "Program counter mismatch!");
 	SM83_CHECK(gameboy.m_cpu->m_stackPointer   != static_cast<uint16_t>(item["sp"]), "Stack pointer mismatch!");
 
-	SM83_CHECK(gameboy.m_cpu->m_registerBC.hi != static_cast<uint8_t>(item["b"]), "b flag mismatch!");
-	SM83_CHECK(gameboy.m_cpu->m_registerBC.lo != static_cast<uint8_t>(item["c"]), "c flag mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerBC.hi != static_cast<uint8_t>(item["b"]), "b register mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerBC.lo != static_cast<uint8_t>(item["c"]), "c register mismatch!");
 
-	SM83_CHECK(gameboy.m_cpu->m_registerDE.hi != static_cast<uint8_t>(item["d"]), "d flag mismatch!");
-	SM83_CHECK(gameboy.m_cpu->m_registerDE.lo != static_cast<uint8_t>(item["e"]), "e flag mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerDE.hi != static_cast<uint8_t>(item["d"]), "d register mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerDE.lo != static_cast<uint8_t>(item["e"]), "e register mismatch!");
 
-	SM83_CHECK(gameboy.m_cpu->m_registerHL.hi != static_cast<uint8_t>(item["h"]), "h flag mismatch!");
-	SM83_CHECK(gameboy.m_cpu->m_registerHL.lo != static_cast<uint8_t>(item["l"]), "l flag mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerHL.hi != static_cast<uint8_t>(item["h"]), "h register mismatch!");
+	SM83_CHECK(gameboy.m_cpu->m_registerHL.lo != static_cast<uint8_t>(item["l"]), "l register mismatch!");
 
 	for (size_t i = 0; i < item["ram"].size(); ++i)
 	{
@@ -163,13 +164,11 @@ void Sm83JsonTest::logState(BudgetGB& gameboy, nlohmann::json& item)
 
 bool Sm83JsonTest::runAllJsonTests(BudgetGB& gameboy)
 {
-	bool status = true;
+	for (const auto& entry : std::filesystem::directory_iterator("sm83/v1/"))
+	{
+		if (!Sm83JsonTest::runJsonTest(gameboy, entry.path().string()))
+			return false;
+	}
 
-	status &= Sm83JsonTest::runJsonTest(gameboy, "sm83/v1/00.json");
-	status &= Sm83JsonTest::runJsonTest(gameboy, "sm83/v1/01.json");
-	status &= Sm83JsonTest::runJsonTest(gameboy, "sm83/v1/02.json");
-	status &= Sm83JsonTest::runJsonTest(gameboy, "sm83/v1/03.json");
-	status &= Sm83JsonTest::runJsonTest(gameboy, "sm83/v1/04.json");
-
-	return status;
+	return true;
 }

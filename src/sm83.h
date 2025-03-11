@@ -85,12 +85,21 @@ private:
 	/// </summary>
 	void decodeExecute(uint8_t opcode);
 
+	// -------------------------------------------- SM83 CPU Intructions ------------------------------------------
+
 	// r8  - means 8 bit register
 	// r16 - means 16 bit register (8 bit register pair)
 	// n8  - means immediate 8 bit data
 	// n16 - means immediate 16 bit data
+	// indirect - means reading from a memory address where address is a n16 immediate value or r16 register value
 
-	// LD Instructions
+	// LD Instructions ---------------------------------------------
+
+	/// <summary>
+	/// Load 8-bit register with immediate 8-bit value
+	/// </summary>
+	/// <param name="dest"></param>
+	void LD_r8_n8(uint8_t& dest);
 
 	/// <summary>
 	/// Load 16-bit register with immediate 16-bit value (next 2 bytes following opcode)
@@ -102,10 +111,16 @@ private:
 	/// </summary>
 	void LD_indirect_r16_A(Sm83Register& dest);
 
-	// INC Intructions
+	/// <summary>
+	/// Load value of stack pointer into the n16 immediate value memory address. Lo
+	/// byte of stack pointer to loaded first into address, followed by the hi byte at the next memory address.
+	/// </summary>
+	void LD_indirect_n16_SP();
+
+	// INC Intructions ---------------------------------------------
 
 	/// <summary>
-	/// Increment 8 bit registers, Set zero flag if result is zero,
+	/// Increment 8 bit register, Set zero flag if result is zero,
 	/// Set half carry flag on bit 3 overflow, Clear subtraction flag.
 	/// </summary>
 	void INC_r8(uint8_t& dest);
@@ -114,6 +129,33 @@ private:
 	/// Increment 16-bit register
 	/// </summary>
 	void INC_r16(Sm83Register& dest);
+
+	// DEC Intructions ---------------------------------------------
+
+	/// <summary>
+	/// Decrement 8 bit register, Set zero flag if result is zero,
+	/// Set half carry flag on bit 4 borrow, Set subtraction flag.
+	/// </summary>
+	/// <param name="dest"></param>
+	void DEC_r8(uint8_t& dest);
+
+	// RLC Intructions ---------------------------------------------
+
+	/// <summary>
+	/// Rotate accumulator left by 1. Clear zero, subtraction, and half carry flags.
+	/// Carry flag set to bit that is rotated out.
+	/// </summary>
+	/// <param name=""></param>
+	void RLC_A();
+
+	// ADD Instructions --------------------------------------------
+
+	/// <summary>
+	/// Add 16-bit register into register HL. Set half carry on bit 11 overflow.
+	/// Set Carry on bit 15 overflow. Clear subtraction flag.
+	/// </summary>
+	/// <param name="operand"></param>
+	void ADD_HL_r16(Sm83Register& operand);
 
 };
 
