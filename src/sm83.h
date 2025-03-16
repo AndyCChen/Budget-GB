@@ -107,17 +107,50 @@ class Sm83
 	void LD_r16_n16(Sm83Register &dest);
 
 	/**
-	 * @brief Load address pointed to by register pair dest with value from 8 bit register.
-	 * @param dest
-	 * @param src
+	 * @brief Load stack pointer with immediate 16-bit value
 	 */
-	void LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src);
+	void LD_SP_n16();
+
+	/**
+	 * @brief Load address pointed to by register pair dest with value from accumulator.
+	 * @param dest
+	 */
+	void LD_indirect_r16_A(Sm83Register &dest);
 
 	/**
 	 * @brief Load 8 bit register with value at memory address location in 16 bit register.
 	 * @param src
 	 */
 	void LD_A_indirect_r16(Sm83Register &src);
+
+	/**
+	 * @brief Load address pointed to by HL register with 8-bit immediate value.
+	 */
+	void LD_indirect_HL_n8();
+
+	/**
+	 * @brief Load address pointed to by register HL with value in accumulator.
+	 * Increment HL register after load.
+	 */
+	void LD_indirect_HLI_A();
+
+	/**
+	 * @brief Load address pointed to by register HL with value in accumulator.
+	 * Decrement HL register after load.
+	 */
+	void LD_indirect_HLD_A();
+
+	/**
+	 * @brief Load accumualtor with value at memory address in HL register
+	 * Increments HL register.
+	 */
+	void LD_A_indirect_HLI();
+
+	/**
+	 * @brief Load accumulator with value at memory addres in HL register.
+	 * Decrements HL register.
+	 */
+	void LD_A_indirect_HLD();
 
 	/**
 	 * @brief Load value of stack pointer into the n16 immediate value memory address. Lo
@@ -140,6 +173,17 @@ class Sm83
 	 */
 	void INC_r16(Sm83Register &dest);
 
+	/**
+	 * @brief Increment stack pointer
+	 */
+	void INC_SP();
+
+	/**
+	 * @brief Increment value pointed by HL register
+	 * Set half carry flag on bit 3 overflow, Clear subtraction flag.
+	 */
+	void INC_indirect_HL();
+
 	// DEC Intructions ---------------------------------------------
 
 	/**
@@ -154,6 +198,16 @@ class Sm83
 	 * @param dest
 	 */
 	void DEC_r16(Sm83Register &dest);
+
+	/**
+	 * @brief Decrement value pointed to by HL register.
+	 */
+	void DEC_indirect_HL();
+
+	/**
+	 * @brief Decrement stack pointer.
+	 */
+	void DEC_SP();
 
 	// RLCA, RRCA, RLA, RRA Instructions
 
@@ -192,6 +246,12 @@ class Sm83
 	 */
 	void ADD_HL_r16(Sm83Register &operand);
 
+	/**
+	 * @brief Add 16-bit register into register HL. Set half carry on bit 11 overflow.
+	 * Set Carry on bit 15 overflow. Clear subtraction flag.
+	 */
+	void ADD_HL_SP();
+
 	// JR Instructions
 
 	/**
@@ -208,4 +268,32 @@ class Sm83
 	 * @param condition
 	 */
 	void JR_CC_i8(bool condition);
+
+	// DAA Instructions ------------------------------------------------
+
+	/**
+	 * @brief Adjusts the result in accumulator to be in valid binary decimal format.
+	 * Indended to be used after arithmetic instructions.
+	 * https://rgbds.gbdev.io/docs/v0.9.1/gbz80.7#DAA
+	 */
+	void DAA();
+
+	// CPL Instructions -------------------------------------------------
+
+	/**
+	 * @brief Perform bitwise not on accumulator. Set subtraction and half carry flag.
+	 */
+	void CPL();
+
+	// Flag Instructions -------------------------------------------------
+	
+	/**
+	 * @brief Set carry flag. Clear subtraction and half carry flag.
+	 */
+	void SCF();
+
+	/**
+	 * @brief Bitwise not on carry flag. Clear subtraction and half carry flags.
+	 */
+	void CCF();
 };
