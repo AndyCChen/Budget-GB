@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "bus.h"
 
@@ -55,7 +56,7 @@ class Sm83
 	Sm83RegisterAF m_registerAF;
 	Sm83Register m_registerBC;
 	Sm83Register m_registerDE;
-	Sm83Register m_registerHL;
+	Sm83Register m_registerHL;	
 
 	Sm83(Bus *bus);
 
@@ -65,7 +66,18 @@ class Sm83
 	void runInstruction();
 
   private:
+	std::string m_instructionString;
 	Bus *m_bus;
+
+	/**
+	 * @brief Set instruction string for logging.
+	 *
+	 * @param in 
+	 */
+	void setInstructionString(const std::string& in)
+	{
+		m_instructionString = in;
+	}
 
 	/**
 	 * @brief Read from memory currently pointed to by program counter
@@ -101,6 +113,13 @@ class Sm83
 	void LD_r8_n8(uint8_t &dest);
 
 	/**
+	 * @brief Load 8-bit registers with value in another 8-bit register.
+	 *
+	 * @param dest 
+	 */
+	void LD_r8_r8(uint8_t &dest, uint8_t &src);
+
+	/**
 	 * @brief Load 16-bit register with immediate 16-bit value (next 2 bytes following opcode)
 	 * @param dest
 	 */
@@ -112,10 +131,10 @@ class Sm83
 	void LD_SP_n16();
 
 	/**
-	 * @brief Load address pointed to by register pair dest with value from accumulator.
+	 * @brief Load address pointed to by register pair dest with value from 8bit register.
 	 * @param dest
 	 */
-	void LD_indirect_r16_A(Sm83Register &dest);
+	void LD_indirect_r16_r8(Sm83Register &dest, uint8_t& src);
 
 	/**
 	 * @brief Load 8 bit register with value at memory address location in 16 bit register.
@@ -127,6 +146,11 @@ class Sm83
 	 * @brief Load address pointed to by HL register with 8-bit immediate value.
 	 */
 	void LD_indirect_HL_n8();
+
+	/**
+	 * @brief Load 8bit register with value pointed to by HL register.
+	 */
+	void LD_r8_indirect_HL(uint8_t& dest);
 
 	/**
 	 * @brief Load address pointed to by register HL with value in accumulator.
@@ -286,7 +310,7 @@ class Sm83
 	void CPL();
 
 	// Flag Instructions -------------------------------------------------
-	
+
 	/**
 	 * @brief Set carry flag. Clear subtraction and half carry flag.
 	 */
