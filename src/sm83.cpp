@@ -573,6 +573,324 @@ void Sm83::decodeExecute(uint8_t opcode)
 		LD_r8_r8(m_registerDE.lo, m_registerAF.accumulator);
 		break;
 
+	case 0x60:
+		setInstructionString("LD H, B");
+		LD_r8_r8(m_registerHL.hi, m_registerBC.hi);
+		break;
+
+	case 0x61:
+		setInstructionString("LD H, C");
+		LD_r8_r8(m_registerHL.hi, m_registerBC.lo);
+		break;
+
+	case 0x62:
+		setInstructionString("LD H, D");
+		LD_r8_r8(m_registerHL.hi, m_registerDE.hi);
+		break;
+
+	case 0x63:
+		setInstructionString("LD H, E");
+		LD_r8_r8(m_registerHL.hi, m_registerDE.lo);
+		break;
+	case 0x64:
+
+		setInstructionString("LD H, H");
+		LD_r8_r8(m_registerHL.hi, m_registerHL.hi);
+		break;
+
+	case 0x65:
+		setInstructionString("LD H, L");
+		LD_r8_r8(m_registerHL.hi, m_registerHL.lo);
+		break;
+
+	case 0x66:
+		setInstructionString("LD H, (HL)");
+		LD_r8_indirect_HL(m_registerHL.hi);
+		break;
+
+	case 0x67:
+		setInstructionString("LD H, A");
+		LD_r8_r8(m_registerHL.hi, m_registerAF.accumulator);
+		break;
+
+	case 0x68:
+		setInstructionString("LD L, B");
+		LD_r8_r8(m_registerHL.lo, m_registerBC.hi);
+		break;
+
+	case 0x69:
+		setInstructionString("LD L, C");
+		LD_r8_r8(m_registerHL.lo, m_registerBC.lo);
+		break;
+
+	case 0x6A:
+		setInstructionString("LD L, D");
+		LD_r8_r8(m_registerHL.lo, m_registerDE.hi);
+		break;
+
+	case 0x6B:
+		setInstructionString("LD L, E");
+		LD_r8_r8(m_registerHL.lo, m_registerDE.lo);
+		break;
+
+	case 0x6C:
+		setInstructionString("LD L, H");
+		LD_r8_r8(m_registerHL.lo, m_registerHL.hi);
+		break;
+
+	case 0x6D:
+		setInstructionString("LD L, L");
+		LD_r8_r8(m_registerHL.lo, m_registerHL.lo);
+		break;
+
+	case 0x6E:
+		setInstructionString("LD L, (HL)");
+		LD_r8_indirect_HL(m_registerHL.lo);
+		break;
+
+	case 0x6F:
+		setInstructionString("LD L, A");
+		LD_r8_r8(m_registerHL.lo, m_registerAF.accumulator);
+		break;
+
+	case 0x70:
+		setInstructionString("LD (HL), B");
+		LD_indirect_r16_r8(m_registerHL, m_registerBC.hi);
+		break;
+
+	case 0x71:
+		setInstructionString("LD (HL), C");
+		LD_indirect_r16_r8(m_registerHL, m_registerBC.lo);
+		break;
+
+	case 0x72:
+		setInstructionString("LD (HL), D");
+		LD_indirect_r16_r8(m_registerHL, m_registerDE.hi);
+		break;
+
+	case 0x73:
+		setInstructionString("LD (HL), E");
+		LD_indirect_r16_r8(m_registerHL, m_registerDE.lo);
+		break;
+
+	case 0x74:
+		setInstructionString("LD (HL), H");
+		LD_indirect_r16_r8(m_registerHL, m_registerHL.hi);
+		break;
+
+	case 0x75:
+		setInstructionString("LD (HL), L");
+		LD_indirect_r16_r8(m_registerHL, m_registerHL.lo);
+		break;
+
+	case 0x76:
+		setInstructionString("HALT");
+		break;
+
+	case 0x77:
+		setInstructionString("LD (HL), A");
+		LD_indirect_r16_r8(m_registerHL, m_registerAF.accumulator);
+		break;
+
+	case 0x78:
+		setInstructionString("LD A, B");
+		LD_r8_r8(m_registerAF.accumulator, m_registerBC.hi);
+		break;
+
+	case 0x79:
+		setInstructionString("LD A, C");
+		LD_r8_r8(m_registerAF.accumulator, m_registerBC.lo);
+		break;
+
+	case 0x7A:
+		setInstructionString("LD A, D");
+		LD_r8_r8(m_registerAF.accumulator, m_registerDE.hi);
+		break;
+		
+	case 0x7B:
+		setInstructionString("LD A, E");
+		LD_r8_r8(m_registerAF.accumulator, m_registerDE.lo);
+		break;
+
+	case 0x7C:
+		setInstructionString("LD A, H");
+		LD_r8_r8(m_registerAF.accumulator, m_registerHL.hi);
+		break;
+
+	case 0x7D:
+		setInstructionString("LD A,L");
+		LD_r8_r8(m_registerAF.accumulator, m_registerHL.lo);
+		break;
+
+	case 0x7E:
+		setInstructionString("LD A, (HL)");
+		LD_r8_indirect_HL(m_registerAF.accumulator);
+		break;
+
+	case 0x7F:
+		setInstructionString("LD A, A");
+		LD_r8_r8(m_registerAF.accumulator, m_registerAF.accumulator);
+		break;
+	
+	case 0x80:
+		setInstructionString("ADD A, B");
+		ADD_A_r8(m_registerBC.hi);
+		break;
+
+	case 0x81:
+		setInstructionString("ADD A, C");
+		ADD_A_r8(m_registerBC.lo);
+		break;
+
+	case 0x82:
+		setInstructionString("ADD A, D");
+		ADD_A_r8(m_registerDE.hi);
+		break;
+
+	case 0x83:
+		setInstructionString("ADD A, E");
+		ADD_A_r8(m_registerDE.lo);
+		break;
+		
+	case 0x84:
+		setInstructionString("ADD A, H");
+		ADD_A_r8(m_registerHL.hi);
+		break;
+
+	case 0x85:
+		setInstructionString("ADD A, L");
+		ADD_A_r8(m_registerHL.lo);
+		break;
+
+	case 0x86:
+		setInstructionString("ADD A, (HL)");
+		ADD_A_indirect_HL();
+		break;
+
+	case 0x87:
+		setInstructionString("ADD A, A");
+		ADD_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x88:
+		setInstructionString("ADC A, B");
+		ADC_A_r8(m_registerBC.hi);
+		break;
+
+	case 0x89:
+		setInstructionString("ADC A, C");
+		ADC_A_r8(m_registerBC.lo);
+		break;
+	case 0x8A:
+
+		setInstructionString("ADC A, D");
+		ADC_A_r8(m_registerDE.hi);
+		break;
+
+	case 0x8B:
+		setInstructionString("ADC A, E");
+		ADC_A_r8(m_registerDE.lo);
+		break;
+
+	case 0x8C:
+		setInstructionString("ADC A, H");
+		ADC_A_r8(m_registerHL.hi);
+		break;
+
+	case 0x8D:
+		setInstructionString("ADC A, L");
+		ADC_A_r8(m_registerHL.lo);
+		break;
+
+	case 0x8E:
+		setInstructionString("ADC A, (HL)");
+		ADC_A_indirect_HL();
+		break;
+
+	case 0x8F:
+		setInstructionString("ADC A, A");
+		ADC_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x90:
+		setInstructionString("SUB A, B");
+		SUB_A_r8(m_registerBC.hi);
+		break;
+
+	case 0x91:
+		setInstructionString("SUB A, C");
+		SUB_A_r8(m_registerBC.lo);
+		break;
+
+	case 0x92:
+		setInstructionString("SUB A, D");
+		SUB_A_r8(m_registerDE.hi);
+		break;
+	case 0x93:
+
+		setInstructionString("SUB A, E");
+		SUB_A_r8(m_registerDE.lo);
+		break;
+
+	case 0x94:
+		setInstructionString("SUB A, H");
+		SUB_A_r8(m_registerHL.hi);
+		break;
+
+	case 0x95:
+		setInstructionString("SUB A, L");
+		SUB_A_r8(m_registerHL.lo);
+		break;
+
+	case 0x96:
+		setInstructionString("SUB A, (HL)");
+		SUB_A_indirect_HL();
+		break;
+		
+	case 0x97:
+		setInstructionString("SUB A, A");
+		SUB_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x98:
+		setInstructionString("SBC A, B");
+		SBC_A_r8(m_registerBC.hi);
+		break;
+
+	case 0x99:
+		setInstructionString("SBC A, C");
+		SBC_A_r8(m_registerBC.lo);
+		break;
+
+	case 0x9A:
+		setInstructionString("SBC A, D");
+		SBC_A_r8(m_registerDE.hi);
+		break;
+
+	case 0x9B:
+		setInstructionString("SBC A, E");
+		SBC_A_r8(m_registerDE.lo);
+		break;
+
+	case 0x9C:
+		setInstructionString("SBC A, H");
+		SBC_A_r8(m_registerHL.hi);
+		break;
+
+	case 0x9D:
+		setInstructionString("SBC A, L");
+		SBC_A_r8(m_registerHL.lo);
+		break;
+
+	case 0x9E:
+		setInstructionString("SBC A, (HL)");
+		SBC_A_indirect_HL();
+		break;
+		
+	case 0x9F:
+		setInstructionString("SBC A, A");
+		SBC_A_r8(m_registerAF.accumulator);
+		break;
 	// No intruction
 	default:
 		break;
@@ -602,32 +920,32 @@ void Sm83::LD_SP_n16()
 void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
 {
 	uint16_t address = (dest.hi << 8) | dest.lo;
-	m_bus->cpu_write(address, src);
+	m_bus->cpuWrite(address, src);
 }
 
 void Sm83::LD_A_indirect_r16(Sm83Register &src)
 {
 	uint16_t address = (src.hi << 8) | src.lo;
-	m_registerAF.accumulator = m_bus->cpu_read(address);
+	m_registerAF.accumulator = m_bus->cpuRead(address);
 }
 
 void Sm83::LD_indirect_HL_n8()
 {
 	uint8_t value = cpuFetch();
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	m_bus->cpu_write(address, value);
+	m_bus->cpuWrite(address, value);
 }
 
 void Sm83::LD_r8_indirect_HL(uint8_t &dest)
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	dest = m_bus->cpu_read(address);
+	dest = m_bus->cpuRead(address);
 }
 
 void Sm83::LD_indirect_HLI_A()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	m_bus->cpu_write(address, m_registerAF.accumulator);
+	m_bus->cpuWrite(address, m_registerAF.accumulator);
 	address += 1;
 	m_registerHL.hi = (address >> 8) & 0xFF;
 	m_registerHL.lo = address & 0xFF;
@@ -636,7 +954,7 @@ void Sm83::LD_indirect_HLI_A()
 void Sm83::LD_indirect_HLD_A()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	m_bus->cpu_write(address, m_registerAF.accumulator);
+	m_bus->cpuWrite(address, m_registerAF.accumulator);
 	address -= 1;
 	m_registerHL.hi = (address >> 8) & 0xFF;
 	m_registerHL.lo = address & 0xFF;
@@ -645,7 +963,7 @@ void Sm83::LD_indirect_HLD_A()
 void Sm83::LD_A_indirect_HLI()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	m_registerAF.accumulator = m_bus->cpu_read(address);
+	m_registerAF.accumulator = m_bus->cpuRead(address);
 	address += 1;
 	m_registerHL.hi = (address >> 8) & 0xFF;
 	m_registerHL.lo = address & 0xFF;
@@ -654,7 +972,7 @@ void Sm83::LD_A_indirect_HLI()
 void Sm83::LD_A_indirect_HLD()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	m_registerAF.accumulator = m_bus->cpu_read(address);
+	m_registerAF.accumulator = m_bus->cpuRead(address);
 	address -= 1;
 	m_registerHL.hi = (address >> 8) & 0xFF;
 	m_registerHL.lo = address & 0xFF;
@@ -666,8 +984,8 @@ void Sm83::LD_indirect_n16_SP()
 	uint16_t address = cpuFetch() | (cpuFetch() << 8);
 
 	// store lo byte the hi byte at next address
-	m_bus->cpu_write(address, m_stackPointer & 0xFF);
-	m_bus->cpu_write(address + 1, (m_stackPointer & 0xFF00) >> 8);
+	m_bus->cpuWrite(address, m_stackPointer & 0xFF);
+	m_bus->cpuWrite(address + 1, (m_stackPointer & 0xFF00) >> 8);
 }
 
 void Sm83::INC_r8(uint8_t &dest)
@@ -694,12 +1012,12 @@ void Sm83::INC_SP()
 void Sm83::INC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t value = m_bus->cpu_read(address);
+	uint8_t value = m_bus->cpuRead(address);
 	m_registerAF.flags.H = ((value >> 4) & 0x1) ^ (((value + 1) >> 4) & 0x1);
 	value += 1;
 	m_registerAF.flags.Z = value ? 0 : 1;
 	m_registerAF.flags.N = 0;
-	m_bus->cpu_write(address, value);
+	m_bus->cpuWrite(address, value);
 }
 
 void Sm83::DEC_r8(uint8_t &dest)
@@ -723,12 +1041,12 @@ void Sm83::DEC_r16(Sm83Register &dest)
 void Sm83::DEC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t value = m_bus->cpu_read(address);
+	uint8_t value = m_bus->cpuRead(address);
 	m_registerAF.flags.H = (value & 0xF0) != ((value - 1) & 0xF0);
 	value -= 1;
 	m_registerAF.flags.N = 1;
 	m_registerAF.flags.Z = value ? 0 : 1;
-	m_bus->cpu_write(address, value);
+	m_bus->cpuWrite(address, value);
 }
 
 void Sm83::DEC_SP()
@@ -816,6 +1134,88 @@ void Sm83::ADD_HL_SP()
 
 	m_registerHL.hi = (sum & 0xFF00) >> 8;
 	m_registerHL.lo = sum & 0x00FF;
+}
+
+void Sm83::ADD_A_r8(uint8_t&operand)
+{
+	uint16_t sum = m_registerAF.accumulator + operand;
+	
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + (operand & 0xF)) & 0x10) >> 4;
+	m_registerAF.flags.C = (sum & 0x100) >> 8;
+	m_registerAF.flags.Z = static_cast<uint8_t>(sum) == 0;
+
+	m_registerAF.accumulator = static_cast<uint8_t>(sum);
+}
+
+void Sm83::ADD_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	ADD_A_r8(operand);
+}
+
+void Sm83::ADC_A_r8(uint8_t& operand)
+{
+	uint16_t sum = m_registerAF.accumulator + operand + m_registerAF.flags.C;
+
+	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + (operand & 0xF) + m_registerAF.flags.C) & 0x10) >> 4;
+	m_registerAF.flags.C = (sum & 0x100) >> 8;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.Z = static_cast<uint8_t>(sum) == 0;
+	m_registerAF.accumulator = static_cast<uint8_t>(sum);
+}
+
+void Sm83::ADC_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	ADC_A_r8(operand);
+}
+
+void Sm83::SUB_A_r8(uint8_t& operand)
+{
+	// using 2's complement for subtraction, cuz why not
+	uint16_t difference = m_registerAF.accumulator + static_cast<uint8_t>(~operand) + 1;
+
+	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + 1)) & 0x10) >> 4;
+	m_registerAF.flags.H = !m_registerAF.flags.H;
+
+	// carry out is inverted for subtraction when using 2's complement
+	m_registerAF.flags.C = ~((difference >> 8) & 0x1);
+	m_registerAF.flags.N = 1;
+	m_registerAF.flags.Z = static_cast<uint8_t>(difference) == 0;
+
+	m_registerAF.accumulator = static_cast<uint8_t>(difference);
+}
+
+void Sm83::SUB_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	SUB_A_r8(operand);
+}
+
+void Sm83::SBC_A_r8(uint8_t& operand)
+{
+	// Interestingly the incomming carry flag is inverted on the sm83 for the SBC instruction.
+	// This is in contrast to the SBC instruction on the 6502 where the programmer must
+	// explicitly set the carry flag prior to starting muli-byte subtractions with SBC.
+	// On the gameboy's sm83, this is done for you!
+	// And since the incomming carry flag is inverted, the outputed carry flag is also inverted!
+	uint16_t difference = m_registerAF.accumulator + (static_cast<uint8_t>(~operand) + !m_registerAF.flags.C);
+
+	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + !m_registerAF.flags.C)) & 0x10) >> 4;
+	m_registerAF.flags.H = !m_registerAF.flags.H;
+
+	m_registerAF.flags.C = !((difference >> 8) & 0x1);
+	m_registerAF.flags.N = 1;
+	m_registerAF.flags.Z = static_cast<uint8_t>(difference) == 0;
+
+	m_registerAF.accumulator = static_cast<uint8_t>(difference);
+}
+
+void Sm83::SBC_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	SBC_A_r8(operand);
 }
 
 void Sm83::JR_i8()

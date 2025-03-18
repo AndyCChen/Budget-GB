@@ -15,8 +15,8 @@ public:
 
 	void    clearWram();
 
-	uint8_t cpu_read(uint16_t position);
-	void    cpu_write(uint16_t position, uint8_t data);
+	uint8_t cpuRead(uint16_t position);
+	void    cpuWrite(uint16_t position, uint8_t data);
 
 private:
 	std::vector<uint8_t> m_wram;

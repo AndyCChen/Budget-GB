@@ -56,7 +56,7 @@ class Sm83
 	Sm83RegisterAF m_registerAF;
 	Sm83Register m_registerBC;
 	Sm83Register m_registerDE;
-	Sm83Register m_registerHL;	
+	Sm83Register m_registerHL;
 
 	Sm83(Bus *bus);
 
@@ -72,9 +72,9 @@ class Sm83
 	/**
 	 * @brief Set instruction string for logging.
 	 *
-	 * @param in 
+	 * @param in
 	 */
-	void setInstructionString(const std::string& in)
+	void setInstructionString(const std::string &in)
 	{
 		m_instructionString = in;
 	}
@@ -86,7 +86,7 @@ class Sm83
 	 */
 	uint8_t cpuFetch()
 	{
-		return m_bus->cpu_read(m_programCounter++);
+		return m_bus->cpuRead(m_programCounter++);
 	}
 
 	/**
@@ -115,7 +115,7 @@ class Sm83
 	/**
 	 * @brief Load 8-bit registers with value in another 8-bit register.
 	 *
-	 * @param dest 
+	 * @param dest
 	 */
 	void LD_r8_r8(uint8_t &dest, uint8_t &src);
 
@@ -134,7 +134,7 @@ class Sm83
 	 * @brief Load address pointed to by register pair dest with value from 8bit register.
 	 * @param dest
 	 */
-	void LD_indirect_r16_r8(Sm83Register &dest, uint8_t& src);
+	void LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src);
 
 	/**
 	 * @brief Load 8 bit register with value at memory address location in 16 bit register.
@@ -150,7 +150,7 @@ class Sm83
 	/**
 	 * @brief Load 8bit register with value pointed to by HL register.
 	 */
-	void LD_r8_indirect_HL(uint8_t& dest);
+	void LD_r8_indirect_HL(uint8_t &dest);
 
 	/**
 	 * @brief Load address pointed to by register HL with value in accumulator.
@@ -233,7 +233,7 @@ class Sm83
 	 */
 	void DEC_SP();
 
-	// RLCA, RRCA, RLA, RRA Instructions
+	// RLCA, RRCA, RLA, RRA Instructions -------------------------------------------
 
 	/**
 	 * @brief Rotate accumulator left by 1. Clear zero, subtraction, and half carry flags.
@@ -276,7 +276,73 @@ class Sm83
 	 */
 	void ADD_HL_SP();
 
-	// JR Instructions
+	/**
+	 * @brief Add 8-bit register to accumulator.Set zero flag if result is 0.
+	 * Clear subtraction flag. Set half carry on bit 3 overflow, Set carry on
+	 * bit 7 overflow.
+	 */
+	void ADD_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Add byte pointed to by HL registers into accumulator.
+	 * Set zero flag if result is zero. Clear subtraction flag. Set half
+	 * carry on bit 3 overflow, Set carry flag on bit 7 overflow.
+	 */
+	void ADD_A_indirect_HL();
+
+	// ADC Instructions ----------------------------------------------------------
+
+	/**
+	 * @brief Add 8-bit register plus carry into accumulator. Set zero flag
+	 * if result is zero. Clear subtraction flag. Set half carry on bit 3 overflow,
+	 * Set carry on bit 7 overflow.
+	 *
+	 * @param operand
+	 */
+	void ADC_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Add value pointed to by HL register into accumulator. Flags are affected
+	 * the same way as ADC_A_r8 instruction.
+	 */
+	void ADC_A_indirect_HL();
+
+	// SUB Instructions -------------------------------------------------------
+
+	/**
+	 * @brief Subtract 8-bit register value from accumulator. Set zero flag if
+	 * result is zero. Set subtraction flag. Set half carry on bit 4 borrow,
+	 * set Carry on borrow.
+	 *
+	 * @param operand
+	 */
+	void SUB_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Subtract value pointed to by HL register from accumulators.
+	 * Flags are affected the same way as SUB_A_r8 instruction.
+	 */
+	void SUB_A_indirect_HL();
+
+	// SBC Instructions --------------------------------------------------------
+
+	/**
+	 * @brief Subtract 8-bit register and carry from accumulator.
+	 * Set zero if result is zero. Set subtraction flag. Set half
+	 * carry flag on bit-4 borrow. Set carry flag if subtraction
+	 * results in borrow.
+	 *
+	 * @param operand 
+	 */
+	void SBC_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Same as SBC_A_r8, except adding valuing pointed to by HL register
+	 * into accumulator.
+	 */
+	void SBC_A_indirect_HL();
+
+	// JR Instructions -----------------------------------------------------------
 
 	/**
 	 * @brief Relative jump based on offset. The byte following the opcode
