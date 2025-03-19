@@ -101,6 +101,13 @@ class Sm83
 	 */
 	void decodeExecute(uint8_t opcode);
 
+	/**
+	 * @brief Decode execute 0xCB prefixed instructions.
+	 *
+	 * @param opcode
+	 */
+	void decodeExecutePrefixedMode(uint8_t opcode);
+
 	// -------------------------------------------- SM83 CPU Intructions ------------------------------------------
 
 	// r8  - means 8 bit register
@@ -240,7 +247,7 @@ class Sm83
 	 */
 	void DEC_SP();
 
-	// RLCA, RRCA, RLA, RRA Instructions -------------------------------------------
+	// Rotate (Bit-shift) Instructions -------------------------------------------
 
 	/**
 	 * @brief Rotate accumulator left by 1. Clear zero, subtraction, and half carry flags.
@@ -268,7 +275,114 @@ class Sm83
 	 */
 	void RRA();
 
-	// ADD Instructions --------------------------------------------
+	/**
+	 * @brief Rotate 8-bit register left. Set zero on 0 result. Clear subtraction,
+	 * half carry flag. Set carry to rotated out bit.
+	 *
+	 * @param dest
+	 */
+	void RLC_r8(uint8_t &dest);
+
+	/**
+	 * @brief Left rotate value pointed to by HL register. Flags affected same way
+	 * as RLC_r8.
+	 */
+	void RLC_indirect_HL();
+
+	/**
+	 * @brief Rotate  8-bit register right. Set zero flag on 0 result. Clear subtraction
+	 * and half carry flags. Set carry flag to rotated out bit.
+	 *
+	 * @param dest
+	 */
+	void RRC_r8(uint8_t &dest);
+
+	/**
+	 * @brief Same as RRC_r8, but rotate value in memory pointed to by HL register.
+	 */
+	void RRC_indirect_HL();
+
+	/**
+	 * @brief Rotate 8-bit register left through carry. Set zero on 0 result,
+	 * clear subtraction and half carry. Carry set to rotated out bit.
+	 *
+	 * @param dest
+	 */
+	void RL_r8(uint8_t &dest);
+
+	/**
+	 * @brief Same as RL_r8, except it operates on value in memory pointed to
+	 * by HL registers.
+	 */
+	void RL_indirect_HL();
+
+	/**
+	 * @brief Rotate  8-bit register right through carry. Set zero on 0 result.
+	 * Clear subtraction & half carry. Carry set to rotated out bit.
+	 *
+	 * @param dest
+	 */
+	void RR_r8(uint8_t &dest);
+
+	/**
+	 * @brief Same as RR_r8, except operates on value from memory pointed to by
+	 * HL register.
+	 */
+	void RR_indirect_HL();
+
+	// SLA, SRA, SRL Instructions -------------------------------------------------
+
+	/**
+	 * @brief Arithmetic left shift 8-bit register.
+	 * Set zero flag on 0 result, Clear subtraction, half carry. Set carry to shifted
+	 * out bit.
+	 *
+	 * @param dest
+	 */
+	void SLA_r8(uint8_t &dest);
+
+	/**
+	 * @brief Same as SLA_r8, operate on byte in memory pointed to by HL register.
+	 */
+	void SLA_indirect_HL();
+
+	/**
+	 * @brief Arithmetic right shift 8-bit register. Bit 7 of register
+	 * is not shifted. Set zero flag on 0 result. Clear
+	 * subtraction & half carry. Set carry to shifted out bit.
+	 *
+	 * @param dest
+	 */
+	void SRA_r8(uint8_t &dest);
+
+	/**
+	 * @brief Same as SRA_r8, operate on value from memory pointed to by HL register.
+	 */
+	void SRA_indirect_HL();
+
+	/**
+	 * @brief Logical right shift on 8-bit register. Set zero flag if result 0.
+	 * Clear half carry and subtraction flags. Set carry to shifted out bit.
+	 *
+	 * @param dest
+	 */
+	void SRL_r8(uint8_t &dest);
+
+	void SRL_indirect_HL();
+
+	// SWAP Instructions
+
+	/**
+	 * @brief Swap upper 4 bits with lower 4 bits of 8-bit register.
+	 * Set zero flag on 0 result. Clear subtraction, half carry and carry.
+	 *
+	 * @param dest
+	 */
+	void SWAP_r8(uint8_t &dest);
+
+	void SWAP_indirect_HL();
+
+	// ADD Instructions -----------------------------------------------------------
 
 	/**
 	 * @brief Add 16-bit register into register HL. Set half carry on bit 11 overflow.
@@ -548,7 +662,65 @@ class Sm83
 	/**
 	 * @brief Subroutine call a fixed jump vector.
 	 *
-	 * @param vec 
+	 * @param vec
 	 */
 	void RST(RstVector vec);
+
+	// BIT, RES Instructions ----------------------------------------------------------------------
+	
+	/**
+	 * @brief Select 1 of 8 bits in a byte to operate on for bit flag instructions.
+	 */
+	enum class BitSelect
+	{
+		B0 = 0x01,
+		B1 = 0x02,
+		B2 = 0x04,
+		B3 = 0x08,
+		B4 = 0x10,
+		B5 = 0x20,
+		B6 = 0x40,
+		B7 = 0x80,
+	};
+
+	/**
+	 * @brief Test a bit in 8-bit register. Set half carry, clear subtraction flag.
+	 * Set zero if tested bit is 0.
+	 *
+	 * @param b 
+	 * @param dest 
+	 */
+	void BIT_r8(BitSelect b, uint8_t dest);
+
+	void BIT_indirect_HL(BitSelect b);
+
+	/**
+	 * @brief Clear a bit in 8-bit register.
+	 *
+	 * @param b 
+	 * @param dest 
+	 */
+	void RES_r8(BitSelect b, uint8_t& dest);
+
+	/**
+	 * @brief Clear a bit in value from memory pointed to by HL register.
+	 *
+	 * @param b 
+	 */
+	void RES_indirect_HL(BitSelect b);
+
+	/**
+	 * @brief Set a bit in 8-bit register.
+	 *
+	 * @param b 
+	 * @param dest 
+	 */
+	void SET_r8(BitSelect b, uint8_t& dest);
+
+	/**
+	 * @brief Set a bit in value from memory pointed to by register HL.
+	 *
+	 * @param b 
+	 */
+	void SET_indirect_HL(BitSelect b);
 };

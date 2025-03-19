@@ -1076,17 +1076,17 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("CALL NZ, n16");
 		CALL_CC_n16(!m_registerAF.flags.Z);
 		break;
-	
+
 	case 0xC5:
 		setInstructionString("PUSH BC");
 		PUSH_r16(m_registerBC);
 		break;
-	
+
 	case 0xC6:
 		setInstructionString("ADD n8");
 		ADD_A_n8();
 		break;
-	
+
 	case 0xC7:
 		setInstructionString("RST 00h");
 		RST(RstVector::H00);
@@ -1109,10 +1109,1299 @@ void Sm83::decodeExecute(uint8_t opcode)
 
 	// Prefix mode, decode opcode with second opcode table
 	case 0xCB:
-		
+		decodeExecutePrefixedMode(cpuFetch());
 		break;
 
 	// No intruction
+	default:
+		break;
+	}
+}
+
+void Sm83::decodeExecutePrefixedMode(uint8_t opcode)
+{
+	switch (opcode)
+	{
+	case 0x00:
+		setInstructionString("RLC B");
+		RLC_r8(m_registerBC.hi);
+		break;
+
+	case 0x01:
+		setInstructionString("RLC C");
+		RLC_r8(m_registerBC.lo);
+		break;
+
+	case 0x02:
+		setInstructionString("RLC D");
+		RLC_r8(m_registerDE.hi);
+		break;
+
+	case 0x03:
+		setInstructionString("RLC E");
+		RLC_r8(m_registerDE.lo);
+		break;
+
+	case 0x04:
+		setInstructionString("RLC H");
+		RLC_r8(m_registerHL.hi);
+		break;
+	case 0x05:
+
+		setInstructionString("RLC L");
+		RLC_r8(m_registerHL.lo);
+		break;
+
+	case 0x06:
+		setInstructionString("RLC (HL)");
+		RLC_indirect_HL();
+		break;
+
+	case 0x07:
+		setInstructionString("RLC A");
+		RLC_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x08:
+		setInstructionString("RRC B");
+		RRC_r8(m_registerBC.hi);
+		break;
+
+	case 0x09:
+		setInstructionString("RRC C");
+		RRC_r8(m_registerBC.lo);
+		break;
+
+	case 0x0A:
+		setInstructionString("RRC D");
+		RRC_r8(m_registerDE.hi);
+		break;
+
+	case 0x0B:
+		setInstructionString("RRC E");
+		RRC_r8(m_registerDE.lo);
+		break;
+
+	case 0x0C:
+		setInstructionString("RRC H");
+		RRC_r8(m_registerHL.hi);
+		break;
+
+	case 0x0D:
+		setInstructionString("RRC L");
+		RRC_r8(m_registerHL.lo);
+		break;
+
+	case 0x0E:
+		setInstructionString("RRC (HL)");
+		RRC_indirect_HL();
+		break;
+
+	case 0x0F:
+		setInstructionString("RRC A");
+		RRC_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x10:
+		setInstructionString("RL B");
+		RL_r8(m_registerBC.hi);
+		break;
+
+	case 0x11:
+		setInstructionString("RL C");
+		RL_r8(m_registerBC.lo);
+		break;
+
+	case 0x12:
+		setInstructionString("RL D");
+		RL_r8(m_registerDE.hi);
+		break;
+
+	case 0x13:
+		setInstructionString("RL E");
+		RL_r8(m_registerDE.lo);
+		break;
+	case 0x14:
+
+		setInstructionString("RL H");
+		RL_r8(m_registerHL.hi);
+		break;
+	case 0x15:
+
+		setInstructionString("RL L");
+		RL_r8(m_registerHL.lo);
+		break;
+
+	case 0x16:
+		setInstructionString("RL (HL)");
+		RL_indirect_HL();
+		break;
+
+	case 0x17:
+		setInstructionString("RL A");
+		RL_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x18:
+		setInstructionString("RR B");
+		RR_r8(m_registerBC.hi);
+		break;
+
+	case 0x19:
+		setInstructionString("RR C");
+		RR_r8(m_registerBC.lo);
+		break;
+
+	case 0x1A:
+		setInstructionString("RR D");
+		RR_r8(m_registerDE.hi);
+		break;
+
+	case 0x1B:
+		setInstructionString("RR E");
+		RR_r8(m_registerDE.lo);
+		break;
+
+	case 0x1C:
+		setInstructionString("RR H");
+		RR_r8(m_registerHL.hi);
+		break;
+
+	case 0x1D:
+		setInstructionString("RR L");
+		RR_r8(m_registerHL.lo);
+		break;
+
+	case 0x1E:
+		setInstructionString("RR (HL)");
+		RR_indirect_HL();
+		break;
+
+	case 0x1F:
+		setInstructionString("RR A");
+		RR_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x20:
+		setInstructionString("SLA B");
+		SLA_r8(m_registerBC.hi);
+		break;
+
+	case 0x21:
+		setInstructionString("SLA C");
+		SLA_r8(m_registerBC.lo);
+		break;
+
+	case 0x22:
+		setInstructionString("SLA D");
+		SLA_r8(m_registerDE.hi);
+		break;
+
+	case 0x23:
+		setInstructionString("SLA E");
+		SLA_r8(m_registerDE.lo);
+		break;
+
+	case 0x24:
+		setInstructionString("SLA H");
+		SLA_r8(m_registerHL.hi);
+		break;
+
+	case 0x25:
+		setInstructionString("SLA L");
+		SLA_r8(m_registerHL.lo);
+		break;
+
+	case 0x26:
+		setInstructionString("SLA (HL)");
+		SLA_indirect_HL();
+		break;
+
+	case 0x27:
+		setInstructionString("SLA A");
+		SLA_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x28:
+		setInstructionString("SRA B");
+		SRA_r8(m_registerBC.hi);
+		break;
+
+	case 0x29:
+		setInstructionString("SRA C");
+		SRA_r8(m_registerBC.lo);
+		break;
+
+	case 0x2A:
+		setInstructionString("SRA D");
+		SRA_r8(m_registerDE.hi);
+		break;
+
+	case 0x2B:
+		setInstructionString("SRA E");
+		SRA_r8(m_registerDE.lo);
+		break;
+
+	case 0x2C:
+		setInstructionString("SRA H");
+		SRA_r8(m_registerHL.hi);
+		break;
+
+	case 0x2D:
+		setInstructionString("SRA L");
+		SRA_r8(m_registerHL.lo);
+		break;
+
+	case 0x2E:
+		setInstructionString("SRA (HL)");
+		SRA_indirect_HL();
+		break;
+
+	case 0x2F:
+		setInstructionString("SRA A");
+		SRA_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x30:
+		setInstructionString("SWAP B");
+		SWAP_r8(m_registerBC.hi);
+		break;
+
+	case 0x31:
+		setInstructionString("SWAP C");
+		SWAP_r8(m_registerBC.lo);
+		break;
+
+	case 0x32:
+		setInstructionString("SWAP D");
+		SWAP_r8(m_registerDE.hi);
+		break;
+
+	case 0x33:
+		setInstructionString("SWAP E");
+		SWAP_r8(m_registerDE.lo);
+		break;
+
+	case 0x34:
+		setInstructionString("SWAP H");
+		SWAP_r8(m_registerHL.hi);
+		break;
+
+	case 0x35:
+		setInstructionString("SWAP L");
+		SWAP_r8(m_registerHL.lo);
+		break;
+
+	case 0x36:
+		setInstructionString("SWAP (HL)");
+		SWAP_indirect_HL();
+		break;
+
+	case 0x37:
+		setInstructionString("SWAP A");
+		SWAP_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x38:
+		setInstructionString("SRL B");
+		SRL_r8(m_registerBC.hi);
+		break;
+
+	case 0x39:
+		setInstructionString("SRL C");
+		SRL_r8(m_registerBC.lo);
+		break;
+
+	case 0x3A:
+		setInstructionString("SRL D");
+		SRL_r8(m_registerDE.hi);
+		break;
+
+	case 0x3B:
+		setInstructionString("SRL E");
+		SRL_r8(m_registerDE.lo);
+		break;
+
+	case 0x3C:
+		setInstructionString("SRL H");
+		SRL_r8(m_registerHL.hi);
+		break;
+
+	case 0x3D:
+		setInstructionString("SRL L");
+		SRL_r8(m_registerHL.lo);
+		break;
+
+	case 0x3E:
+		setInstructionString("SRL (HL)");
+		SRL_indirect_HL();
+		break;
+
+	case 0x3F:
+		setInstructionString("SRL A");
+		SRL_r8(m_registerAF.accumulator);
+		break;
+
+	case 0x40:
+		setInstructionString("BIT 0, B");
+		BIT_r8(BitSelect::B0, m_registerBC.hi);
+		break;
+
+	case 0x41:
+		setInstructionString("BIT 0, C");
+		BIT_r8(BitSelect::B0, m_registerBC.lo);
+		break;
+
+	case 0x42:
+		setInstructionString("BIT 0, D");
+		BIT_r8(BitSelect::B0, m_registerDE.hi);
+		break;
+
+	case 0x43:
+		setInstructionString("BIT 0, E");
+		BIT_r8(BitSelect::B0, m_registerDE.lo);
+		break;
+
+	case 0x44:
+		setInstructionString("BIT 0, H");
+		BIT_r8(BitSelect::B0, m_registerHL.hi);
+		break;
+
+	case 0x45:
+		setInstructionString("BIT 0, L");
+		BIT_r8(BitSelect::B0, m_registerHL.lo);
+		break;
+
+	case 0x46:
+		setInstructionString("BIT 0, (HL)");
+		BIT_indirect_HL(BitSelect::B0);
+		break;
+
+	case 0x47:
+		setInstructionString("BIT 0, A");
+		BIT_r8(BitSelect::B0, m_registerAF.accumulator);
+		break;
+
+	case 0x48:
+		setInstructionString("BIT 1, B");
+		BIT_r8(BitSelect::B1, m_registerBC.hi);
+		break;
+
+	case 0x49:
+		setInstructionString("BIT 1, C");
+		BIT_r8(BitSelect::B1, m_registerBC.lo);
+		break;
+
+	case 0x4A:
+		setInstructionString("BIT 1, D");
+		BIT_r8(BitSelect::B1, m_registerDE.hi);
+		break;
+
+	case 0x4B:
+		setInstructionString("BIT 1, E");
+		BIT_r8(BitSelect::B1, m_registerDE.lo);
+		break;
+
+	case 0x4C:
+		setInstructionString("BIT 1, H");
+		BIT_r8(BitSelect::B1, m_registerHL.hi);
+		break;
+
+	case 0x4D:
+		setInstructionString("BIT 1, L");
+		BIT_r8(BitSelect::B1, m_registerHL.lo);
+		break;
+
+	case 0x4E:
+		setInstructionString("BIT 1, (HL)");
+		BIT_indirect_HL(BitSelect::B1);
+		break;
+
+	case 0x4F:
+		setInstructionString("BIT 1, A");
+		BIT_r8(BitSelect::B1, m_registerAF.accumulator);
+		break;
+
+	case 0x50:
+		setInstructionString("BIT 2, B");
+		BIT_r8(BitSelect::B2, m_registerBC.hi);
+		break;
+
+	case 0x51:
+		setInstructionString("BIT 2, C");
+		BIT_r8(BitSelect::B2, m_registerBC.lo);
+		break;
+
+	case 0x52:
+		setInstructionString("BIT 2, D");
+		BIT_r8(BitSelect::B2, m_registerDE.hi);
+		break;
+
+	case 0x53:
+		setInstructionString("BIT 2, E");
+		BIT_r8(BitSelect::B2, m_registerDE.lo);
+		break;
+
+	case 0x54:
+		setInstructionString("BIT 2, H");
+		BIT_r8(BitSelect::B2, m_registerHL.hi);
+		break;
+
+	case 0x55:
+		setInstructionString("BIT 2, L");
+		BIT_r8(BitSelect::B2, m_registerHL.lo);
+		break;
+
+	case 0x56:
+		setInstructionString("BIT 2, (HL)");
+		BIT_indirect_HL(BitSelect::B2);
+		break;
+
+	case 0x57:
+		setInstructionString("BIT 2, A");
+		BIT_r8(BitSelect::B2, m_registerAF.accumulator);
+		break;
+
+	case 0x58:
+		setInstructionString("BIT 3, B");
+		BIT_r8(BitSelect::B3, m_registerBC.hi);
+		break;
+
+	case 0x59:
+		setInstructionString("BIT 3, C");
+		BIT_r8(BitSelect::B3, m_registerBC.lo);
+		break;
+
+	case 0x5A:
+		setInstructionString("BIT 3, D");
+		BIT_r8(BitSelect::B3, m_registerDE.hi);
+		break;
+
+	case 0x5B:
+		setInstructionString("BIT 3, E");
+		BIT_r8(BitSelect::B3, m_registerDE.lo);
+		break;
+
+	case 0x5C:
+		setInstructionString("BIT 3, H");
+		BIT_r8(BitSelect::B3, m_registerHL.hi);
+		break;
+
+	case 0x5D:
+		setInstructionString("BIT 3, L");
+		BIT_r8(BitSelect::B3, m_registerHL.lo);
+		break;
+
+	case 0x5E:
+		setInstructionString("BIT 3, (HL)");
+		BIT_indirect_HL(BitSelect::B3);
+		break;
+
+	case 0x5F:
+		setInstructionString("BIT 3, A");
+		BIT_r8(BitSelect::B3, m_registerAF.accumulator);
+		break;
+
+	case 0x60:
+		setInstructionString("BIT 4, B");
+		BIT_r8(BitSelect::B4, m_registerBC.hi);
+		break;
+
+	case 0x61:
+		setInstructionString("BIT 4, C");
+		BIT_r8(BitSelect::B4, m_registerBC.lo);
+		break;
+
+	case 0x62:
+		setInstructionString("BIT 4, D");
+		BIT_r8(BitSelect::B4, m_registerDE.hi);
+		break;
+
+	case 0x63:
+		setInstructionString("BIT 4, E");
+		BIT_r8(BitSelect::B4, m_registerDE.lo);
+		break;
+
+	case 0x64:
+		setInstructionString("BIT 4, H");
+		BIT_r8(BitSelect::B4, m_registerHL.hi);
+		break;
+
+	case 0x65:
+		setInstructionString("BIT 4, L");
+		BIT_r8(BitSelect::B4, m_registerHL.lo);
+		break;
+
+	case 0x66:
+		setInstructionString("BIT 4, (HL)");
+		BIT_indirect_HL(BitSelect::B4);
+		break;
+
+	case 0x67:
+		setInstructionString("BIT 4, A");
+		BIT_r8(BitSelect::B4, m_registerAF.accumulator);
+		break;
+
+	case 0x68:
+		setInstructionString("BIT 5, B");
+		BIT_r8(BitSelect::B5, m_registerBC.hi);
+		break;
+
+	case 0x69:
+		setInstructionString("BIT 5, C");
+		BIT_r8(BitSelect::B5, m_registerBC.lo);
+		break;
+
+	case 0x6A:
+		setInstructionString("BIT 5, D");
+		BIT_r8(BitSelect::B5, m_registerDE.hi);
+		break;
+
+	case 0x6B:
+		setInstructionString("BIT 5, E");
+		BIT_r8(BitSelect::B5, m_registerDE.lo);
+		break;
+
+	case 0x6C:
+		setInstructionString("BIT 5, H");
+		BIT_r8(BitSelect::B5, m_registerHL.hi);
+		break;
+
+	case 0x6D:
+		setInstructionString("BIT 5, L");
+		BIT_r8(BitSelect::B5, m_registerHL.lo);
+		break;
+
+	case 0x6E:
+		setInstructionString("BIT 5, (HL)");
+		BIT_indirect_HL(BitSelect::B5);
+		break;
+
+	case 0x6F:
+		setInstructionString("BIT 5, A");
+		BIT_r8(BitSelect::B5, m_registerAF.accumulator);
+		break;
+
+	case 0x70:
+		setInstructionString("BIT 6, B");
+		BIT_r8(BitSelect::B6, m_registerBC.hi);
+		break;
+
+	case 0x71:
+		setInstructionString("BIT 6, C");
+		BIT_r8(BitSelect::B6, m_registerBC.lo);
+		break;
+
+	case 0x72:
+		setInstructionString("BIT 6, D");
+		BIT_r8(BitSelect::B6, m_registerDE.hi);
+		break;
+
+	case 0x73:
+		setInstructionString("BIT 6, E");
+		BIT_r8(BitSelect::B6, m_registerDE.lo);
+		break;
+
+	case 0x74:
+		setInstructionString("BIT 6, H");
+		BIT_r8(BitSelect::B6, m_registerHL.hi);
+		break;
+
+	case 0x75:
+		setInstructionString("BIT 6, L");
+		BIT_r8(BitSelect::B6, m_registerHL.lo);
+		break;
+
+	case 0x76:
+		setInstructionString("BIT 6, (HL)");
+		BIT_indirect_HL(BitSelect::B6);
+		break;
+
+	case 0x77:
+		setInstructionString("BIT 6, A");
+		BIT_r8(BitSelect::B6, m_registerAF.accumulator);
+		break;
+
+	case 0x78:
+		setInstructionString("BIT 7, B");
+		BIT_r8(BitSelect::B7, m_registerBC.hi);
+		break;
+
+	case 0x79:
+		setInstructionString("BIT 7, C");
+		BIT_r8(BitSelect::B7, m_registerBC.lo);
+		break;
+
+	case 0x7A:
+		setInstructionString("BIT 7, D");
+		BIT_r8(BitSelect::B7, m_registerDE.hi);
+		break;
+
+	case 0x7B:
+		setInstructionString("BIT 7, E");
+		BIT_r8(BitSelect::B7, m_registerDE.lo);
+		break;
+
+	case 0x7C:
+		setInstructionString("BIT 7, H");
+		BIT_r8(BitSelect::B7, m_registerHL.hi);
+		break;
+
+	case 0x7D:
+		setInstructionString("BIT 7, L");
+		BIT_r8(BitSelect::B7, m_registerHL.lo);
+		break;
+
+	case 0x7E:
+		setInstructionString("BIT 7, (HL)");
+		BIT_indirect_HL(BitSelect::B7);
+		break;
+
+	case 0x7F:
+		setInstructionString("BIT 7, A");
+		BIT_r8(BitSelect::B7, m_registerAF.accumulator);
+		break;
+
+	case 0x80:
+		setInstructionString("RES 0, B");
+		RES_r8(BitSelect::B0, m_registerBC.hi);
+		break;
+
+	case 0x81:
+		setInstructionString("RES 0, C");
+		RES_r8(BitSelect::B0, m_registerBC.lo);
+		break;
+
+	case 0x82:
+		setInstructionString("RES 0, D");
+		RES_r8(BitSelect::B0, m_registerDE.hi);
+		break;
+
+	case 0x83:
+		setInstructionString("RES 0, E");
+		RES_r8(BitSelect::B0, m_registerDE.lo);
+		break;
+
+	case 0x84:
+		setInstructionString("RES 0, H");
+		RES_r8(BitSelect::B0, m_registerHL.hi);
+		break;
+
+	case 0x85:
+		setInstructionString("RES 0, L");
+		RES_r8(BitSelect::B0, m_registerHL.lo);
+		break;
+
+	case 0x86:
+		setInstructionString("RES 0, (HL)");
+		RES_indirect_HL(BitSelect::B0);
+		break;
+
+	case 0x87:
+		setInstructionString("RES 0, A");
+		RES_r8(BitSelect::B0, m_registerAF.accumulator);
+		break;
+
+	case 0x88:
+		setInstructionString("RES 1, B");
+		RES_r8(BitSelect::B1, m_registerBC.hi);
+		break;
+
+	case 0x89:
+		setInstructionString("RES 1, C");
+		RES_r8(BitSelect::B1, m_registerBC.lo);
+		break;
+
+	case 0x8A:
+		setInstructionString("RES 1, D");
+		RES_r8(BitSelect::B1, m_registerDE.hi);
+		break;
+
+	case 0x8B:
+		setInstructionString("RES 1, E");
+		RES_r8(BitSelect::B1, m_registerDE.lo);
+		break;
+
+	case 0x8C:
+		setInstructionString("RES 1, H");
+		RES_r8(BitSelect::B1, m_registerHL.hi);
+		break;
+
+	case 0x8D:
+		setInstructionString("RES 1, L");
+		RES_r8(BitSelect::B1, m_registerHL.lo);
+		break;
+
+	case 0x8E:
+		setInstructionString("RES 1, (HL)");
+		RES_indirect_HL(BitSelect::B1);
+		break;
+
+	case 0x8F:
+		setInstructionString("RES 1, A");
+		RES_r8(BitSelect::B1, m_registerAF.accumulator);
+		break;
+
+	case 0x90:
+		setInstructionString("RES 2, B");
+		RES_r8(BitSelect::B2, m_registerBC.hi);
+		break;
+
+	case 0x91:
+		setInstructionString("RES 2, C");
+		RES_r8(BitSelect::B2, m_registerBC.lo);
+		break;
+
+	case 0x92:
+		setInstructionString("RES 2, D");
+		RES_r8(BitSelect::B2, m_registerDE.hi);
+		break;
+
+	case 0x93:
+		setInstructionString("RES 2, E");
+		RES_r8(BitSelect::B2, m_registerDE.lo);
+		break;
+
+	case 0x94:
+		setInstructionString("RES 2, H");
+		RES_r8(BitSelect::B2, m_registerHL.hi);
+		break;
+
+	case 0x95:
+		setInstructionString("RES 2, L");
+		RES_r8(BitSelect::B2, m_registerHL.lo);
+		break;
+
+	case 0x96:
+		setInstructionString("RES 2, (HL)");
+		RES_indirect_HL(BitSelect::B2);
+		break;
+
+	case 0x97:
+		setInstructionString("RES 2, A");
+		RES_r8(BitSelect::B2, m_registerAF.accumulator);
+		break;
+
+	case 0x98:
+		setInstructionString("RES 3, B");
+		RES_r8(BitSelect::B3, m_registerBC.hi);
+		break;
+
+	case 0x99:
+		setInstructionString("RES 3, C");
+		RES_r8(BitSelect::B3, m_registerBC.lo);
+		break;
+
+	case 0x9A:
+		setInstructionString("RES 3, D");
+		RES_r8(BitSelect::B3, m_registerDE.hi);
+		break;
+
+	case 0x9B:
+		setInstructionString("RES 3, E");
+		RES_r8(BitSelect::B3, m_registerDE.lo);
+		break;
+
+	case 0x9C:
+		setInstructionString("RES 3, H");
+		RES_r8(BitSelect::B3, m_registerHL.hi);
+		break;
+
+	case 0x9D:
+		setInstructionString("RES 3, L");
+		RES_r8(BitSelect::B3, m_registerHL.lo);
+		break;
+
+	case 0x9E:
+		setInstructionString("RES 3, (HL)");
+		RES_indirect_HL(BitSelect::B3);
+		break;
+
+	case 0x9F:
+		setInstructionString("RES 3, A");
+		RES_r8(BitSelect::B3, m_registerAF.accumulator);
+		break;
+
+	case 0xA0:
+		setInstructionString("RES 4, B");
+		RES_r8(BitSelect::B4, m_registerBC.hi);
+		break;
+
+	case 0xA1:
+		setInstructionString("RES 4, C");
+		RES_r8(BitSelect::B4, m_registerBC.lo);
+		break;
+
+	case 0xA2:
+		setInstructionString("RES 4, D");
+		RES_r8(BitSelect::B4, m_registerDE.hi);
+		break;
+
+	case 0xA3:
+		setInstructionString("RES 4, E");
+		RES_r8(BitSelect::B4, m_registerDE.lo);
+		break;
+
+	case 0xA4:
+		setInstructionString("RES 4, H");
+		RES_r8(BitSelect::B4, m_registerHL.hi);
+		break;
+
+	case 0xA5:
+		setInstructionString("RES 4, L");
+		RES_r8(BitSelect::B4, m_registerHL.lo);
+		break;
+
+	case 0xA6:
+		setInstructionString("RES 4, (HL)");
+		RES_indirect_HL(BitSelect::B4);
+		break;
+
+	case 0xA7:
+		setInstructionString("RES 4, A");
+		RES_r8(BitSelect::B4, m_registerAF.accumulator);
+		break;
+
+	case 0xA8:
+		setInstructionString("RES 5, B");
+		RES_r8(BitSelect::B5, m_registerBC.hi);
+		break;
+
+	case 0xA9:
+		setInstructionString("RES 5, C");
+		RES_r8(BitSelect::B5, m_registerBC.lo);
+		break;
+
+	case 0xAA:
+		setInstructionString("RES 5, D");
+		RES_r8(BitSelect::B5, m_registerDE.hi);
+		break;
+
+	case 0xAB:
+		setInstructionString("RES 5, E");
+		RES_r8(BitSelect::B5, m_registerDE.lo);
+		break;
+
+	case 0xAC:
+		setInstructionString("RES 5, H");
+		RES_r8(BitSelect::B5, m_registerHL.hi);
+		break;
+
+	case 0xAD:
+		setInstructionString("RES 5, L");
+		RES_r8(BitSelect::B5, m_registerHL.lo);
+		break;
+
+	case 0xAE:
+		setInstructionString("RES 5, (HL)");
+		RES_indirect_HL(BitSelect::B5);
+		break;
+
+	case 0xAF:
+		setInstructionString("RES 5, A");
+		RES_r8(BitSelect::B5, m_registerAF.accumulator);
+		break;
+
+	case 0xB0:
+		setInstructionString("RES 6, B");
+		RES_r8(BitSelect::B6, m_registerBC.hi);
+		break;
+
+	case 0xB1:
+		setInstructionString("RES 6, C");
+		RES_r8(BitSelect::B6, m_registerBC.lo);
+		break;
+
+	case 0xB2:
+		setInstructionString("RES 6, D");
+		RES_r8(BitSelect::B6, m_registerDE.hi);
+		break;
+
+	case 0xB3:
+		setInstructionString("RES 6, E");
+		RES_r8(BitSelect::B6, m_registerDE.lo);
+		break;
+
+	case 0xB4:
+		setInstructionString("RES 6, H");
+		RES_r8(BitSelect::B6, m_registerHL.hi);
+		break;
+
+	case 0xB5:
+		setInstructionString("RES 6, L");
+		RES_r8(BitSelect::B6, m_registerHL.lo);
+		break;
+
+	case 0xB6:
+		setInstructionString("RES 6, (HL)");
+		RES_indirect_HL(BitSelect::B6);
+		break;
+
+	case 0xB7:
+		setInstructionString("RES 6, A");
+		RES_r8(BitSelect::B6, m_registerAF.accumulator);
+		break;
+
+	case 0xB8:
+		setInstructionString("RES 7, B");
+		RES_r8(BitSelect::B7, m_registerBC.hi);
+		break;
+
+	case 0xB9:
+		setInstructionString("RES 7, C");
+		RES_r8(BitSelect::B7, m_registerBC.lo);
+		break;
+
+	case 0xBA:
+		setInstructionString("RES 7, D");
+		RES_r8(BitSelect::B7, m_registerDE.hi);
+		break;
+
+	case 0xBB:
+		setInstructionString("RES 7, E");
+		RES_r8(BitSelect::B7, m_registerDE.lo);
+		break;
+
+	case 0xBC:
+		setInstructionString("RES 7, H");
+		RES_r8(BitSelect::B7, m_registerHL.hi);
+		break;
+
+	case 0xBD:
+		setInstructionString("RES 7, L");
+		RES_r8(BitSelect::B7, m_registerHL.lo);
+		break;
+
+	case 0xBE:
+		setInstructionString("RES 7, (HL)");
+		RES_indirect_HL(BitSelect::B7);
+		break;
+
+	case 0xBF:
+		setInstructionString("RES 7, A");
+		RES_r8(BitSelect::B7, m_registerAF.accumulator);
+		break;
+
+	case 0xC0:
+		setInstructionString("SET 0, B");
+		SET_r8(BitSelect::B0, m_registerBC.hi);
+		break;
+
+	case 0xC1:
+		setInstructionString("SET 6, C");
+		SET_r8(BitSelect::B0, m_registerBC.lo);
+		break;
+
+	case 0xC2:
+		setInstructionString("SET 6, D");
+		SET_r8(BitSelect::B0, m_registerDE.hi);
+		break;
+
+	case 0xC3:
+		setInstructionString("SET 6, E");
+		SET_r8(BitSelect::B0, m_registerDE.lo);
+		break;
+
+	case 0xC4:
+		setInstructionString("SET 6, H");
+		SET_r8(BitSelect::B0, m_registerHL.hi);
+		break;
+
+	case 0xC5:
+		setInstructionString("SET 6, L");
+		SET_r8(BitSelect::B0, m_registerHL.lo);
+		break;
+
+	case 0xC6:
+		setInstructionString("SET 6, (HL)");
+		SET_indirect_HL(BitSelect::B0);
+		break;
+
+	case 0xC7:
+		setInstructionString("SET 6, A");
+		SET_r8(BitSelect::B0, m_registerAF.accumulator);
+		break;
+
+	case 0xC8:
+		setInstructionString("SET 1, B");
+		SET_r8(BitSelect::B1, m_registerBC.hi);
+		break;
+
+	case 0xC9:
+		setInstructionString("SET 1, C");
+		SET_r8(BitSelect::B1, m_registerBC.lo);
+		break;
+
+	case 0xCA:
+		setInstructionString("SET 1, D");
+		SET_r8(BitSelect::B1, m_registerDE.hi);
+		break;
+
+	case 0xCB:
+		setInstructionString("SET 1, E");
+		SET_r8(BitSelect::B1, m_registerDE.lo);
+		break;
+
+	case 0xCC:
+		setInstructionString("SET 1, H");
+		SET_r8(BitSelect::B1, m_registerHL.hi);
+		break;
+
+	case 0xCD:
+		setInstructionString("SET 1, L");
+		SET_r8(BitSelect::B1, m_registerHL.lo);
+		break;
+
+	case 0xCE:
+		setInstructionString("SET 1, (HL)");
+		SET_indirect_HL(BitSelect::B1);
+		break;
+
+	case 0xCF:
+		setInstructionString("SET 1, A");
+		SET_r8(BitSelect::B1, m_registerAF.accumulator);
+		break;
+
+	case 0xD0:
+		setInstructionString("SET 0, B");
+		SET_r8(BitSelect::B2, m_registerBC.hi);
+		break;
+
+	case 0xD1:
+		setInstructionString("SET 2, C");
+		SET_r8(BitSelect::B2, m_registerBC.lo);
+		break;
+
+	case 0xD2:
+		setInstructionString("SET 2, D");
+		SET_r8(BitSelect::B2, m_registerDE.hi);
+		break;
+
+	case 0xD3:
+		setInstructionString("SET 2, E");
+		SET_r8(BitSelect::B2, m_registerDE.lo);
+		break;
+
+	case 0xD4:
+		setInstructionString("SET 2, H");
+		SET_r8(BitSelect::B2, m_registerHL.hi);
+		break;
+
+	case 0xD5:
+		setInstructionString("SET 2, L");
+		SET_r8(BitSelect::B2, m_registerHL.lo);
+		break;
+
+	case 0xD6:
+		setInstructionString("SET 2, (HL)");
+		SET_indirect_HL(BitSelect::B2);
+		break;
+
+	case 0xD7:
+		setInstructionString("SET 2, A");
+		SET_r8(BitSelect::B2, m_registerAF.accumulator);
+		break;
+
+	case 0xD8:
+		setInstructionString("SET 3, B");
+		SET_r8(BitSelect::B3, m_registerBC.hi);
+		break;
+
+	case 0xD9:
+		setInstructionString("SET 3, C");
+		SET_r8(BitSelect::B3, m_registerBC.lo);
+		break;
+
+	case 0xDA:
+		setInstructionString("SET 3, D");
+		SET_r8(BitSelect::B3, m_registerDE.hi);
+		break;
+
+	case 0xDB:
+		setInstructionString("SET 3, E");
+		SET_r8(BitSelect::B3, m_registerDE.lo);
+		break;
+
+	case 0xDC:
+		setInstructionString("SET 3, H");
+		SET_r8(BitSelect::B3, m_registerHL.hi);
+		break;
+
+	case 0xDD:
+		setInstructionString("SET 3, L");
+		SET_r8(BitSelect::B3, m_registerHL.lo);
+		break;
+
+	case 0xDE:
+		setInstructionString("SET 3, (HL)");
+		SET_indirect_HL(BitSelect::B3);
+		break;
+
+	case 0xDF:
+		setInstructionString("SET 3, A");
+		SET_r8(BitSelect::B3, m_registerAF.accumulator);
+		break;
+
+	case 0xE0:
+		setInstructionString("SET 0, B");
+		SET_r8(BitSelect::B4, m_registerBC.hi);
+		break;
+
+	case 0xE1:
+		setInstructionString("SET 4, C");
+		SET_r8(BitSelect::B4, m_registerBC.lo);
+		break;
+
+	case 0xE2:
+		setInstructionString("SET 4, D");
+		SET_r8(BitSelect::B4, m_registerDE.hi);
+		break;
+
+	case 0xE3:
+		setInstructionString("SET 4, E");
+		SET_r8(BitSelect::B4, m_registerDE.lo);
+		break;
+
+	case 0xE4:
+		setInstructionString("SET 4, H");
+		SET_r8(BitSelect::B4, m_registerHL.hi);
+		break;
+
+	case 0xE5:
+		setInstructionString("SET 4, L");
+		SET_r8(BitSelect::B4, m_registerHL.lo);
+		break;
+
+	case 0xE6:
+		setInstructionString("SET 4, (HL)");
+		SET_indirect_HL(BitSelect::B4);
+		break;
+
+	case 0xE7:
+		setInstructionString("SET 4, A");
+		SET_r8(BitSelect::B4, m_registerAF.accumulator);
+		break;
+
+	case 0xE8:
+		setInstructionString("SET 5, B");
+		SET_r8(BitSelect::B5, m_registerBC.hi);
+		break;
+
+	case 0xE9:
+		setInstructionString("SET 5, C");
+		SET_r8(BitSelect::B5, m_registerBC.lo);
+		break;
+
+	case 0xEA:
+		setInstructionString("SET 5, D");
+		SET_r8(BitSelect::B5, m_registerDE.hi);
+		break;
+
+	case 0xEB:
+		setInstructionString("SET 5, E");
+		SET_r8(BitSelect::B5, m_registerDE.lo);
+		break;
+
+	case 0xEC:
+		setInstructionString("SET 5, H");
+		SET_r8(BitSelect::B5, m_registerHL.hi);
+		break;
+
+	case 0xED:
+		setInstructionString("SET 5, L");
+		SET_r8(BitSelect::B5, m_registerHL.lo);
+		break;
+
+	case 0xEE:
+		setInstructionString("SET 5, (HL)");
+		SET_indirect_HL(BitSelect::B5);
+		break;
+
+	case 0xEF:
+		setInstructionString("SET 5, A");
+		SET_r8(BitSelect::B5, m_registerAF.accumulator);
+		break;
+
+	case 0xF0:
+		setInstructionString("SET 0, B");
+		SET_r8(BitSelect::B6, m_registerBC.hi);
+		break;
+
+	case 0xF1:
+		setInstructionString("SET 6, C");
+		SET_r8(BitSelect::B6, m_registerBC.lo);
+		break;
+
+	case 0xF2:
+		setInstructionString("SET 6, D");
+		SET_r8(BitSelect::B6, m_registerDE.hi);
+		break;
+
+	case 0xF3:
+		setInstructionString("SET 6, E");
+		SET_r8(BitSelect::B6, m_registerDE.lo);
+		break;
+
+	case 0xF4:
+		setInstructionString("SET 6, H");
+		SET_r8(BitSelect::B6, m_registerHL.hi);
+		break;
+
+	case 0xF5:
+		setInstructionString("SET 6, L");
+		SET_r8(BitSelect::B6, m_registerHL.lo);
+		break;
+
+	case 0xF6:
+		setInstructionString("SET 6, (HL)");
+		SET_indirect_HL(BitSelect::B6);
+		break;
+
+	case 0xF7:
+		setInstructionString("SET 6, A");
+		SET_r8(BitSelect::B6, m_registerAF.accumulator);
+		break;
+
+	case 0xF8:
+		setInstructionString("SET 7, B");
+		SET_r8(BitSelect::B7, m_registerBC.hi);
+		break;
+
+	case 0xF9:
+		setInstructionString("SET 7, C");
+		SET_r8(BitSelect::B7, m_registerBC.lo);
+		break;
+
+	case 0xFA:
+		setInstructionString("SET 7, D");
+		SET_r8(BitSelect::B7, m_registerDE.hi);
+		break;
+
+	case 0xFB:
+		setInstructionString("SET 7, E");
+		SET_r8(BitSelect::B7, m_registerDE.lo);
+		break;
+
+	case 0xFC:
+		setInstructionString("SET 7, H");
+		SET_r8(BitSelect::B7, m_registerHL.hi);
+		break;
+
+	case 0xFD:
+		setInstructionString("SET 7, L");
+		SET_r8(BitSelect::B7, m_registerHL.lo);
+		break;
+
+	case 0xFE:
+		setInstructionString("SET 7, (HL)");
+		SET_indirect_HL(BitSelect::B7);
+		break;
+
+	case 0xFF:
+		setInstructionString("SET 7, A");
+		SET_r8(BitSelect::B7, m_registerAF.accumulator);
+		break;
+
 	default:
 		break;
 	}
@@ -1320,6 +2609,150 @@ void Sm83::RRA()
 	m_registerAF.flags.Z = 0;
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
+}
+
+void Sm83::RLC_r8(uint8_t &dest)
+{
+	m_registerAF.flags.C = (dest & 0x80) >> 7;
+	dest = dest << 1;
+	dest |= m_registerAF.flags.C;
+
+	m_registerAF.flags.Z = dest == 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+}
+
+void Sm83::RLC_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	RLC_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::RRC_r8(uint8_t &dest)
+{
+	m_registerAF.flags.C = dest & 0x1;
+	dest = dest >> 1;
+	dest |= m_registerAF.flags.C << 7;
+
+	m_registerAF.flags.Z = dest == 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+}
+
+void Sm83::RRC_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	RRC_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::RL_r8(uint8_t &dest)
+{
+	uint8_t shiftedValue = (dest << 1) | m_registerAF.flags.C;
+
+	m_registerAF.flags.C = (dest & 0x80) >> 7;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.Z = shiftedValue == 0;
+	dest = shiftedValue;
+}
+
+void Sm83::RL_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	RL_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::RR_r8(uint8_t &dest)
+{
+	uint8_t shiftedValue = (m_registerAF.flags.C << 7) | (dest >> 1);
+
+	m_registerAF.flags.C = dest & 0x1;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.Z = shiftedValue == 0;
+	dest = shiftedValue;
+}
+
+void Sm83::RR_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	RR_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::SLA_r8(uint8_t &dest)
+{
+	m_registerAF.flags.C = dest >> 7;
+	dest = dest << 1;
+	m_registerAF.flags.Z = dest == 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.N = 0;
+}
+
+void Sm83::SLA_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	SLA_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::SRA_r8(uint8_t &dest)
+{
+	m_registerAF.flags.C = dest & 0x1;
+	dest = (dest & 0x80) | (dest >> 1);
+	m_registerAF.flags.Z = dest == 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.N = 0;
+}
+
+void Sm83::SRA_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	SRA_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::SRL_r8(uint8_t &dest)
+{
+	m_registerAF.flags.C = dest & 0x1;
+	dest = dest >> 1;
+	m_registerAF.flags.Z = dest == 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.N = 0;
+}
+
+void Sm83::SRL_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	SRL_r8(dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::SWAP_r8(uint8_t &dest)
+{
+	dest = (dest >> 4) | (dest << 4);
+	m_registerAF.flags.Z = dest == 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.C = 0;
+}
+
+void Sm83::SWAP_indirect_HL()
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	SWAP_r8(dest);
+	m_bus->cpuWrite(address, dest);
 }
 
 void Sm83::ADD_HL_r16(Sm83Register &operand)
@@ -1662,5 +3095,43 @@ void Sm83::RST(RstVector vec)
 	m_programCounter = static_cast<uint16_t>(vec);
 }
 
+void Sm83::BIT_r8(BitSelect b, uint8_t dest)
+{
+	m_registerAF.flags.Z = (dest & static_cast<uint8_t>(b)) == 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 1;
+}
 
+void Sm83::BIT_indirect_HL(BitSelect b)
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	BIT_r8(b, dest);
+	m_bus->cpuWrite(address, dest);
+}
 
+void Sm83::RES_r8(BitSelect b, uint8_t &dest)
+{
+	dest = dest & ~static_cast<uint8_t>(b);
+}
+
+void Sm83::RES_indirect_HL(BitSelect b)
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	RES_r8(b, dest);
+	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::SET_r8(BitSelect b, uint8_t &dest)
+{
+	dest = dest | static_cast<uint8_t>(b);
+}
+
+void Sm83::SET_indirect_HL(BitSelect b)
+{
+	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint8_t dest = m_bus->cpuRead(address);
+	SET_r8(b, dest);
+	m_bus->cpuWrite(address, dest);
+}
