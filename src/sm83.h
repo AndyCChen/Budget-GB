@@ -90,6 +90,13 @@ class Sm83
 	}
 
 	/**
+	 * @brief Clock cpu for one machine cycle.
+	 */
+	void mTick()
+	{
+	}
+
+	/**
 	 * @brief Decodes and executes the input opcode.
 	 */
 	void decodeExecute(uint8_t opcode);
@@ -284,6 +291,12 @@ class Sm83
 	void ADD_A_r8(uint8_t &operand);
 
 	/**
+	 * @brief Add 8-bit immediate value into accumulator. Set flags same way
+	 * as ADD_A_r8.
+	 */
+	void ADD_A_n8();
+
+	/**
 	 * @brief Add byte pointed to by HL registers into accumulator.
 	 * Set zero flag if result is zero. Clear subtraction flag. Set half
 	 * carry on bit 3 overflow, Set carry flag on bit 7 overflow.
@@ -332,7 +345,7 @@ class Sm83
 	 * carry flag on bit-4 borrow. Set carry flag if subtraction
 	 * results in borrow.
 	 *
-	 * @param operand 
+	 * @param operand
 	 */
 	void SBC_A_r8(uint8_t &operand);
 
@@ -358,6 +371,21 @@ class Sm83
 	 * @param condition
 	 */
 	void JR_CC_i8(bool condition);
+
+	// JP Instructions ------------------------------------------------------------
+
+	/**
+	 * @brief Jump to absolute address if boolean condition is met.
+	 * 4 m-cycles on branch taken, else 3 m-cycles.
+	 *
+	 * @param condition
+	 */
+	void JP_CC_n16(bool condition);
+
+	/**
+	 * @brief Jump to absolute address.
+	 */
+	void JP_n16();
 
 	// DAA Instructions ------------------------------------------------
 
@@ -386,4 +414,141 @@ class Sm83
 	 * @brief Bitwise not on carry flag. Clear subtraction and half carry flags.
 	 */
 	void CCF();
+
+	// AND Instructions ------------------------------------------------------------
+
+	/**
+	 * @brief Bitwise and accumulator with 8-bit register. Set zero flag on 0 result.
+	 * Clear subtraction and carry flag. Set half carry flag.
+	 *
+	 * @param operand
+	 */
+	void AND_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Bitwise and accumulator with value pointed to by HL register.
+	 * Flags affected the same way as AND_A_r8.
+	 */
+	void AND_A_indirect_HL();
+
+	// XOR Instructions ----------------------------------------------------------------
+
+	/**
+	 * @brief Bitwise exclusive or accumulator and 8-bit register. Clears subtraction,
+	 * half carry, and carry flags. Set zero flag on 0 result.
+	 *
+	 * @param operand
+	 */
+	void XOR_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Bitwise exclusive or accumulator and value pointed to by HL registers.
+	 * Flags affected the same way as XOR_A_r8
+	 */
+	void XOR_A_indirect_HL();
+
+	// OR Instructions ------------------------------------------------------------------
+
+	/**
+	 * @brief Bitwise or accumulator with 8-bit register. Clear subtraction, half carry,
+	 * and carry flags. Set zero flag on 0 result.
+	 *
+	 * @param operand
+	 */
+	void OR_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Bitwise or accumulator with value pointed to HL registers. Flags affected
+	 * the same way as OR_A_r8.
+	 */
+	void OR_A_indirect_HL();
+
+	// CP Instructions -----------------------------------------------------------------
+
+	/**
+	 * @brief Compare accumulator with 8-bit register by subtracting register value
+	 * from accumulator, does not store result.
+	 * Sets zero flag if result is zero. Set subtraction flag. Set half carry on bit 4 borrow,
+	 * Set carry if borrow.
+	 *
+	 * @param operand
+	 */
+	void CP_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief Same as CP_A_r8 except it compares with value pointed to by HL register.
+	 */
+	void CP_A_indirect_HL();
+
+	// RET Instructions -------------------------------------------------------------------
+
+	/**
+	 * @brief Return from subroutine by popping return address from the stack into the program
+	 * counter.
+	 */
+	void RET();
+
+	/**
+	 * @brief Return from subroutine if boolean condition is met.
+	 *
+	 * @param condition
+	 */
+	void RET_CC(bool condition);
+
+	// POP Instructions ---------------------------------------------------------------------
+
+	/**
+	 * @brief Pop 2 bytes from stack and store into register pair.
+	 *
+	 * @param dest
+	 */
+	void POP_r16(Sm83Register &dest);
+
+	// PUSH Instructions ---------------------------------------------------------------------
+
+	/**
+	 * @brief Push 16-bit register to stack, hi byte followed by lo byte.
+	 *
+	 * @param dest
+	 */
+	void PUSH_r16(Sm83Register &dest);
+
+	// CALL Instructions ---------------------------------------------------------------------
+
+	/**
+	 * @brief Pushes address of next instruction after CALL onto the stack.
+	 */
+	void CALL_n16();
+
+	/**
+	 * @brief Call subroutine if boolean condition is met. 6 m-cycles if branch taken,
+	 * Else 3 m-cycles.
+	 *
+	 * @param condition
+	 */
+	void CALL_CC_n16(bool condition);
+
+	// RST Instructions
+
+	/**
+	 * @brief Fixed jump vectors for RST instruction.
+	 */
+	enum class RstVector
+	{
+		H00 = 0x0000,
+		H08 = 0x0008,
+		H10 = 0x0010,
+		H18 = 0x0018,
+		H20 = 0x0020,
+		H28 = 0x0028,
+		H30 = 0x0030,
+		H38 = 0x0038,
+	};
+
+	/**
+	 * @brief Subroutine call a fixed jump vector.
+	 *
+	 * @param vec 
+	 */
+	void RST(RstVector vec);
 };

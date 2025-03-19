@@ -496,7 +496,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("LD C, A");
 		LD_r8_r8(m_registerBC.lo, m_registerAF.accumulator);
 		break;
-	
+
 	case 0x50:
 		setInstructionString("LD D, B");
 		LD_r8_r8(m_registerDE.hi, m_registerBC.hi);
@@ -706,7 +706,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("LD A, D");
 		LD_r8_r8(m_registerAF.accumulator, m_registerDE.hi);
 		break;
-		
+
 	case 0x7B:
 		setInstructionString("LD A, E");
 		LD_r8_r8(m_registerAF.accumulator, m_registerDE.lo);
@@ -731,7 +731,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("LD A, A");
 		LD_r8_r8(m_registerAF.accumulator, m_registerAF.accumulator);
 		break;
-	
+
 	case 0x80:
 		setInstructionString("ADD A, B");
 		ADD_A_r8(m_registerBC.hi);
@@ -751,7 +751,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("ADD A, E");
 		ADD_A_r8(m_registerDE.lo);
 		break;
-		
+
 	case 0x84:
 		setInstructionString("ADD A, H");
 		ADD_A_r8(m_registerHL.hi);
@@ -846,7 +846,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("SUB A, (HL)");
 		SUB_A_indirect_HL();
 		break;
-		
+
 	case 0x97:
 		setInstructionString("SUB A, A");
 		SUB_A_r8(m_registerAF.accumulator);
@@ -886,11 +886,232 @@ void Sm83::decodeExecute(uint8_t opcode)
 		setInstructionString("SBC A, (HL)");
 		SBC_A_indirect_HL();
 		break;
-		
+
 	case 0x9F:
 		setInstructionString("SBC A, A");
 		SBC_A_r8(m_registerAF.accumulator);
 		break;
+
+	case 0xA0:
+		setInstructionString("AND A, B");
+		AND_A_r8(m_registerBC.hi);
+		break;
+
+	case 0xA1:
+		setInstructionString("AND A, C");
+		AND_A_r8(m_registerBC.lo);
+		break;
+
+	case 0xA2:
+		setInstructionString("AND A, D");
+		AND_A_r8(m_registerDE.hi);
+		break;
+
+	case 0xA3:
+		setInstructionString("AND A, E");
+		AND_A_r8(m_registerDE.lo);
+		break;
+
+	case 0xA4:
+		setInstructionString("AND A, H");
+		AND_A_r8(m_registerHL.hi);
+		break;
+
+	case 0xA5:
+		setInstructionString("AND A, L");
+		AND_A_r8(m_registerHL.lo);
+		break;
+
+	case 0xA6:
+		setInstructionString("AND A, (HL)");
+		AND_A_indirect_HL();
+		break;
+
+	case 0xA7:
+		setInstructionString("AND A, A");
+		AND_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0xA8:
+		setInstructionString("XOR A, B");
+		XOR_A_r8(m_registerBC.hi);
+		break;
+
+	case 0xA9:
+		setInstructionString("XOR A, C");
+		XOR_A_r8(m_registerBC.lo);
+		break;
+
+	case 0xAA:
+		setInstructionString("XOR A, D");
+		XOR_A_r8(m_registerDE.hi);
+		break;
+
+	case 0xAB:
+		setInstructionString("XOR A, E");
+		XOR_A_r8(m_registerDE.lo);
+		break;
+
+	case 0xAC:
+		setInstructionString("XOR A, H");
+		XOR_A_r8(m_registerHL.hi);
+		break;
+
+	case 0xAD:
+		setInstructionString("XOR A, L");
+		XOR_A_r8(m_registerHL.lo);
+		break;
+
+	case 0xAE:
+		setInstructionString("XOR A, (HL)");
+		XOR_A_indirect_HL();
+		break;
+
+	case 0xAF:
+		setInstructionString("XOR A, A");
+		XOR_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0xB0:
+		setInstructionString("OR A, B");
+		OR_A_r8(m_registerBC.hi);
+		break;
+
+	case 0xB1:
+		setInstructionString("OR A, C");
+		OR_A_r8(m_registerBC.lo);
+		break;
+
+	case 0xB2:
+		setInstructionString("OR A, D");
+		OR_A_r8(m_registerDE.hi);
+		break;
+
+	case 0xB3:
+		setInstructionString("OR A, E");
+		OR_A_r8(m_registerDE.lo);
+		break;
+
+	case 0xB4:
+		setInstructionString("OR A, H");
+		OR_A_r8(m_registerHL.hi);
+		break;
+
+	case 0xB5:
+		setInstructionString("OR A, L");
+		OR_A_r8(m_registerHL.lo);
+		break;
+
+	case 0xB6:
+		setInstructionString("OR A, (HL)");
+		OR_A_indirect_HL();
+		break;
+
+	case 0xB7:
+		setInstructionString("OR A, A");
+		OR_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0xB8:
+		setInstructionString("CP A, B");
+		CP_A_r8(m_registerBC.hi);
+		break;
+
+	case 0xB9:
+		setInstructionString("CP A, C");
+		CP_A_r8(m_registerBC.lo);
+		break;
+
+	case 0xBA:
+		setInstructionString("CP A, D");
+		CP_A_r8(m_registerDE.hi);
+		break;
+
+	case 0xBB:
+		setInstructionString("CP A, E");
+		CP_A_r8(m_registerDE.lo);
+		break;
+
+	case 0xBC:
+		setInstructionString("CP A, H");
+		CP_A_r8(m_registerHL.hi);
+		break;
+
+	case 0xBD:
+		setInstructionString("CP A, L");
+		CP_A_r8(m_registerHL.lo);
+		break;
+
+	case 0xBE:
+		setInstructionString("CP A, (HL)");
+		CP_A_indirect_HL();
+		break;
+
+	case 0xBF:
+		setInstructionString("CP A, A");
+		CP_A_r8(m_registerAF.accumulator);
+		break;
+
+	case 0xC0:
+		setInstructionString("RET NZ");
+		RET_CC(!m_registerAF.flags.Z);
+		break;
+
+	case 0xC1:
+		setInstructionString("POP BC");
+		POP_r16(m_registerBC);
+		break;
+
+	case 0xC2:
+		setInstructionString("JP NZ, n16");
+		JP_CC_n16(!m_registerAF.flags.Z);
+		break;
+
+	case 0xC3:
+		setInstructionString("JP n16");
+		JP_n16();
+		break;
+
+	case 0xC4:
+		setInstructionString("CALL NZ, n16");
+		CALL_CC_n16(!m_registerAF.flags.Z);
+		break;
+	
+	case 0xC5:
+		setInstructionString("PUSH BC");
+		PUSH_r16(m_registerBC);
+		break;
+	
+	case 0xC6:
+		setInstructionString("ADD n8");
+		ADD_A_n8();
+		break;
+	
+	case 0xC7:
+		setInstructionString("RST 00h");
+		RST(RstVector::H00);
+		break;
+
+	case 0xC8:
+		setInstructionString("RET Z");
+		RET_CC(m_registerAF.flags.Z);
+		break;
+
+	case 0xC9:
+		setInstructionString("RET");
+		RET();
+		break;
+
+	case 0xCA:
+		setInstructionString("JP Z, n16");
+		JP_CC_n16(m_registerAF.flags.Z);
+		break;
+
+	// Prefix mode, decode opcode with second opcode table
+	case 0xCB:
+		
+		break;
+
 	// No intruction
 	default:
 		break;
@@ -1013,10 +1234,7 @@ void Sm83::INC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
 	uint8_t value = m_bus->cpuRead(address);
-	m_registerAF.flags.H = ((value >> 4) & 0x1) ^ (((value + 1) >> 4) & 0x1);
-	value += 1;
-	m_registerAF.flags.Z = value ? 0 : 1;
-	m_registerAF.flags.N = 0;
+	INC_r8(value);
 	m_bus->cpuWrite(address, value);
 }
 
@@ -1042,10 +1260,7 @@ void Sm83::DEC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
 	uint8_t value = m_bus->cpuRead(address);
-	m_registerAF.flags.H = (value & 0xF0) != ((value - 1) & 0xF0);
-	value -= 1;
-	m_registerAF.flags.N = 1;
-	m_registerAF.flags.Z = value ? 0 : 1;
+	DEC_r8(value);
 	m_bus->cpuWrite(address, value);
 }
 
@@ -1136,10 +1351,10 @@ void Sm83::ADD_HL_SP()
 	m_registerHL.lo = sum & 0x00FF;
 }
 
-void Sm83::ADD_A_r8(uint8_t&operand)
+void Sm83::ADD_A_r8(uint8_t &operand)
 {
 	uint16_t sum = m_registerAF.accumulator + operand;
-	
+
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + (operand & 0xF)) & 0x10) >> 4;
 	m_registerAF.flags.C = (sum & 0x100) >> 8;
@@ -1148,13 +1363,19 @@ void Sm83::ADD_A_r8(uint8_t&operand)
 	m_registerAF.accumulator = static_cast<uint8_t>(sum);
 }
 
+void Sm83::ADD_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	ADD_A_r8(operand);
+}
+
 void Sm83::ADD_A_indirect_HL()
 {
 	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
 	ADD_A_r8(operand);
 }
 
-void Sm83::ADC_A_r8(uint8_t& operand)
+void Sm83::ADC_A_r8(uint8_t &operand)
 {
 	uint16_t sum = m_registerAF.accumulator + operand + m_registerAF.flags.C;
 
@@ -1171,7 +1392,7 @@ void Sm83::ADC_A_indirect_HL()
 	ADC_A_r8(operand);
 }
 
-void Sm83::SUB_A_r8(uint8_t& operand)
+void Sm83::SUB_A_r8(uint8_t &operand)
 {
 	// using 2's complement for subtraction, cuz why not
 	uint16_t difference = m_registerAF.accumulator + static_cast<uint8_t>(~operand) + 1;
@@ -1193,16 +1414,16 @@ void Sm83::SUB_A_indirect_HL()
 	SUB_A_r8(operand);
 }
 
-void Sm83::SBC_A_r8(uint8_t& operand)
+void Sm83::SBC_A_r8(uint8_t &operand)
 {
 	// Interestingly the incomming carry flag is inverted on the sm83 for the SBC instruction.
 	// This is in contrast to the SBC instruction on the 6502 where the programmer must
 	// explicitly set the carry flag prior to starting muli-byte subtractions with SBC.
 	// On the gameboy's sm83, this is done for you!
-	// And since the incomming carry flag is inverted, the outputed carry flag is also inverted!
 	uint16_t difference = m_registerAF.accumulator + (static_cast<uint8_t>(~operand) + !m_registerAF.flags.C);
 
-	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + !m_registerAF.flags.C)) & 0x10) >> 4;
+	m_registerAF.flags.H =
+		(((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + !m_registerAF.flags.C)) & 0x10) >> 4;
 	m_registerAF.flags.H = !m_registerAF.flags.H;
 
 	m_registerAF.flags.C = !((difference >> 8) & 0x1);
@@ -1221,6 +1442,7 @@ void Sm83::SBC_A_indirect_HL()
 void Sm83::JR_i8()
 {
 	int8_t offset = static_cast<int8_t>(cpuFetch());
+	mTick();
 	m_programCounter += offset;
 }
 
@@ -1231,7 +1453,28 @@ void Sm83::JR_CC_i8(bool condition)
 	// 1 extra m-cycle on jump taken
 	// 1 m-cycle == 4 t-cycles
 	if (condition)
+	{
+		mTick();
 		m_programCounter += offset;
+	}
+}
+
+void Sm83::JP_CC_n16(bool condition)
+{
+	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+
+	if (condition)
+	{
+		mTick();
+		m_programCounter = address;
+	}
+}
+
+void Sm83::JP_n16()
+{
+	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	mTick();
+	m_programCounter = address;
 }
 
 void Sm83::DAA()
@@ -1284,3 +1527,140 @@ void Sm83::CCF()
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
 }
+
+void Sm83::AND_A_r8(uint8_t &operand)
+{
+	m_registerAF.accumulator &= operand;
+
+	m_registerAF.flags.Z = m_registerAF.accumulator == 0;
+	m_registerAF.flags.H = 1;
+	m_registerAF.flags.C = 0;
+	m_registerAF.flags.N = 0;
+}
+
+void Sm83::AND_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	AND_A_r8(operand);
+}
+
+void Sm83::XOR_A_r8(uint8_t &operand)
+{
+	m_registerAF.accumulator ^= operand;
+
+	m_registerAF.flags.Z = m_registerAF.accumulator == 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.C = 0;
+}
+
+void Sm83::XOR_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	XOR_A_r8(operand);
+}
+
+void Sm83::OR_A_r8(uint8_t &operand)
+{
+	m_registerAF.accumulator |= operand;
+
+	m_registerAF.flags.Z = m_registerAF.accumulator == 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = 0;
+	m_registerAF.flags.C = 0;
+}
+
+void Sm83::OR_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	OR_A_r8(operand);
+}
+
+void Sm83::CP_A_r8(uint8_t &operand)
+{
+	uint16_t difference = m_registerAF.accumulator + (static_cast<uint8_t>(~operand) + 1);
+
+	m_registerAF.flags.Z = static_cast<uint8_t>(difference) == 0;
+	m_registerAF.flags.N = 1;
+	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + 1)) & 0x10) >> 4;
+	m_registerAF.flags.H = !m_registerAF.flags.H;
+	m_registerAF.flags.C = !((difference & 0x100) >> 8);
+}
+
+void Sm83::CP_A_indirect_HL()
+{
+	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
+	CP_A_r8(operand);
+}
+
+void Sm83::RET()
+{
+	uint8_t lo = m_bus->cpuRead(m_stackPointer++);
+	uint8_t hi = m_bus->cpuRead(m_stackPointer++);
+
+	mTick();
+	m_programCounter = (hi << 8) | lo;
+}
+
+void Sm83::RET_CC(bool condition)
+{
+	mTick();
+	if (condition)
+		RET();
+}
+
+void Sm83::POP_r16(Sm83Register &dest)
+{
+	uint8_t lo = m_bus->cpuRead(m_stackPointer++);
+	uint8_t hi = m_bus->cpuRead(m_stackPointer++);
+	dest.lo = lo;
+	dest.hi = hi;
+}
+
+void Sm83::PUSH_r16(Sm83Register &dest)
+{
+	mTick();
+	m_bus->cpuWrite(--m_stackPointer, dest.hi);
+	m_bus->cpuWrite(--m_stackPointer, dest.lo);
+}
+
+void Sm83::CALL_n16()
+{
+	uint16_t callAddress = cpuFetch() | (cpuFetch() << 8);
+
+	mTick();
+
+	// save hi byte of pc to stack followed by the lo byte
+	m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
+	m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
+
+	m_programCounter = callAddress;
+}
+
+void Sm83::CALL_CC_n16(bool condition)
+{
+	uint16_t callAddress = cpuFetch() | (cpuFetch() << 8);
+
+	if (condition)
+	{
+		mTick();
+
+		// save hi byte of pc to stack followed by the lo byte
+		m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
+		m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
+
+		m_programCounter = callAddress;
+	}
+}
+
+void Sm83::RST(RstVector vec)
+{
+	mTick();
+	m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
+	m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
+
+	m_programCounter = static_cast<uint16_t>(vec);
+}
+
+
+
