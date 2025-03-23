@@ -14,7 +14,7 @@ class Sm83
 		unsigned int N : 1;		 // bit 6, subtraction flag
 		unsigned int H : 1;		 // bit 5, half carry flag
 		unsigned int C : 1;		 // bit 4, carry flag
-		unsigned int UNUSED : 4; // unused
+		//unsigned int UNUSED : 4; // unused
 
 		/**
 		 * @brief Set all at once flags with a single 8bit value as input.
@@ -25,7 +25,7 @@ class Sm83
 			N = in >> 6;
 			H = in >> 5;
 			C = in >> 4;
-			UNUSED = in & 0xF;
+		//	UNUSED = in & 0xF;
 		}
 
 		/**
@@ -33,7 +33,7 @@ class Sm83
 		 */
 		uint8_t getFlagsU8() const
 		{
-			return static_cast<uint8_t>((Z << 7) | (N << 6) | (H << 5) | (C << 4) | UNUSED);
+			return static_cast<uint8_t>((Z << 7) | (N << 6) | (H << 5) | (C << 4));
 		}
 	};
 
@@ -57,6 +57,7 @@ class Sm83
 	Sm83Register m_registerBC;
 	Sm83Register m_registerDE;
 	Sm83Register m_registerHL;
+	bool m_ime; // interupt master enable
 
 	Sm83(Bus *bus);
 
@@ -119,7 +120,43 @@ class Sm83
 	// CC  - means some booleon condition, NZ: zero flag not set, Z: set flag set, NC: carry flag not set, C: carry flag
 	// set
 
-	// LD Instructions ---------------------------------------------
+	// LDH Instructions -------------------------------------------------------
+	
+	/**
+	 * @brief Load accumulator into address 0xFF00 + immediate 8-bit value.
+	 */
+	void LDH_indirect_n8_A();
+
+	/**
+	 * @brief Load accumulator into address 0xFF00 + 8-bit C register.
+	 */
+	void LDH_indirect_C_A();
+
+	/**
+	 * @brief Load value at address 0xFF00 + 8-bit immediate value into
+	 * accumulator.
+	 */
+	void LDH_A_indirect_n8();
+
+	/**
+	 * @brief Load value at address 0xFF00 + 8-bit C register into accumulator.
+	 */
+	void LDH_A_indirect_C();
+	
+
+	// LD Instructions --------------------------------------------------------
+	
+	/**
+	 * @brief Load HL register into stack pointer.
+	 */
+	void LD_SP_HL();
+
+	/**
+	 * @brief Add signed immediate 8-bit value to stack pointer, store result into
+	 * HL register. Clear zero & subtraction flag. Set half carry on bit 3 overflow,
+	 * Set carry on bit 7 overflow.
+	 */
+	void LD_HL_SP_i8();
 
 	/**
 	 * @brief Load 8-bit register with immediate 8-bit value
@@ -149,6 +186,16 @@ class Sm83
 	 * @param dest
 	 */
 	void LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src);
+
+	/**
+	 * @brief Load accumulator into memory pointed to by immediate 16-bit value.
+	 */
+	void LD_indirect_n16_A();
+
+	/**
+	 * @brief Load value pointed to in memory by immediate 16-bit address.
+	 */
+	void LD_A_indirect_n16();
 
 	/**
 	 * @brief Load 8 bit register with value at memory address location in 16 bit register.
@@ -383,6 +430,13 @@ class Sm83
 	void SWAP_indirect_HL();
 
 	// ADD Instructions -----------------------------------------------------------
+	
+	/**
+	 * @brief Add signed 8-bit immediate value into stack pointer.
+	 * Clear zero, subtraction flag. Set half carry on bit 3 overflow.
+	 * Set carry on bit 7 overflow.
+	 */
+	void ADD_SP_i8();
 
 	/**
 	 * @brief Add 16-bit register into register HL. Set half carry on bit 11 overflow.
@@ -434,6 +488,11 @@ class Sm83
 	 */
 	void ADC_A_indirect_HL();
 
+	/**
+	 * @brief ADC with immediate 8-bit value
+	 */
+	void ADC_A_n8();
+
 	// SUB Instructions -------------------------------------------------------
 
 	/**
@@ -444,6 +503,11 @@ class Sm83
 	 * @param operand
 	 */
 	void SUB_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief SUB with immediate 8-bit value
+	 */
+	void SUB_A_n8();
 
 	/**
 	 * @brief Subtract value pointed to by HL register from accumulators.
@@ -462,6 +526,11 @@ class Sm83
 	 * @param operand
 	 */
 	void SBC_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief SBC with 8-bit immediate value
+	 */
+	void SBC_A_n8();
 
 	/**
 	 * @brief Same as SBC_A_r8, except adding valuing pointed to by HL register
@@ -500,6 +569,8 @@ class Sm83
 	 * @brief Jump to absolute address.
 	 */
 	void JP_n16();
+
+	void JP_HL();
 
 	// DAA Instructions ------------------------------------------------
 
@@ -540,6 +611,11 @@ class Sm83
 	void AND_A_r8(uint8_t &operand);
 
 	/**
+	 * @brief AND with immediate 8-bit register.
+	 */
+	void AND_A_n8();
+
+	/**
 	 * @brief Bitwise and accumulator with value pointed to by HL register.
 	 * Flags affected the same way as AND_A_r8.
 	 */
@@ -556,6 +632,11 @@ class Sm83
 	void XOR_A_r8(uint8_t &operand);
 
 	/**
+	 * @brief XOR with immediate 8-bit value.
+	 */
+	void XOR_A_n8();
+
+	/**
 	 * @brief Bitwise exclusive or accumulator and value pointed to by HL registers.
 	 * Flags affected the same way as XOR_A_r8
 	 */
@@ -570,6 +651,11 @@ class Sm83
 	 * @param operand
 	 */
 	void OR_A_r8(uint8_t &operand);
+
+	/**
+	 * @brief OR with immediate 8-bit value
+	 */
+	void OR_A_n8();
 
 	/**
 	 * @brief Bitwise or accumulator with value pointed to HL registers. Flags affected
@@ -590,11 +676,17 @@ class Sm83
 	void CP_A_r8(uint8_t &operand);
 
 	/**
+	 * @brief Compare accumulator with 8-bit immediate value. Flags affected same way as
+	 * CP_A_r8
+	 */
+	void CP_A_n8();
+
+	/**
 	 * @brief Same as CP_A_r8 except it compares with value pointed to by HL register.
 	 */
 	void CP_A_indirect_HL();
 
-	// RET Instructions -------------------------------------------------------------------
+	// RET, RETI Instructions -------------------------------------------------------------------
 
 	/**
 	 * @brief Return from subroutine by popping return address from the stack into the program
@@ -609,6 +701,11 @@ class Sm83
 	 */
 	void RET_CC(bool condition);
 
+	/**
+	 * @brief Return from subroutine and set flag to enable interupts.
+	 */
+	void RETI();
+
 	// POP Instructions ---------------------------------------------------------------------
 
 	/**
@@ -618,6 +715,12 @@ class Sm83
 	 */
 	void POP_r16(Sm83Register &dest);
 
+	/**
+	 * @brief Pop 16-bit AF registers from stack. Flags are set to the
+	 * flags byte that is popped. This is the low byte of AF register.
+	 */
+	void POP_AF();
+
 	// PUSH Instructions ---------------------------------------------------------------------
 
 	/**
@@ -626,6 +729,11 @@ class Sm83
 	 * @param dest
 	 */
 	void PUSH_r16(Sm83Register &dest);
+
+	/**
+	 * @brief Push the AF register onto the stack.
+	 */
+	void PUSH_AF();
 
 	// CALL Instructions ---------------------------------------------------------------------
 
@@ -667,7 +775,7 @@ class Sm83
 	void RST(RstVector vec);
 
 	// BIT, RES Instructions ----------------------------------------------------------------------
-	
+
 	/**
 	 * @brief Select 1 of 8 bits in a byte to operate on for bit flag instructions.
 	 */
@@ -687,8 +795,8 @@ class Sm83
 	 * @brief Test a bit in 8-bit register. Set half carry, clear subtraction flag.
 	 * Set zero if tested bit is 0.
 	 *
-	 * @param b 
-	 * @param dest 
+	 * @param b
+	 * @param dest
 	 */
 	void BIT_r8(BitSelect b, uint8_t dest);
 
@@ -697,30 +805,43 @@ class Sm83
 	/**
 	 * @brief Clear a bit in 8-bit register.
 	 *
-	 * @param b 
-	 * @param dest 
+	 * @param b
+	 * @param dest
 	 */
-	void RES_r8(BitSelect b, uint8_t& dest);
+	void RES_r8(BitSelect b, uint8_t &dest);
 
 	/**
 	 * @brief Clear a bit in value from memory pointed to by HL register.
 	 *
-	 * @param b 
+	 * @param b
 	 */
 	void RES_indirect_HL(BitSelect b);
 
 	/**
 	 * @brief Set a bit in 8-bit register.
 	 *
-	 * @param b 
-	 * @param dest 
+	 * @param b
+	 * @param dest
 	 */
-	void SET_r8(BitSelect b, uint8_t& dest);
+	void SET_r8(BitSelect b, uint8_t &dest);
 
 	/**
 	 * @brief Set a bit in value from memory pointed to by register HL.
 	 *
-	 * @param b 
+	 * @param b
 	 */
 	void SET_indirect_HL(BitSelect b);
+
+	// EI, DI Instructions
+	
+	/**
+	 * @brief Disables interrupts by clearing ime flag.
+	 */
+	void DI();
+
+	/**
+	 * @brief Enables interrupts by setting ime flag AFTER the intruction following
+	 * EI.
+	 */
+	void EI();
 };
