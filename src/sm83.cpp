@@ -2651,7 +2651,7 @@ void Sm83::RRC_indirect_HL()
 
 void Sm83::RL_r8(uint8_t &dest)
 {
-	uint8_t shiftedValue = (dest << 1) | m_registerAF.flags.C;
+	uint8_t shiftedValue = static_cast<uint8_t>((dest << 1) | m_registerAF.flags.C);
 
 	m_registerAF.flags.C = (dest & 0x80) >> 7;
 	m_registerAF.flags.N = 0;
@@ -2670,7 +2670,7 @@ void Sm83::RL_indirect_HL()
 
 void Sm83::RR_r8(uint8_t &dest)
 {
-	uint8_t shiftedValue = (m_registerAF.flags.C << 7) | (dest >> 1);
+	uint8_t shiftedValue = static_cast<uint8_t>((m_registerAF.flags.C << 7) | (dest >> 1));
 
 	m_registerAF.flags.C = dest & 0x1;
 	m_registerAF.flags.N = 0;
@@ -2810,7 +2810,7 @@ void Sm83::ADD_A_indirect_HL()
 
 void Sm83::ADC_A_r8(uint8_t &operand)
 {
-	uint16_t sum = m_registerAF.accumulator + operand + m_registerAF.flags.C;
+	uint16_t sum = static_cast<uint16_t>(m_registerAF.accumulator + operand + m_registerAF.flags.C);
 
 	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + (operand & 0xF) + m_registerAF.flags.C) & 0x10) >> 4;
 	m_registerAF.flags.C = (sum & 0x100) >> 8;
@@ -2831,7 +2831,7 @@ void Sm83::SUB_A_r8(uint8_t &operand)
 	uint16_t difference = m_registerAF.accumulator + static_cast<uint8_t>(~operand) + 1;
 
 	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + 1)) & 0x10) >> 4;
-	m_registerAF.flags.H = !m_registerAF.flags.H;
+	m_registerAF.flags.H = ~m_registerAF.flags.H;
 
 	// carry out is inverted for subtraction when using 2's complement
 	m_registerAF.flags.C = ~((difference >> 8) & 0x1);
@@ -2857,7 +2857,7 @@ void Sm83::SBC_A_r8(uint8_t &operand)
 
 	m_registerAF.flags.H =
 		(((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + !m_registerAF.flags.C)) & 0x10) >> 4;
-	m_registerAF.flags.H = !m_registerAF.flags.H;
+	m_registerAF.flags.H = ~m_registerAF.flags.H;
 
 	m_registerAF.flags.C = !((difference >> 8) & 0x1);
 	m_registerAF.flags.N = 1;
@@ -2922,7 +2922,7 @@ void Sm83::DAA()
 		if (m_registerAF.flags.C)
 			adjustment += 0x60;
 
-		m_registerAF.accumulator -= adjustment;
+		m_registerAF.accumulator = static_cast<uint8_t>(m_registerAF.accumulator - adjustment);
 	}
 	else
 	{
@@ -2933,7 +2933,7 @@ void Sm83::DAA()
 			adjustment += 0x60;
 			m_registerAF.flags.C = 1;
 		}
-		m_registerAF.accumulator += adjustment;
+		m_registerAF.accumulator = static_cast<uint8_t>(m_registerAF.accumulator + adjustment);
 	}
 
 	m_registerAF.flags.Z = m_registerAF.accumulator == 0;
@@ -2956,7 +2956,7 @@ void Sm83::SCF()
 
 void Sm83::CCF()
 {
-	m_registerAF.flags.C = !m_registerAF.flags.C;
+	m_registerAF.flags.C = ~m_registerAF.flags.C;
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
 }
@@ -3016,7 +3016,7 @@ void Sm83::CP_A_r8(uint8_t &operand)
 	m_registerAF.flags.Z = static_cast<uint8_t>(difference) == 0;
 	m_registerAF.flags.N = 1;
 	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + 1)) & 0x10) >> 4;
-	m_registerAF.flags.H = !m_registerAF.flags.H;
+	m_registerAF.flags.H = ~m_registerAF.flags.H;
 	m_registerAF.flags.C = !((difference & 0x100) >> 8);
 }
 
