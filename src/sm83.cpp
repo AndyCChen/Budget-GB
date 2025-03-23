@@ -1112,6 +1112,250 @@ void Sm83::decodeExecute(uint8_t opcode)
 		decodeExecutePrefixedMode(cpuFetch());
 		break;
 
+	case 0xCC:
+		setInstructionString("CALL Z, n16");
+		CALL_CC_n16(m_registerAF.flags.Z);
+		break;
+
+	case 0xCD:
+		setInstructionString("CALL n16");
+		CALL_n16();
+		break;
+
+	case 0xCE:
+		setInstructionString("ADC A, n8");
+		ADC_A_n8();
+		break;
+
+	case 0xCF:
+		setInstructionString("RST 08h");
+		RST(RstVector::H08);
+		break;
+
+	case 0xD0:
+		setInstructionString("RET NC");
+		RET_CC(!m_registerAF.flags.C);
+		break;
+
+	case 0xD1:
+		setInstructionString("POP DE");
+		POP_r16(m_registerDE);
+		break;
+
+	case 0xD2:
+		setInstructionString("JP NC, n16");
+		JP_CC_n16(!m_registerAF.flags.C);
+		break;
+
+	case 0xD3:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xD4:
+		setInstructionString("CALL NC, n16");
+		CALL_CC_n16(!m_registerAF.flags.C);
+		break;
+
+	case 0xD5:
+		setInstructionString("PUSH DE");
+		PUSH_r16(m_registerDE);
+		break;
+
+	case 0xD6:
+		setInstructionString("SUB A, n8");
+		SUB_A_n8();
+		break;
+
+	case 0xD7:
+		setInstructionString("RST 10h");
+		RST(RstVector::H10);
+		break;
+
+	case 0xD8:
+		setInstructionString("RET C");
+		RET_CC(m_registerAF.flags.C);
+		break;
+
+	case 0xD9:
+		setInstructionString("RETI");
+		RETI();
+		break;
+
+	case 0xDA:
+		setInstructionString("JP C, n16");
+		JP_CC_n16(m_registerAF.flags.C);
+		break;
+
+	case 0xDB:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xDC:
+		setInstructionString("CALL C, n16");
+		CALL_CC_n16(m_registerAF.flags.C);
+		break;
+
+	case 0xDD:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xDE:
+		setInstructionString("SBC A, n8");
+		SBC_A_n8();
+		break;
+
+	case 0xDF:
+		setInstructionString("RST 18h");
+		RST(RstVector::H18);
+		break;
+
+	case 0xE0:
+		setInstructionString("LD (FF00 + n8), A");
+		LDH_indirect_n8_A();
+		break;
+
+	case 0xE1:
+		setInstructionString("POP HL");
+		POP_r16(m_registerHL);
+		break;
+
+	case 0xE2:
+		setInstructionString("LD (FF00 + C), A");
+		LDH_indirect_C_A();
+		break;
+
+	case 0xE3:
+	case 0xE4:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xE5:
+		setInstructionString("PUSH HL");
+		PUSH_r16(m_registerHL);
+		break;
+
+	case 0xE6:
+		setInstructionString("AND A, n8");
+		AND_A_n8();
+		break;
+
+	case 0xE7:
+		setInstructionString("RST 20h");
+		RST(RstVector::H20);
+		break;
+
+	case 0xE8:
+		setInstructionString("ADD SP, i8");
+		ADD_SP_i8();
+		break;
+
+	case 0xE9:
+		setInstructionString("JP HL");
+		JP_HL();
+		break;
+
+	case 0xEA:
+		setInstructionString("LD (n16), A");
+		LD_indirect_n16_A();
+		break;
+
+	case 0xEB:
+	case 0xEC:
+	case 0xED:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xEE:
+		setInstructionString("XOR A, n8");
+		XOR_A_n8();
+		break;
+
+	case 0xEF:
+		setInstructionString("RST 28h");
+		RST(RstVector::H28);
+		break;
+	
+	case 0xF0:
+		setInstructionString("LD A, (FF00 + n8)");
+		LDH_A_indirect_n8();
+		break;
+
+	case 0xF1:
+		setInstructionString("POP AF");
+		POP_AF();
+		break;
+
+	case 0xF2:
+		setInstructionString("LD A, (FF00 + C)");
+		LDH_A_indirect_C();
+		break;
+
+	case 0xF3:
+		setInstructionString("DI");
+		DI();
+		break;
+
+	case 0xF4:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xF5:
+		setInstructionString("PUSH AF");
+		PUSH_AF();
+		break;
+
+	case 0xF6:
+		setInstructionString("OR A, n8");
+		OR_A_n8();
+		break;
+
+	case 0xF7:
+		setInstructionString("RST 30h");
+		RST(RstVector::H30);
+		break;
+
+	case 0xF8:
+		setInstructionString("LD HL, SP + i8");
+		LD_HL_SP_i8();
+		break;
+
+	case 0xF9:
+		setInstructionString("LD SP, HL");
+		LD_SP_HL();
+		break;
+	
+	case 0xFA:
+		setInstructionString("LD A, (n16)");
+		LD_A_indirect_n16();
+		break;
+
+	case 0xFB:
+		setInstructionString("EI");
+		EI();
+		break;
+
+	case 0xFC:
+	case 0xFD:
+		setInstructionString("Illegal opcode!");
+		m_programCounter -= 1;
+		break;
+
+	case 0xFE:
+		setInstructionString("CP A, n8");
+		CP_A_n8();
+		break;
+	
+	case 0xFF:
+		setInstructionString("RST 38h");
+		RST(RstVector::H38);
+		break;
+
 	// No intruction
 	default:
 		break;
@@ -2407,6 +2651,51 @@ void Sm83::decodeExecutePrefixedMode(uint8_t opcode)
 	}
 }
 
+void Sm83::LDH_indirect_n8_A()
+{
+	uint16_t address = 0xFF00 + cpuFetch();
+	m_bus->cpuWrite(address, m_registerAF.accumulator);
+}
+
+void Sm83::LDH_indirect_C_A()
+{
+	uint16_t address = 0xFF00 + m_registerBC.lo;
+	m_bus->cpuWrite(address, m_registerAF.accumulator);
+}
+
+void Sm83::LDH_A_indirect_n8()
+{
+	uint16_t address = 0xFF00 + cpuFetch();
+	m_registerAF.accumulator = m_bus->cpuRead(address);
+}
+
+void Sm83::LDH_A_indirect_C()
+{
+	uint16_t address = 0xFF00 + m_registerBC.lo;
+	m_registerAF.accumulator = m_bus->cpuRead(address);
+}
+
+void Sm83::LD_SP_HL()
+{
+	mTick();
+	m_stackPointer = (m_registerHL.hi << 8) | m_registerHL.lo;
+}
+
+void Sm83::LD_HL_SP_i8()
+{
+	uint8_t offset = cpuFetch();
+	uint16_t sum = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(offset));
+
+	m_registerAF.flags.Z = 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = ((m_stackPointer & 0xF) + (offset & 0xF)) >> 4;
+	m_registerAF.flags.C = ((m_stackPointer & 0xFF) + offset) >> 8;
+
+	mTick();
+	m_registerHL.hi = sum >> 8;
+	m_registerHL.lo = sum & 0xFF;
+}
+
 void Sm83::LD_r8_n8(uint8_t &dest)
 {
 	dest = cpuFetch();
@@ -2431,6 +2720,18 @@ void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
 {
 	uint16_t address = (dest.hi << 8) | dest.lo;
 	m_bus->cpuWrite(address, src);
+}
+
+void Sm83::LD_indirect_n16_A()
+{
+	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	m_bus->cpuWrite(address, m_registerAF.accumulator);
+}
+
+void Sm83::LD_A_indirect_n16()
+{
+	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	m_registerAF.accumulator = m_bus->cpuRead(address);
 }
 
 void Sm83::LD_A_indirect_r16(Sm83Register &src)
@@ -2755,6 +3056,20 @@ void Sm83::SWAP_indirect_HL()
 	m_bus->cpuWrite(address, dest);
 }
 
+void Sm83::ADD_SP_i8()
+{
+	uint8_t operand = cpuFetch();
+
+	mTick();
+	m_registerAF.flags.Z = 0;
+	m_registerAF.flags.N = 0;
+	m_registerAF.flags.H = ((m_stackPointer & 0xF) + (operand & 0xF)) >> 4;
+	m_registerAF.flags.C = ((m_stackPointer & 0xFF) + (operand)) >> 8;
+
+	mTick();
+	m_stackPointer = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(operand));
+}
+
 void Sm83::ADD_HL_r16(Sm83Register &operand)
 {
 	uint16_t hl = (m_registerHL.hi << 8) | m_registerHL.lo;
@@ -2825,6 +3140,12 @@ void Sm83::ADC_A_indirect_HL()
 	ADC_A_r8(operand);
 }
 
+void Sm83::ADC_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	ADC_A_r8(operand);
+}
+
 void Sm83::SUB_A_r8(uint8_t &operand)
 {
 	// using 2's complement for subtraction, cuz why not
@@ -2839,6 +3160,12 @@ void Sm83::SUB_A_r8(uint8_t &operand)
 	m_registerAF.flags.Z = static_cast<uint8_t>(difference) == 0;
 
 	m_registerAF.accumulator = static_cast<uint8_t>(difference);
+}
+
+void Sm83::SUB_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	SUB_A_r8(operand);
 }
 
 void Sm83::SUB_A_indirect_HL()
@@ -2864,6 +3191,12 @@ void Sm83::SBC_A_r8(uint8_t &operand)
 	m_registerAF.flags.Z = static_cast<uint8_t>(difference) == 0;
 
 	m_registerAF.accumulator = static_cast<uint8_t>(difference);
+}
+
+void Sm83::SBC_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	SBC_A_r8(operand);
 }
 
 void Sm83::SBC_A_indirect_HL()
@@ -2908,6 +3241,11 @@ void Sm83::JP_n16()
 	uint16_t address = cpuFetch() | (cpuFetch() << 8);
 	mTick();
 	m_programCounter = address;
+}
+
+void Sm83::JP_HL()
+{
+	m_programCounter = (m_registerHL.hi << 8) | m_registerHL.lo;
 }
 
 void Sm83::DAA()
@@ -2971,6 +3309,12 @@ void Sm83::AND_A_r8(uint8_t &operand)
 	m_registerAF.flags.N = 0;
 }
 
+void Sm83::AND_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	AND_A_r8(operand);
+}
+
 void Sm83::AND_A_indirect_HL()
 {
 	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
@@ -2985,6 +3329,12 @@ void Sm83::XOR_A_r8(uint8_t &operand)
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
 	m_registerAF.flags.C = 0;
+}
+
+void Sm83::XOR_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	XOR_A_r8(operand);
 }
 
 void Sm83::XOR_A_indirect_HL()
@@ -3003,6 +3353,12 @@ void Sm83::OR_A_r8(uint8_t &operand)
 	m_registerAF.flags.C = 0;
 }
 
+void Sm83::OR_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	OR_A_r8(operand);
+}
+
 void Sm83::OR_A_indirect_HL()
 {
 	uint8_t operand = m_bus->cpuRead((m_registerHL.hi << 8) | m_registerHL.lo);
@@ -3018,6 +3374,12 @@ void Sm83::CP_A_r8(uint8_t &operand)
 	m_registerAF.flags.H = (((m_registerAF.accumulator & 0xF) + ((~operand & 0xF) + 1)) & 0x10) >> 4;
 	m_registerAF.flags.H = ~m_registerAF.flags.H;
 	m_registerAF.flags.C = !((difference & 0x100) >> 8);
+}
+
+void Sm83::CP_A_n8()
+{
+	uint8_t operand = cpuFetch();
+	CP_A_r8(operand);
 }
 
 void Sm83::CP_A_indirect_HL()
@@ -3042,6 +3404,12 @@ void Sm83::RET_CC(bool condition)
 		RET();
 }
 
+void Sm83::RETI()
+{
+	RET();
+	m_ime = true;
+}
+
 void Sm83::POP_r16(Sm83Register &dest)
 {
 	uint8_t lo = m_bus->cpuRead(m_stackPointer++);
@@ -3050,11 +3418,27 @@ void Sm83::POP_r16(Sm83Register &dest)
 	dest.hi = hi;
 }
 
+void Sm83::POP_AF()
+{
+	uint8_t lo = m_bus->cpuRead(m_stackPointer++);
+	uint8_t hi = m_bus->cpuRead(m_stackPointer++);
+
+	m_registerAF.accumulator = hi;
+	m_registerAF.flags.setFlagsU8(lo);
+}
+
 void Sm83::PUSH_r16(Sm83Register &dest)
 {
 	mTick();
 	m_bus->cpuWrite(--m_stackPointer, dest.hi);
 	m_bus->cpuWrite(--m_stackPointer, dest.lo);
+}
+
+void Sm83::PUSH_AF()
+{
+	mTick();
+	m_bus->cpuWrite(--m_stackPointer, m_registerAF.accumulator);
+	m_bus->cpuWrite(--m_stackPointer, m_registerAF.flags.getFlagsU8());
 }
 
 void Sm83::CALL_n16()
@@ -3134,4 +3518,14 @@ void Sm83::SET_indirect_HL(BitSelect b)
 	uint8_t dest = m_bus->cpuRead(address);
 	SET_r8(b, dest);
 	m_bus->cpuWrite(address, dest);
+}
+
+void Sm83::DI()
+{
+	m_ime = false;
+}
+
+void Sm83::EI()
+{
+
 }
