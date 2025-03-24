@@ -72,13 +72,13 @@ bool Sm83JsonTest::checkState(BudgetGB& gameboy, nlohmann::json& item)
 {
 	bool status = true;
 
-#define SM83_CHECK(condition, msg)   \
-{                                    \
-	if (condition)                    \
-	{                                 \
+#define SM83_CHECK(condition, msg)      \
+{                                       \
+	if (condition)                      \
+	{                                   \
 		std::cout << std::endl << msg ; \
-		status = false;                \
-	}                                 \
+		status = false;                 \
+	}                                   \
 }
 
 	SM83_CHECK(gameboy.m_cpu->m_registerAF.accumulator != static_cast<uint8_t>(item["a"]), "Accumulator Mismatch");
@@ -164,11 +164,15 @@ void Sm83JsonTest::logState(BudgetGB& gameboy, nlohmann::json& item)
 
 bool Sm83JsonTest::runAllJsonTests(BudgetGB& gameboy)
 {
+	unsigned int i = 0;
 	for (const auto& entry : std::filesystem::directory_iterator("sm83/v1/"))
 	{
-		if (!Sm83JsonTest::runJsonTest(gameboy, entry.path().string()))
-			return false;
-
+		if (i >= (0x00 + 0x000))
+		{
+			if (!Sm83JsonTest::runJsonTest(gameboy, entry.path().string()))
+				return false;
+		}
+		i += 1;
 	}
 
 	return true;
