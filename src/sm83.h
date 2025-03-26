@@ -1,20 +1,22 @@
 #pragma once
 
 #include <cstdint>
+#include <iterator>
 #include <string>
 
 #include "bus.h"
+#include <fmt/base.h>
 
 class Sm83
 {
   private:
 	struct Sm83FlagsRegister
 	{
-		unsigned int Z : 1;		 // bit 7, zero flag
-		unsigned int N : 1;		 // bit 6, subtraction flag
-		unsigned int H : 1;		 // bit 5, half carry flag
-		unsigned int C : 1;		 // bit 4, carry flag
-		//unsigned int UNUSED : 4; // unused
+		unsigned int Z : 1; // bit 7, zero flag
+		unsigned int N : 1; // bit 6, subtraction flag
+		unsigned int H : 1; // bit 5, half carry flag
+		unsigned int C : 1; // bit 4, carry flag
+		// unsigned int UNUSED : 4; // unused
 
 		/**
 		 * @brief Set all at once flags with a single 8bit value as input.
@@ -25,7 +27,7 @@ class Sm83
 			N = in >> 6;
 			H = in >> 5;
 			C = in >> 4;
-		//	UNUSED = in & 0xF;
+			//	UNUSED = in & 0xF;
 		}
 
 		/**
@@ -59,6 +61,8 @@ class Sm83
 	Sm83Register m_registerHL;
 	bool m_ime; // interupt master enable
 
+	bool m_logEnable;
+
 	Sm83(Bus *bus);
 
 	/**
@@ -78,6 +82,20 @@ class Sm83
 	void setInstructionString(const std::string &in)
 	{
 		m_instructionString = in;
+	}
+
+	/**
+	 * @brief Append formatted string to instruction string
+	 * for logging.
+	 *
+	 * @tparam T 
+	 * @param format 
+	 * @param args 
+	 */
+	template <typename... T> void formatToOpcode(fmt::format_string<T...> format, T &&...args)
+	{
+		if (m_logEnable)
+			fmt::format_to(std::back_inserter(m_instructionString), format, std::forward<T>(args)...);
 	}
 
 	/**
@@ -121,7 +139,7 @@ class Sm83
 	// set
 
 	// LDH Instructions -------------------------------------------------------
-	
+
 	/**
 	 * @brief Load accumulator into address 0xFF00 + immediate 8-bit value.
 	 */
@@ -142,10 +160,9 @@ class Sm83
 	 * @brief Load value at address 0xFF00 + 8-bit C register into accumulator.
 	 */
 	void LDH_A_indirect_C();
-	
 
 	// LD Instructions --------------------------------------------------------
-	
+
 	/**
 	 * @brief Load HL register into stack pointer.
 	 */
@@ -430,7 +447,7 @@ class Sm83
 	void SWAP_indirect_HL();
 
 	// ADD Instructions -----------------------------------------------------------
-	
+
 	/**
 	 * @brief Add signed 8-bit immediate value into stack pointer.
 	 * Clear zero, subtraction flag. Set half carry on bit 3 overflow.
@@ -833,7 +850,7 @@ class Sm83
 	void SET_indirect_HL(BitSelect b);
 
 	// EI, DI Instructions
-	
+
 	/**
 	 * @brief Disables interrupts by clearing ime flag.
 	 */

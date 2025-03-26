@@ -22,1088 +22,1033 @@ Sm83::Sm83(Bus *bus)
 
 	m_registerHL.hi = 0x01;
 	m_registerHL.lo = 0x4D;
+
+	m_ime = false;
+
+	m_logEnable = false;
 }
 
 void Sm83::runInstruction()
 {
 	uint8_t opcode = cpuFetch();
 	decodeExecute(opcode);
+
+	if (m_logEnable)
+		fmt::print("{}\n", m_instructionString);
+
+	m_instructionString.clear();
 }
 
 void Sm83::decodeExecute(uint8_t opcode)
 {
 	switch (opcode)
 	{
-	// NOP
+
 	case 0x00:
-		setInstructionString("NOP");
+		formatToOpcode("NOP");
 		break;
 
-	// LD BC, n16
 	case 0x01:
-		setInstructionString("LD BC, n16");
+		formatToOpcode("LD BC, ");
 		LD_r16_n16(m_registerBC);
 		break;
 
-	// LD (BC), A
 	case 0x02:
-		setInstructionString("LD (BC), A");
+		formatToOpcode("LD (BC), A");
 		LD_indirect_r16_r8(m_registerBC, m_registerAF.accumulator);
 		break;
 
-	// INC BC
 	case 0x03:
-		setInstructionString("INC BC");
+		formatToOpcode("INC BC");
 		INC_r16(m_registerBC);
 		break;
 
-	// INC B
 	case 0x04:
-		setInstructionString("INC B");
+		formatToOpcode("INC B");
 		INC_r8(m_registerBC.hi);
 		break;
 
-	// DEC B
 	case 0x05:
-		setInstructionString("DEC B");
+		formatToOpcode("DEC B");
 		DEC_r8(m_registerBC.hi);
 		break;
 
-	// LD B n8
 	case 0x06:
-		setInstructionString("LD B n8");
+		formatToOpcode("LD B, ");
 		LD_r8_n8(m_registerBC.hi);
 		break;
 
-	// RLCA
 	case 0x07:
-		setInstructionString("RLCA");
+		formatToOpcode("RLCA");
 		RLCA();
 		break;
 
-	// LD (n16), SP
 	case 0x08:
-		setInstructionString("LD (n16), SP");
+		formatToOpcode("LD ");
 		LD_indirect_n16_SP();
 		break;
 
-	// ADD HL, BC
 	case 0x09:
-		setInstructionString("ADD HL, BC");
+		formatToOpcode("ADD HL, BC");
 		ADD_HL_r16(m_registerBC);
 		break;
 
-	// LD A, (BC)
 	case 0x0A:
-		setInstructionString("LD A, (BC)");
+		formatToOpcode("LD A, (BC)");
 		LD_A_indirect_r16(m_registerBC);
 		break;
 
-	// DEC BC
 	case 0x0B:
-		setInstructionString("DEC BC");
+		formatToOpcode("DEC BC");
 		DEC_r16(m_registerBC);
 		break;
 
-	// INC C
 	case 0x0C:
-		setInstructionString("INC C");
+		formatToOpcode("INC C");
 		INC_r8(m_registerBC.lo);
 		break;
 
-	// DEC C
 	case 0x0D:
-		setInstructionString("DEC C");
+		formatToOpcode("DEC C");
 		DEC_r8(m_registerBC.lo);
 		break;
 
-	// LD C, n8
 	case 0x0E:
-		setInstructionString("LD C, n8");
+		formatToOpcode("LD C, ");
 		LD_r8_n8(m_registerBC.lo);
 		break;
 
-	// RRCA
 	case 0x0F:
-		setInstructionString("RRCA");
+		formatToOpcode("RRCA");
 		RRCA();
 		break;
 
-	// STOP
 	case 0x10:
-		setInstructionString("STOP");
+		formatToOpcode("STOP");
 		break;
 
-	// LD DE, n16
 	case 0x11:
+		formatToOpcode("LD DE, ");
 		LD_r16_n16(m_registerDE);
-		setInstructionString("LD DE, n16");
 		break;
 
-	// LD (DE), A
 	case 0x12:
+		formatToOpcode("LD (DE), A");
 		LD_indirect_r16_r8(m_registerDE, m_registerAF.accumulator);
-		setInstructionString("LD (DE), A");
 		break;
 
-	// INC DE
 	case 0x13:
+		formatToOpcode("INC DE");
 		INC_r16(m_registerDE);
-		setInstructionString("INC DE");
 		break;
 
-	// INC D
 	case 0x14:
+		formatToOpcode("INC D");
 		INC_r8(m_registerDE.hi);
-		setInstructionString("INC D");
 		break;
 
-	// DEC D
 	case 0x15:
+		formatToOpcode("DEC D");
 		DEC_r8(m_registerDE.hi);
-		setInstructionString("DEC D");
 		break;
 
-	// LD, D, n8
 	case 0x16:
+		formatToOpcode("LD, D, ");
 		LD_r8_n8(m_registerDE.hi);
-		setInstructionString("LD, D, n8");
 		break;
 
-	// RLA
 	case 0x17:
+		formatToOpcode("RLA");
 		RLA();
-		setInstructionString("RLA");
 		break;
 
-	// JR i8
 	case 0x18:
+		formatToOpcode("JR ");
 		JR_i8();
-		setInstructionString("JR i8");
 		break;
 
-	// ADD HL, DE
 	case 0x19:
+		formatToOpcode("ADD HL, DE");
 		ADD_HL_r16(m_registerDE);
-		setInstructionString("ADD HL, DE");
 		break;
 
-	// LD A, (DE)
 	case 0x1A:
+		formatToOpcode("LD A, (DE)");
 		LD_A_indirect_r16(m_registerDE);
-		setInstructionString("LD A, (DE)");
 		break;
 
-	// DEC DE
 	case 0x1B:
+		formatToOpcode("DEC DE");
 		DEC_r16(m_registerDE);
-		setInstructionString("DEC DE");
 		break;
 
-	// INC E
 	case 0x1C:
+		formatToOpcode("INC E");
 		INC_r8(m_registerDE.lo);
-		setInstructionString("INC E");
 		break;
 
-	// DEC E
 	case 0x1D:
+		formatToOpcode("DEC E");
 		DEC_r8(m_registerDE.lo);
-		setInstructionString("DEC E");
 		break;
 
-	// LD E, n8
 	case 0x1E:
+		formatToOpcode("LD E, ");
 		LD_r8_n8(m_registerDE.lo);
-		setInstructionString("LD E, n8");
 		break;
 
-	// RRA
 	case 0x1F:
+		formatToOpcode("RRA");
 		RRA();
-		setInstructionString("RRA");
 		break;
 
-	// JR NZ, i8
 	case 0x20:
+		formatToOpcode("JR NZ, ");
 		JR_CC_i8(!m_registerAF.flags.Z);
-		setInstructionString("JR NZ, i8");
 		break;
 
-	// LD HL, n16
 	case 0x21:
+		formatToOpcode("LD HL, ");
 		LD_r16_n16(m_registerHL);
-		setInstructionString("LD HL, n16");
 		break;
 
-	// LD (HL+), A
 	case 0x22:
+		formatToOpcode("LD (HL+), A");
 		LD_indirect_HLI_A();
-		setInstructionString("LD (HL+), A");
 		break;
 
-	// INC HL
 	case 0x23:
-		setInstructionString("INC HL");
+		formatToOpcode("INC HL");
 		INC_r16(m_registerHL);
 		break;
 
-	// INC H
 	case 0x24:
-		setInstructionString("INC H");
+		formatToOpcode("INC H");
 		INC_r8(m_registerHL.hi);
 		break;
 
-	// DEC H
 	case 0x25:
-		setInstructionString("DEC H");
+		formatToOpcode("DEC H");
 		DEC_r8(m_registerHL.hi);
 		break;
 
-	// LD H, n8
 	case 0x26:
-		setInstructionString("LD H, n8");
+		formatToOpcode("LD H, ");
 		LD_r8_n8(m_registerHL.hi);
 		break;
 
-	// DAA
 	case 0x27:
-		setInstructionString("DAA");
+		formatToOpcode("DAA");
 		DAA();
 		break;
 
-	// JR Z, i8
 	case 0x28:
-		setInstructionString("JR Z, i8");
+		formatToOpcode("JR Z, ");
 		JR_CC_i8(m_registerAF.flags.Z);
 		break;
 
-	// ADD HL, HL
 	case 0x29:
-		setInstructionString("ADD HL, HL");
+		formatToOpcode("ADD HL, HL");
 		ADD_HL_r16(m_registerHL);
 		break;
 
-	// LD A, (HL+)
 	case 0x2A:
-		setInstructionString("LD A, (HL+)");
+		formatToOpcode("LD A, (HL+)");
 		LD_A_indirect_HLI();
 		break;
 
-	// DEC HL
 	case 0x2B:
-		setInstructionString("DEC HL");
+		formatToOpcode("DEC HL");
 		DEC_r16(m_registerHL);
 		break;
 
-	// INC L
 	case 0x2C:
-		setInstructionString("INC L");
+		formatToOpcode("INC L");
 		INC_r8(m_registerHL.lo);
 		break;
 
-	// DEC L
 	case 0x2D:
-		setInstructionString("DEC L");
+		formatToOpcode("DEC L");
 		DEC_r8(m_registerHL.lo);
 		break;
 
-	// LD L, n8
 	case 0x2E:
-		setInstructionString("LD L, n8");
+		formatToOpcode("LD L, ");
 		LD_r8_n8(m_registerHL.lo);
 		break;
 
-	// CPL
 	case 0x2F:
-		setInstructionString("CPL");
+		formatToOpcode("CPL");
 		CPL();
 		break;
 
-	// JR NC, i8
 	case 0x30:
-		setInstructionString("JR NC, i8");
+		formatToOpcode("JR NC, ");
 		JR_CC_i8(!m_registerAF.flags.C);
 		break;
 
-	// LD SP, n16
 	case 0x31:
-		setInstructionString("LD SP, n16");
+		formatToOpcode("LD SP, ");
 		LD_SP_n16();
 		break;
 
-	// LD (HL-), A
 	case 0x32:
-		setInstructionString("LD (HL-), A");
+		formatToOpcode("LD (HL-), A");
 		LD_indirect_HLD_A();
 		break;
 
-	// INC SP
 	case 0x33:
-		setInstructionString("INC SP");
+		formatToOpcode("INC SP");
 		INC_SP();
 		break;
 
-	// INC (HL)
 	case 0x34:
-		setInstructionString("INC (HL)");
+		formatToOpcode("INC (HL)");
 		INC_indirect_HL();
 		break;
 
-	// DEC (HL)
 	case 0x35:
-		setInstructionString("DEC (HL)");
+		formatToOpcode("DEC (HL)");
 		DEC_indirect_HL();
 		break;
 
-	// LD (HL), n8
 	case 0x36:
-		setInstructionString("LD (HL), n8");
+		formatToOpcode("LD (HL), ");
 		LD_indirect_HL_n8();
 		break;
 
-	// SCF
 	case 0x37:
-		setInstructionString("SCF");
+		formatToOpcode("SCF");
 		SCF();
 		break;
 
-	// JR C, i8
 	case 0x38:
-		setInstructionString("JR C, i8");
+		formatToOpcode("JR C, ");
 		JR_CC_i8(m_registerAF.flags.C);
 		break;
 
-	// ADD HL, SP
 	case 0x39:
-		setInstructionString("ADD HL, SP");
+		formatToOpcode("ADD HL, SP");
 		ADD_HL_SP();
 		break;
 
-	// LD A, HLD
 	case 0x3A:
-		setInstructionString("LD A, HLD");
+		formatToOpcode("LD A, HLD");
 		LD_A_indirect_HLD();
 		break;
 
-	// DEC SP
 	case 0x3B:
-		setInstructionString("DEC SP");
+		formatToOpcode("DEC SP");
 		DEC_SP();
 		break;
 
-	// INC A
 	case 0x3C:
-		setInstructionString("INC A");
+		formatToOpcode("INC A");
 		INC_r8(m_registerAF.accumulator);
 		break;
 
-	// DEC A
 	case 0x3D:
-		setInstructionString("DEC A");
+		formatToOpcode("DEC A");
 		DEC_r8(m_registerAF.accumulator);
 		break;
 
-	// LD A, n8
 	case 0x3E:
-		setInstructionString("LD A, n8");
+		formatToOpcode("LD A, ");
 		LD_r8_n8(m_registerAF.accumulator);
 		break;
 
-	// CCF
 	case 0x3F:
-		setInstructionString("CCF");
+		formatToOpcode("CCF");
 		CCF();
 		break;
 
-	// LD B, B
 	case 0x40:
-		setInstructionString("LD B, B");
+		formatToOpcode("LD B, B");
 		LD_r8_r8(m_registerBC.hi, m_registerBC.hi);
 		break;
 
 	case 0x41:
-		setInstructionString("LD B, C");
+		formatToOpcode("LD B, C");
 		LD_r8_r8(m_registerBC.hi, m_registerBC.lo);
 		break;
 
 	case 0x42:
-		setInstructionString("LD B, D");
+		formatToOpcode("LD B, D");
 		LD_r8_r8(m_registerBC.hi, m_registerDE.hi);
 		break;
 
 	case 0x43:
-		setInstructionString("LD B, E");
+		formatToOpcode("LD B, E");
 		LD_r8_r8(m_registerBC.hi, m_registerDE.lo);
 		break;
 
 	case 0x44:
-		setInstructionString("LD B, H");
+		formatToOpcode("LD B, H");
 		LD_r8_r8(m_registerBC.hi, m_registerHL.hi);
 		break;
 
 	case 0x45:
-		setInstructionString("LD B, L");
+		formatToOpcode("LD B, L");
 		LD_r8_r8(m_registerBC.hi, m_registerHL.lo);
 		break;
 
 	case 0x46:
-		setInstructionString("LD B, (HL)");
+		formatToOpcode("LD B, (HL)");
 		LD_r8_indirect_HL(m_registerBC.hi);
 		break;
 
 	case 0x47:
-		setInstructionString("LD B, A");
+		formatToOpcode("LD B, A");
 		LD_r8_r8(m_registerBC.hi, m_registerAF.accumulator);
 		break;
 
 	case 0x48:
-		setInstructionString("LD C, B");
+		formatToOpcode("LD C, B");
 		LD_r8_r8(m_registerBC.lo, m_registerBC.hi);
 		break;
 
 	case 0x49:
-		setInstructionString("LD C, C");
+		formatToOpcode("LD C, C");
 		LD_r8_r8(m_registerBC.lo, m_registerBC.lo);
 		break;
 
 	case 0x4A:
-		setInstructionString("LD C, D");
+		formatToOpcode("LD C, D");
 		LD_r8_r8(m_registerBC.lo, m_registerDE.hi);
 		break;
 
 	case 0x4B:
-		setInstructionString("LD C, E");
+		formatToOpcode("LD C, E");
 		LD_r8_r8(m_registerBC.lo, m_registerDE.lo);
 		break;
 
 	case 0x4C:
-		setInstructionString("LD C, H");
+		formatToOpcode("LD C, H");
 		LD_r8_r8(m_registerBC.lo, m_registerHL.hi);
 		break;
 
 	case 0x4D:
-		setInstructionString("LD C, L");
+		formatToOpcode("LD C, L");
 		LD_r8_r8(m_registerBC.lo, m_registerHL.lo);
 		break;
 
 	case 0x4E:
-		setInstructionString("LD C, (HL)");
+		formatToOpcode("LD C, (HL)");
 		LD_r8_indirect_HL(m_registerBC.lo);
 		break;
 
 	case 0x4F:
-		setInstructionString("LD C, A");
+		formatToOpcode("LD C, A");
 		LD_r8_r8(m_registerBC.lo, m_registerAF.accumulator);
 		break;
 
 	case 0x50:
-		setInstructionString("LD D, B");
+		formatToOpcode("LD D, B");
 		LD_r8_r8(m_registerDE.hi, m_registerBC.hi);
 		break;
 
 	case 0x51:
-		setInstructionString("LD D, C");
+		formatToOpcode("LD D, C");
 		LD_r8_r8(m_registerDE.hi, m_registerBC.lo);
 		break;
 	case 0x52:
-		setInstructionString("LD D, D");
+		formatToOpcode("LD D, D");
 		LD_r8_r8(m_registerDE.hi, m_registerDE.hi);
 		break;
 
 	case 0x53:
-		setInstructionString("LD D, E");
+		formatToOpcode("LD D, E");
 		LD_r8_r8(m_registerDE.hi, m_registerDE.lo);
 		break;
 
 	case 0x54:
-		setInstructionString("LD D, H");
+		formatToOpcode("LD D, H");
 		LD_r8_r8(m_registerDE.hi, m_registerHL.hi);
 		break;
 
 	case 0x55:
-		setInstructionString("LD D, L");
+		formatToOpcode("LD D, L");
 		LD_r8_r8(m_registerDE.hi, m_registerHL.lo);
 		break;
 	case 0x56:
-		setInstructionString("LD D, (HL)");
+		formatToOpcode("LD D, (HL)");
 		LD_r8_indirect_HL(m_registerDE.hi);
 		break;
 
 	case 0x57:
-		setInstructionString("LD D, A");
+		formatToOpcode("LD D, A");
 		LD_r8_r8(m_registerDE.hi, m_registerAF.accumulator);
 		break;
 
 	case 0x58:
-		setInstructionString("LD E, B");
+		formatToOpcode("LD E, B");
 		LD_r8_r8(m_registerDE.lo, m_registerBC.hi);
 		break;
 	case 0x59:
-		setInstructionString("LD E, C");
+		formatToOpcode("LD E, C");
 		LD_r8_r8(m_registerDE.lo, m_registerBC.lo);
 		break;
 
 	case 0x5A:
-		setInstructionString("LD E, D");
+		formatToOpcode("LD E, D");
 		LD_r8_r8(m_registerDE.lo, m_registerDE.hi);
 		break;
 	case 0x5B:
-		setInstructionString("LD E, E");
+		formatToOpcode("LD E, E");
 		LD_r8_r8(m_registerDE.lo, m_registerDE.lo);
 		break;
 
 	case 0x5C:
-		setInstructionString("LD E, H");
+		formatToOpcode("LD E, H");
 		LD_r8_r8(m_registerDE.lo, m_registerHL.hi);
 		break;
 
 	case 0x5D:
-		setInstructionString("LD E, L");
+		formatToOpcode("LD E, L");
 		LD_r8_r8(m_registerDE.lo, m_registerHL.lo);
 		break;
 
 	case 0x5E:
-		setInstructionString("LD E, (HL)");
+		formatToOpcode("LD E, (HL)");
 		LD_r8_indirect_HL(m_registerDE.lo);
 		break;
 
 	case 0x5F:
-		setInstructionString("LD E, A");
+		formatToOpcode("LD E, A");
 		LD_r8_r8(m_registerDE.lo, m_registerAF.accumulator);
 		break;
 
 	case 0x60:
-		setInstructionString("LD H, B");
+		formatToOpcode("LD H, B");
 		LD_r8_r8(m_registerHL.hi, m_registerBC.hi);
 		break;
 
 	case 0x61:
-		setInstructionString("LD H, C");
+		formatToOpcode("LD H, C");
 		LD_r8_r8(m_registerHL.hi, m_registerBC.lo);
 		break;
 
 	case 0x62:
-		setInstructionString("LD H, D");
+		formatToOpcode("LD H, D");
 		LD_r8_r8(m_registerHL.hi, m_registerDE.hi);
 		break;
 
 	case 0x63:
-		setInstructionString("LD H, E");
+		formatToOpcode("LD H, E");
 		LD_r8_r8(m_registerHL.hi, m_registerDE.lo);
 		break;
 	case 0x64:
 
-		setInstructionString("LD H, H");
+		formatToOpcode("LD H, H");
 		LD_r8_r8(m_registerHL.hi, m_registerHL.hi);
 		break;
 
 	case 0x65:
-		setInstructionString("LD H, L");
+		formatToOpcode("LD H, L");
 		LD_r8_r8(m_registerHL.hi, m_registerHL.lo);
 		break;
 
 	case 0x66:
-		setInstructionString("LD H, (HL)");
+		formatToOpcode("LD H, (HL)");
 		LD_r8_indirect_HL(m_registerHL.hi);
 		break;
 
 	case 0x67:
-		setInstructionString("LD H, A");
+		formatToOpcode("LD H, A");
 		LD_r8_r8(m_registerHL.hi, m_registerAF.accumulator);
 		break;
 
 	case 0x68:
-		setInstructionString("LD L, B");
+		formatToOpcode("LD L, B");
 		LD_r8_r8(m_registerHL.lo, m_registerBC.hi);
 		break;
 
 	case 0x69:
-		setInstructionString("LD L, C");
+		formatToOpcode("LD L, C");
 		LD_r8_r8(m_registerHL.lo, m_registerBC.lo);
 		break;
 
 	case 0x6A:
-		setInstructionString("LD L, D");
+		formatToOpcode("LD L, D");
 		LD_r8_r8(m_registerHL.lo, m_registerDE.hi);
 		break;
 
 	case 0x6B:
-		setInstructionString("LD L, E");
+		formatToOpcode("LD L, E");
 		LD_r8_r8(m_registerHL.lo, m_registerDE.lo);
 		break;
 
 	case 0x6C:
-		setInstructionString("LD L, H");
+		formatToOpcode("LD L, H");
 		LD_r8_r8(m_registerHL.lo, m_registerHL.hi);
 		break;
 
 	case 0x6D:
-		setInstructionString("LD L, L");
+		formatToOpcode("LD L, L");
 		LD_r8_r8(m_registerHL.lo, m_registerHL.lo);
 		break;
 
 	case 0x6E:
-		setInstructionString("LD L, (HL)");
+		formatToOpcode("LD L, (HL)");
 		LD_r8_indirect_HL(m_registerHL.lo);
 		break;
 
 	case 0x6F:
-		setInstructionString("LD L, A");
+		formatToOpcode("LD L, A");
 		LD_r8_r8(m_registerHL.lo, m_registerAF.accumulator);
 		break;
 
 	case 0x70:
-		setInstructionString("LD (HL), B");
+		formatToOpcode("LD (HL), B");
 		LD_indirect_r16_r8(m_registerHL, m_registerBC.hi);
 		break;
 
 	case 0x71:
-		setInstructionString("LD (HL), C");
+		formatToOpcode("LD (HL), C");
 		LD_indirect_r16_r8(m_registerHL, m_registerBC.lo);
 		break;
 
 	case 0x72:
-		setInstructionString("LD (HL), D");
+		formatToOpcode("LD (HL), D");
 		LD_indirect_r16_r8(m_registerHL, m_registerDE.hi);
 		break;
 
 	case 0x73:
-		setInstructionString("LD (HL), E");
+		formatToOpcode("LD (HL), E");
 		LD_indirect_r16_r8(m_registerHL, m_registerDE.lo);
 		break;
 
 	case 0x74:
-		setInstructionString("LD (HL), H");
+		formatToOpcode("LD (HL), H");
 		LD_indirect_r16_r8(m_registerHL, m_registerHL.hi);
 		break;
 
 	case 0x75:
-		setInstructionString("LD (HL), L");
+		formatToOpcode("LD (HL), L");
 		LD_indirect_r16_r8(m_registerHL, m_registerHL.lo);
 		break;
 
 	case 0x76:
-		setInstructionString("HALT");
+		formatToOpcode("HALT");
 		break;
 
 	case 0x77:
-		setInstructionString("LD (HL), A");
+		formatToOpcode("LD (HL), A");
 		LD_indirect_r16_r8(m_registerHL, m_registerAF.accumulator);
 		break;
 
 	case 0x78:
-		setInstructionString("LD A, B");
+		formatToOpcode("LD A, B");
 		LD_r8_r8(m_registerAF.accumulator, m_registerBC.hi);
 		break;
 
 	case 0x79:
-		setInstructionString("LD A, C");
+		formatToOpcode("LD A, C");
 		LD_r8_r8(m_registerAF.accumulator, m_registerBC.lo);
 		break;
 
 	case 0x7A:
-		setInstructionString("LD A, D");
+		formatToOpcode("LD A, D");
 		LD_r8_r8(m_registerAF.accumulator, m_registerDE.hi);
 		break;
 
 	case 0x7B:
-		setInstructionString("LD A, E");
+		formatToOpcode("LD A, E");
 		LD_r8_r8(m_registerAF.accumulator, m_registerDE.lo);
 		break;
 
 	case 0x7C:
-		setInstructionString("LD A, H");
+		formatToOpcode("LD A, H");
 		LD_r8_r8(m_registerAF.accumulator, m_registerHL.hi);
 		break;
 
 	case 0x7D:
-		setInstructionString("LD A,L");
+		formatToOpcode("LD A,L");
 		LD_r8_r8(m_registerAF.accumulator, m_registerHL.lo);
 		break;
 
 	case 0x7E:
-		setInstructionString("LD A, (HL)");
+		formatToOpcode("LD A, (HL)");
 		LD_r8_indirect_HL(m_registerAF.accumulator);
 		break;
 
 	case 0x7F:
-		setInstructionString("LD A, A");
+		formatToOpcode("LD A, A");
 		LD_r8_r8(m_registerAF.accumulator, m_registerAF.accumulator);
 		break;
 
 	case 0x80:
-		setInstructionString("ADD A, B");
+		formatToOpcode("ADD A, B");
 		ADD_A_r8(m_registerBC.hi);
 		break;
 
 	case 0x81:
-		setInstructionString("ADD A, C");
+		formatToOpcode("ADD A, C");
 		ADD_A_r8(m_registerBC.lo);
 		break;
 
 	case 0x82:
-		setInstructionString("ADD A, D");
+		formatToOpcode("ADD A, D");
 		ADD_A_r8(m_registerDE.hi);
 		break;
 
 	case 0x83:
-		setInstructionString("ADD A, E");
+		formatToOpcode("ADD A, E");
 		ADD_A_r8(m_registerDE.lo);
 		break;
 
 	case 0x84:
-		setInstructionString("ADD A, H");
+		formatToOpcode("ADD A, H");
 		ADD_A_r8(m_registerHL.hi);
 		break;
 
 	case 0x85:
-		setInstructionString("ADD A, L");
+		formatToOpcode("ADD A, L");
 		ADD_A_r8(m_registerHL.lo);
 		break;
 
 	case 0x86:
-		setInstructionString("ADD A, (HL)");
+		formatToOpcode("ADD A, (HL)");
 		ADD_A_indirect_HL();
 		break;
 
 	case 0x87:
-		setInstructionString("ADD A, A");
+		formatToOpcode("ADD A, A");
 		ADD_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x88:
-		setInstructionString("ADC A, B");
+		formatToOpcode("ADC A, B");
 		ADC_A_r8(m_registerBC.hi);
 		break;
 
 	case 0x89:
-		setInstructionString("ADC A, C");
+		formatToOpcode("ADC A, C");
 		ADC_A_r8(m_registerBC.lo);
 		break;
 	case 0x8A:
 
-		setInstructionString("ADC A, D");
+		formatToOpcode("ADC A, D");
 		ADC_A_r8(m_registerDE.hi);
 		break;
 
 	case 0x8B:
-		setInstructionString("ADC A, E");
+		formatToOpcode("ADC A, E");
 		ADC_A_r8(m_registerDE.lo);
 		break;
 
 	case 0x8C:
-		setInstructionString("ADC A, H");
+		formatToOpcode("ADC A, H");
 		ADC_A_r8(m_registerHL.hi);
 		break;
 
 	case 0x8D:
-		setInstructionString("ADC A, L");
+		formatToOpcode("ADC A, L");
 		ADC_A_r8(m_registerHL.lo);
 		break;
 
 	case 0x8E:
-		setInstructionString("ADC A, (HL)");
+		formatToOpcode("ADC A, (HL)");
 		ADC_A_indirect_HL();
 		break;
 
 	case 0x8F:
-		setInstructionString("ADC A, A");
+		formatToOpcode("ADC A, A");
 		ADC_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x90:
-		setInstructionString("SUB A, B");
+		formatToOpcode("SUB A, B");
 		SUB_A_r8(m_registerBC.hi);
 		break;
 
 	case 0x91:
-		setInstructionString("SUB A, C");
+		formatToOpcode("SUB A, C");
 		SUB_A_r8(m_registerBC.lo);
 		break;
 
 	case 0x92:
-		setInstructionString("SUB A, D");
+		formatToOpcode("SUB A, D");
 		SUB_A_r8(m_registerDE.hi);
 		break;
 	case 0x93:
 
-		setInstructionString("SUB A, E");
+		formatToOpcode("SUB A, E");
 		SUB_A_r8(m_registerDE.lo);
 		break;
 
 	case 0x94:
-		setInstructionString("SUB A, H");
+		formatToOpcode("SUB A, H");
 		SUB_A_r8(m_registerHL.hi);
 		break;
 
 	case 0x95:
-		setInstructionString("SUB A, L");
+		formatToOpcode("SUB A, L");
 		SUB_A_r8(m_registerHL.lo);
 		break;
 
 	case 0x96:
-		setInstructionString("SUB A, (HL)");
+		formatToOpcode("SUB A, (HL)");
 		SUB_A_indirect_HL();
 		break;
 
 	case 0x97:
-		setInstructionString("SUB A, A");
+		formatToOpcode("SUB A, A");
 		SUB_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x98:
-		setInstructionString("SBC A, B");
+		formatToOpcode("SBC A, B");
 		SBC_A_r8(m_registerBC.hi);
 		break;
 
 	case 0x99:
-		setInstructionString("SBC A, C");
+		formatToOpcode("SBC A, C");
 		SBC_A_r8(m_registerBC.lo);
 		break;
 
 	case 0x9A:
-		setInstructionString("SBC A, D");
+		formatToOpcode("SBC A, D");
 		SBC_A_r8(m_registerDE.hi);
 		break;
 
 	case 0x9B:
-		setInstructionString("SBC A, E");
+		formatToOpcode("SBC A, E");
 		SBC_A_r8(m_registerDE.lo);
 		break;
 
 	case 0x9C:
-		setInstructionString("SBC A, H");
+		formatToOpcode("SBC A, H");
 		SBC_A_r8(m_registerHL.hi);
 		break;
 
 	case 0x9D:
-		setInstructionString("SBC A, L");
+		formatToOpcode("SBC A, L");
 		SBC_A_r8(m_registerHL.lo);
 		break;
 
 	case 0x9E:
-		setInstructionString("SBC A, (HL)");
+		formatToOpcode("SBC A, (HL)");
 		SBC_A_indirect_HL();
 		break;
 
 	case 0x9F:
-		setInstructionString("SBC A, A");
+		formatToOpcode("SBC A, A");
 		SBC_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0xA0:
-		setInstructionString("AND A, B");
+		formatToOpcode("AND A, B");
 		AND_A_r8(m_registerBC.hi);
 		break;
 
 	case 0xA1:
-		setInstructionString("AND A, C");
+		formatToOpcode("AND A, C");
 		AND_A_r8(m_registerBC.lo);
 		break;
 
 	case 0xA2:
-		setInstructionString("AND A, D");
+		formatToOpcode("AND A, D");
 		AND_A_r8(m_registerDE.hi);
 		break;
 
 	case 0xA3:
-		setInstructionString("AND A, E");
+		formatToOpcode("AND A, E");
 		AND_A_r8(m_registerDE.lo);
 		break;
 
 	case 0xA4:
-		setInstructionString("AND A, H");
+		formatToOpcode("AND A, H");
 		AND_A_r8(m_registerHL.hi);
 		break;
 
 	case 0xA5:
-		setInstructionString("AND A, L");
+		formatToOpcode("AND A, L");
 		AND_A_r8(m_registerHL.lo);
 		break;
 
 	case 0xA6:
-		setInstructionString("AND A, (HL)");
+		formatToOpcode("AND A, (HL)");
 		AND_A_indirect_HL();
 		break;
 
 	case 0xA7:
-		setInstructionString("AND A, A");
+		formatToOpcode("AND A, A");
 		AND_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0xA8:
-		setInstructionString("XOR A, B");
+		formatToOpcode("XOR A, B");
 		XOR_A_r8(m_registerBC.hi);
 		break;
 
 	case 0xA9:
-		setInstructionString("XOR A, C");
+		formatToOpcode("XOR A, C");
 		XOR_A_r8(m_registerBC.lo);
 		break;
 
 	case 0xAA:
-		setInstructionString("XOR A, D");
+		formatToOpcode("XOR A, D");
 		XOR_A_r8(m_registerDE.hi);
 		break;
 
 	case 0xAB:
-		setInstructionString("XOR A, E");
+		formatToOpcode("XOR A, E");
 		XOR_A_r8(m_registerDE.lo);
 		break;
 
 	case 0xAC:
-		setInstructionString("XOR A, H");
+		formatToOpcode("XOR A, H");
 		XOR_A_r8(m_registerHL.hi);
 		break;
 
 	case 0xAD:
-		setInstructionString("XOR A, L");
+		formatToOpcode("XOR A, L");
 		XOR_A_r8(m_registerHL.lo);
 		break;
 
 	case 0xAE:
-		setInstructionString("XOR A, (HL)");
+		formatToOpcode("XOR A, (HL)");
 		XOR_A_indirect_HL();
 		break;
 
 	case 0xAF:
-		setInstructionString("XOR A, A");
+		formatToOpcode("XOR A, A");
 		XOR_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0xB0:
-		setInstructionString("OR A, B");
+		formatToOpcode("OR A, B");
 		OR_A_r8(m_registerBC.hi);
 		break;
 
 	case 0xB1:
-		setInstructionString("OR A, C");
+		formatToOpcode("OR A, C");
 		OR_A_r8(m_registerBC.lo);
 		break;
 
 	case 0xB2:
-		setInstructionString("OR A, D");
+		formatToOpcode("OR A, D");
 		OR_A_r8(m_registerDE.hi);
 		break;
 
 	case 0xB3:
-		setInstructionString("OR A, E");
+		formatToOpcode("OR A, E");
 		OR_A_r8(m_registerDE.lo);
 		break;
 
 	case 0xB4:
-		setInstructionString("OR A, H");
+		formatToOpcode("OR A, H");
 		OR_A_r8(m_registerHL.hi);
 		break;
 
 	case 0xB5:
-		setInstructionString("OR A, L");
+		formatToOpcode("OR A, L");
 		OR_A_r8(m_registerHL.lo);
 		break;
 
 	case 0xB6:
-		setInstructionString("OR A, (HL)");
+		formatToOpcode("OR A, (HL)");
 		OR_A_indirect_HL();
 		break;
 
 	case 0xB7:
-		setInstructionString("OR A, A");
+		formatToOpcode("OR A, A");
 		OR_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0xB8:
-		setInstructionString("CP A, B");
+		formatToOpcode("CP A, B");
 		CP_A_r8(m_registerBC.hi);
 		break;
 
 	case 0xB9:
-		setInstructionString("CP A, C");
+		formatToOpcode("CP A, C");
 		CP_A_r8(m_registerBC.lo);
 		break;
 
 	case 0xBA:
-		setInstructionString("CP A, D");
+		formatToOpcode("CP A, D");
 		CP_A_r8(m_registerDE.hi);
 		break;
 
 	case 0xBB:
-		setInstructionString("CP A, E");
+		formatToOpcode("CP A, E");
 		CP_A_r8(m_registerDE.lo);
 		break;
 
 	case 0xBC:
-		setInstructionString("CP A, H");
+		formatToOpcode("CP A, H");
 		CP_A_r8(m_registerHL.hi);
 		break;
 
 	case 0xBD:
-		setInstructionString("CP A, L");
+		formatToOpcode("CP A, L");
 		CP_A_r8(m_registerHL.lo);
 		break;
 
 	case 0xBE:
-		setInstructionString("CP A, (HL)");
+		formatToOpcode("CP A, (HL)");
 		CP_A_indirect_HL();
 		break;
 
 	case 0xBF:
-		setInstructionString("CP A, A");
+		formatToOpcode("CP A, A");
 		CP_A_r8(m_registerAF.accumulator);
 		break;
 
 	case 0xC0:
-		setInstructionString("RET NZ");
+		formatToOpcode("RET NZ");
 		RET_CC(!m_registerAF.flags.Z);
 		break;
 
 	case 0xC1:
-		setInstructionString("POP BC");
+		formatToOpcode("POP BC");
 		POP_r16(m_registerBC);
 		break;
 
 	case 0xC2:
-		setInstructionString("JP NZ, n16");
+		formatToOpcode("JP NZ, ");
 		JP_CC_n16(!m_registerAF.flags.Z);
 		break;
 
 	case 0xC3:
-		setInstructionString("JP n16");
+		formatToOpcode("JP ");
 		JP_n16();
 		break;
 
 	case 0xC4:
-		setInstructionString("CALL NZ, n16");
+		formatToOpcode("CALL NZ, ");
 		CALL_CC_n16(!m_registerAF.flags.Z);
 		break;
 
 	case 0xC5:
-		setInstructionString("PUSH BC");
+		formatToOpcode("PUSH BC");
 		PUSH_r16(m_registerBC);
 		break;
 
 	case 0xC6:
-		setInstructionString("ADD n8");
+		formatToOpcode("ADD A ");
 		ADD_A_n8();
 		break;
 
 	case 0xC7:
-		setInstructionString("RST 00h");
+		formatToOpcode("RST 00h");
 		RST(RstVector::H00);
 		break;
 
 	case 0xC8:
-		setInstructionString("RET Z");
+		formatToOpcode("RET Z");
 		RET_CC(m_registerAF.flags.Z);
 		break;
 
 	case 0xC9:
-		setInstructionString("RET");
+		formatToOpcode("RET");
 		RET();
 		break;
 
 	case 0xCA:
-		setInstructionString("JP Z, n16");
+		formatToOpcode("JP Z, ");
 		JP_CC_n16(m_registerAF.flags.Z);
 		break;
 
@@ -1113,246 +1058,246 @@ void Sm83::decodeExecute(uint8_t opcode)
 		break;
 
 	case 0xCC:
-		setInstructionString("CALL Z, n16");
+		formatToOpcode("CALL Z, ");
 		CALL_CC_n16(m_registerAF.flags.Z);
 		break;
 
 	case 0xCD:
-		setInstructionString("CALL n16");
+		formatToOpcode("CALL ");
 		CALL_n16();
 		break;
 
 	case 0xCE:
-		setInstructionString("ADC A, n8");
+		formatToOpcode("ADC A, ");
 		ADC_A_n8();
 		break;
 
 	case 0xCF:
-		setInstructionString("RST 08h");
+		formatToOpcode("RST 08h");
 		RST(RstVector::H08);
 		break;
 
 	case 0xD0:
-		setInstructionString("RET NC");
+		formatToOpcode("RET NC");
 		RET_CC(!m_registerAF.flags.C);
 		break;
 
 	case 0xD1:
-		setInstructionString("POP DE");
+		formatToOpcode("POP DE");
 		POP_r16(m_registerDE);
 		break;
 
 	case 0xD2:
-		setInstructionString("JP NC, n16");
+		formatToOpcode("JP NC, ");
 		JP_CC_n16(!m_registerAF.flags.C);
 		break;
 
 	case 0xD3:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xD4:
-		setInstructionString("CALL NC, n16");
+		formatToOpcode("CALL NC, ");
 		CALL_CC_n16(!m_registerAF.flags.C);
 		break;
 
 	case 0xD5:
-		setInstructionString("PUSH DE");
+		formatToOpcode("PUSH DE");
 		PUSH_r16(m_registerDE);
 		break;
 
 	case 0xD6:
-		setInstructionString("SUB A, n8");
+		formatToOpcode("SUB A, ");
 		SUB_A_n8();
 		break;
 
 	case 0xD7:
-		setInstructionString("RST 10h");
+		formatToOpcode("RST 10h");
 		RST(RstVector::H10);
 		break;
 
 	case 0xD8:
-		setInstructionString("RET C");
+		formatToOpcode("RET C");
 		RET_CC(m_registerAF.flags.C);
 		break;
 
 	case 0xD9:
-		setInstructionString("RETI");
+		formatToOpcode("RETI");
 		RETI();
 		break;
 
 	case 0xDA:
-		setInstructionString("JP C, n16");
+		formatToOpcode("JP C, ");
 		JP_CC_n16(m_registerAF.flags.C);
 		break;
 
 	case 0xDB:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xDC:
-		setInstructionString("CALL C, n16");
+		formatToOpcode("CALL C, ");
 		CALL_CC_n16(m_registerAF.flags.C);
 		break;
 
 	case 0xDD:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xDE:
-		setInstructionString("SBC A, n8");
+		formatToOpcode("SBC A, ");
 		SBC_A_n8();
 		break;
 
 	case 0xDF:
-		setInstructionString("RST 18h");
+		formatToOpcode("RST 18h");
 		RST(RstVector::H18);
 		break;
 
 	case 0xE0:
-		setInstructionString("LD (FF00 + n8), A");
+		formatToOpcode("LD ");
 		LDH_indirect_n8_A();
 		break;
 
 	case 0xE1:
-		setInstructionString("POP HL");
+		formatToOpcode("POP HL");
 		POP_r16(m_registerHL);
 		break;
 
 	case 0xE2:
-		setInstructionString("LD (FF00 + C), A");
+		formatToOpcode("LD $(FF00 + C), A");
 		LDH_indirect_C_A();
 		break;
 
 	case 0xE3:
 	case 0xE4:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xE5:
-		setInstructionString("PUSH HL");
+		formatToOpcode("PUSH HL");
 		PUSH_r16(m_registerHL);
 		break;
 
 	case 0xE6:
-		setInstructionString("AND A, n8");
+		formatToOpcode("AND A, ");
 		AND_A_n8();
 		break;
 
 	case 0xE7:
-		setInstructionString("RST 20h");
+		formatToOpcode("RST 20h");
 		RST(RstVector::H20);
 		break;
 
 	case 0xE8:
-		setInstructionString("ADD SP, i8");
+		formatToOpcode("ADD SP, ");
 		ADD_SP_i8();
 		break;
 
 	case 0xE9:
-		setInstructionString("JP HL");
+		formatToOpcode("JP HL");
 		JP_HL();
 		break;
 
 	case 0xEA:
-		setInstructionString("LD (n16), A");
+		formatToOpcode("LD ");
 		LD_indirect_n16_A();
 		break;
 
 	case 0xEB:
 	case 0xEC:
 	case 0xED:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xEE:
-		setInstructionString("XOR A, n8");
+		formatToOpcode("XOR A, ");
 		XOR_A_n8();
 		break;
 
 	case 0xEF:
-		setInstructionString("RST 28h");
+		formatToOpcode("RST 28h");
 		RST(RstVector::H28);
 		break;
-	
+
 	case 0xF0:
-		setInstructionString("LD A, (FF00 + n8)");
+		formatToOpcode("LD A, ");
 		LDH_A_indirect_n8();
 		break;
 
 	case 0xF1:
-		setInstructionString("POP AF");
+		formatToOpcode("POP AF");
 		POP_AF();
 		break;
 
 	case 0xF2:
-		setInstructionString("LD A, (FF00 + C)");
+		formatToOpcode("LD A, (FF00 + C)");
 		LDH_A_indirect_C();
 		break;
 
 	case 0xF3:
-		setInstructionString("DI");
+		formatToOpcode("DI");
 		DI();
 		break;
 
 	case 0xF4:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xF5:
-		setInstructionString("PUSH AF");
+		formatToOpcode("PUSH AF");
 		PUSH_AF();
 		break;
 
 	case 0xF6:
-		setInstructionString("OR A, n8");
+		formatToOpcode("OR A, ");
 		OR_A_n8();
 		break;
 
 	case 0xF7:
-		setInstructionString("RST 30h");
+		formatToOpcode("RST 30h");
 		RST(RstVector::H30);
 		break;
 
 	case 0xF8:
-		setInstructionString("LD HL, SP + i8");
+		formatToOpcode("LD HL, SP + i8");
 		LD_HL_SP_i8();
 		break;
 
 	case 0xF9:
-		setInstructionString("LD SP, HL");
+		formatToOpcode("LD SP, HL");
 		LD_SP_HL();
 		break;
-	
+
 	case 0xFA:
-		setInstructionString("LD A, (n16)");
+		formatToOpcode("LD A, ");
 		LD_A_indirect_n16();
 		break;
 
 	case 0xFB:
-		setInstructionString("EI");
+		formatToOpcode("EI");
 		EI();
 		break;
 
 	case 0xFC:
 	case 0xFD:
-		setInstructionString("Illegal opcode!");
+		formatToOpcode("Illegal opcode!");
 		m_programCounter -= 1;
 		break;
 
 	case 0xFE:
-		setInstructionString("CP A, n8");
+		formatToOpcode("CP A, ");
 		CP_A_n8();
 		break;
-	
+
 	case 0xFF:
-		setInstructionString("RST 38h");
+		formatToOpcode("RST 38h");
 		RST(RstVector::H38);
 		break;
 
@@ -1367,1282 +1312,1282 @@ void Sm83::decodeExecutePrefixedMode(uint8_t opcode)
 	switch (opcode)
 	{
 	case 0x00:
-		setInstructionString("RLC B");
+		formatToOpcode("RLC B");
 		RLC_r8(m_registerBC.hi);
 		break;
 
 	case 0x01:
-		setInstructionString("RLC C");
+		formatToOpcode("RLC C");
 		RLC_r8(m_registerBC.lo);
 		break;
 
 	case 0x02:
-		setInstructionString("RLC D");
+		formatToOpcode("RLC D");
 		RLC_r8(m_registerDE.hi);
 		break;
 
 	case 0x03:
-		setInstructionString("RLC E");
+		formatToOpcode("RLC E");
 		RLC_r8(m_registerDE.lo);
 		break;
 
 	case 0x04:
-		setInstructionString("RLC H");
+		formatToOpcode("RLC H");
 		RLC_r8(m_registerHL.hi);
 		break;
 	case 0x05:
 
-		setInstructionString("RLC L");
+		formatToOpcode("RLC L");
 		RLC_r8(m_registerHL.lo);
 		break;
 
 	case 0x06:
-		setInstructionString("RLC (HL)");
+		formatToOpcode("RLC (HL)");
 		RLC_indirect_HL();
 		break;
 
 	case 0x07:
-		setInstructionString("RLC A");
+		formatToOpcode("RLC A");
 		RLC_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x08:
-		setInstructionString("RRC B");
+		formatToOpcode("RRC B");
 		RRC_r8(m_registerBC.hi);
 		break;
 
 	case 0x09:
-		setInstructionString("RRC C");
+		formatToOpcode("RRC C");
 		RRC_r8(m_registerBC.lo);
 		break;
 
 	case 0x0A:
-		setInstructionString("RRC D");
+		formatToOpcode("RRC D");
 		RRC_r8(m_registerDE.hi);
 		break;
 
 	case 0x0B:
-		setInstructionString("RRC E");
+		formatToOpcode("RRC E");
 		RRC_r8(m_registerDE.lo);
 		break;
 
 	case 0x0C:
-		setInstructionString("RRC H");
+		formatToOpcode("RRC H");
 		RRC_r8(m_registerHL.hi);
 		break;
 
 	case 0x0D:
-		setInstructionString("RRC L");
+		formatToOpcode("RRC L");
 		RRC_r8(m_registerHL.lo);
 		break;
 
 	case 0x0E:
-		setInstructionString("RRC (HL)");
+		formatToOpcode("RRC (HL)");
 		RRC_indirect_HL();
 		break;
 
 	case 0x0F:
-		setInstructionString("RRC A");
+		formatToOpcode("RRC A");
 		RRC_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x10:
-		setInstructionString("RL B");
+		formatToOpcode("RL B");
 		RL_r8(m_registerBC.hi);
 		break;
 
 	case 0x11:
-		setInstructionString("RL C");
+		formatToOpcode("RL C");
 		RL_r8(m_registerBC.lo);
 		break;
 
 	case 0x12:
-		setInstructionString("RL D");
+		formatToOpcode("RL D");
 		RL_r8(m_registerDE.hi);
 		break;
 
 	case 0x13:
-		setInstructionString("RL E");
+		formatToOpcode("RL E");
 		RL_r8(m_registerDE.lo);
 		break;
 	case 0x14:
 
-		setInstructionString("RL H");
+		formatToOpcode("RL H");
 		RL_r8(m_registerHL.hi);
 		break;
 	case 0x15:
 
-		setInstructionString("RL L");
+		formatToOpcode("RL L");
 		RL_r8(m_registerHL.lo);
 		break;
 
 	case 0x16:
-		setInstructionString("RL (HL)");
+		formatToOpcode("RL (HL)");
 		RL_indirect_HL();
 		break;
 
 	case 0x17:
-		setInstructionString("RL A");
+		formatToOpcode("RL A");
 		RL_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x18:
-		setInstructionString("RR B");
+		formatToOpcode("RR B");
 		RR_r8(m_registerBC.hi);
 		break;
 
 	case 0x19:
-		setInstructionString("RR C");
+		formatToOpcode("RR C");
 		RR_r8(m_registerBC.lo);
 		break;
 
 	case 0x1A:
-		setInstructionString("RR D");
+		formatToOpcode("RR D");
 		RR_r8(m_registerDE.hi);
 		break;
 
 	case 0x1B:
-		setInstructionString("RR E");
+		formatToOpcode("RR E");
 		RR_r8(m_registerDE.lo);
 		break;
 
 	case 0x1C:
-		setInstructionString("RR H");
+		formatToOpcode("RR H");
 		RR_r8(m_registerHL.hi);
 		break;
 
 	case 0x1D:
-		setInstructionString("RR L");
+		formatToOpcode("RR L");
 		RR_r8(m_registerHL.lo);
 		break;
 
 	case 0x1E:
-		setInstructionString("RR (HL)");
+		formatToOpcode("RR (HL)");
 		RR_indirect_HL();
 		break;
 
 	case 0x1F:
-		setInstructionString("RR A");
+		formatToOpcode("RR A");
 		RR_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x20:
-		setInstructionString("SLA B");
+		formatToOpcode("SLA B");
 		SLA_r8(m_registerBC.hi);
 		break;
 
 	case 0x21:
-		setInstructionString("SLA C");
+		formatToOpcode("SLA C");
 		SLA_r8(m_registerBC.lo);
 		break;
 
 	case 0x22:
-		setInstructionString("SLA D");
+		formatToOpcode("SLA D");
 		SLA_r8(m_registerDE.hi);
 		break;
 
 	case 0x23:
-		setInstructionString("SLA E");
+		formatToOpcode("SLA E");
 		SLA_r8(m_registerDE.lo);
 		break;
 
 	case 0x24:
-		setInstructionString("SLA H");
+		formatToOpcode("SLA H");
 		SLA_r8(m_registerHL.hi);
 		break;
 
 	case 0x25:
-		setInstructionString("SLA L");
+		formatToOpcode("SLA L");
 		SLA_r8(m_registerHL.lo);
 		break;
 
 	case 0x26:
-		setInstructionString("SLA (HL)");
+		formatToOpcode("SLA (HL)");
 		SLA_indirect_HL();
 		break;
 
 	case 0x27:
-		setInstructionString("SLA A");
+		formatToOpcode("SLA A");
 		SLA_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x28:
-		setInstructionString("SRA B");
+		formatToOpcode("SRA B");
 		SRA_r8(m_registerBC.hi);
 		break;
 
 	case 0x29:
-		setInstructionString("SRA C");
+		formatToOpcode("SRA C");
 		SRA_r8(m_registerBC.lo);
 		break;
 
 	case 0x2A:
-		setInstructionString("SRA D");
+		formatToOpcode("SRA D");
 		SRA_r8(m_registerDE.hi);
 		break;
 
 	case 0x2B:
-		setInstructionString("SRA E");
+		formatToOpcode("SRA E");
 		SRA_r8(m_registerDE.lo);
 		break;
 
 	case 0x2C:
-		setInstructionString("SRA H");
+		formatToOpcode("SRA H");
 		SRA_r8(m_registerHL.hi);
 		break;
 
 	case 0x2D:
-		setInstructionString("SRA L");
+		formatToOpcode("SRA L");
 		SRA_r8(m_registerHL.lo);
 		break;
 
 	case 0x2E:
-		setInstructionString("SRA (HL)");
+		formatToOpcode("SRA (HL)");
 		SRA_indirect_HL();
 		break;
 
 	case 0x2F:
-		setInstructionString("SRA A");
+		formatToOpcode("SRA A");
 		SRA_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x30:
-		setInstructionString("SWAP B");
+		formatToOpcode("SWAP B");
 		SWAP_r8(m_registerBC.hi);
 		break;
 
 	case 0x31:
-		setInstructionString("SWAP C");
+		formatToOpcode("SWAP C");
 		SWAP_r8(m_registerBC.lo);
 		break;
 
 	case 0x32:
-		setInstructionString("SWAP D");
+		formatToOpcode("SWAP D");
 		SWAP_r8(m_registerDE.hi);
 		break;
 
 	case 0x33:
-		setInstructionString("SWAP E");
+		formatToOpcode("SWAP E");
 		SWAP_r8(m_registerDE.lo);
 		break;
 
 	case 0x34:
-		setInstructionString("SWAP H");
+		formatToOpcode("SWAP H");
 		SWAP_r8(m_registerHL.hi);
 		break;
 
 	case 0x35:
-		setInstructionString("SWAP L");
+		formatToOpcode("SWAP L");
 		SWAP_r8(m_registerHL.lo);
 		break;
 
 	case 0x36:
-		setInstructionString("SWAP (HL)");
+		formatToOpcode("SWAP (HL)");
 		SWAP_indirect_HL();
 		break;
 
 	case 0x37:
-		setInstructionString("SWAP A");
+		formatToOpcode("SWAP A");
 		SWAP_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x38:
-		setInstructionString("SRL B");
+		formatToOpcode("SRL B");
 		SRL_r8(m_registerBC.hi);
 		break;
 
 	case 0x39:
-		setInstructionString("SRL C");
+		formatToOpcode("SRL C");
 		SRL_r8(m_registerBC.lo);
 		break;
 
 	case 0x3A:
-		setInstructionString("SRL D");
+		formatToOpcode("SRL D");
 		SRL_r8(m_registerDE.hi);
 		break;
 
 	case 0x3B:
-		setInstructionString("SRL E");
+		formatToOpcode("SRL E");
 		SRL_r8(m_registerDE.lo);
 		break;
 
 	case 0x3C:
-		setInstructionString("SRL H");
+		formatToOpcode("SRL H");
 		SRL_r8(m_registerHL.hi);
 		break;
 
 	case 0x3D:
-		setInstructionString("SRL L");
+		formatToOpcode("SRL L");
 		SRL_r8(m_registerHL.lo);
 		break;
 
 	case 0x3E:
-		setInstructionString("SRL (HL)");
+		formatToOpcode("SRL (HL)");
 		SRL_indirect_HL();
 		break;
 
 	case 0x3F:
-		setInstructionString("SRL A");
+		formatToOpcode("SRL A");
 		SRL_r8(m_registerAF.accumulator);
 		break;
 
 	case 0x40:
-		setInstructionString("BIT 0, B");
+		formatToOpcode("BIT 0, B");
 		BIT_r8(BitSelect::B0, m_registerBC.hi);
 		break;
 
 	case 0x41:
-		setInstructionString("BIT 0, C");
+		formatToOpcode("BIT 0, C");
 		BIT_r8(BitSelect::B0, m_registerBC.lo);
 		break;
 
 	case 0x42:
-		setInstructionString("BIT 0, D");
+		formatToOpcode("BIT 0, D");
 		BIT_r8(BitSelect::B0, m_registerDE.hi);
 		break;
 
 	case 0x43:
-		setInstructionString("BIT 0, E");
+		formatToOpcode("BIT 0, E");
 		BIT_r8(BitSelect::B0, m_registerDE.lo);
 		break;
 
 	case 0x44:
-		setInstructionString("BIT 0, H");
+		formatToOpcode("BIT 0, H");
 		BIT_r8(BitSelect::B0, m_registerHL.hi);
 		break;
 
 	case 0x45:
-		setInstructionString("BIT 0, L");
+		formatToOpcode("BIT 0, L");
 		BIT_r8(BitSelect::B0, m_registerHL.lo);
 		break;
 
 	case 0x46:
-		setInstructionString("BIT 0, (HL)");
+		formatToOpcode("BIT 0, (HL)");
 		BIT_indirect_HL(BitSelect::B0);
 		break;
 
 	case 0x47:
-		setInstructionString("BIT 0, A");
+		formatToOpcode("BIT 0, A");
 		BIT_r8(BitSelect::B0, m_registerAF.accumulator);
 		break;
 
 	case 0x48:
-		setInstructionString("BIT 1, B");
+		formatToOpcode("BIT 1, B");
 		BIT_r8(BitSelect::B1, m_registerBC.hi);
 		break;
 
 	case 0x49:
-		setInstructionString("BIT 1, C");
+		formatToOpcode("BIT 1, C");
 		BIT_r8(BitSelect::B1, m_registerBC.lo);
 		break;
 
 	case 0x4A:
-		setInstructionString("BIT 1, D");
+		formatToOpcode("BIT 1, D");
 		BIT_r8(BitSelect::B1, m_registerDE.hi);
 		break;
 
 	case 0x4B:
-		setInstructionString("BIT 1, E");
+		formatToOpcode("BIT 1, E");
 		BIT_r8(BitSelect::B1, m_registerDE.lo);
 		break;
 
 	case 0x4C:
-		setInstructionString("BIT 1, H");
+		formatToOpcode("BIT 1, H");
 		BIT_r8(BitSelect::B1, m_registerHL.hi);
 		break;
 
 	case 0x4D:
-		setInstructionString("BIT 1, L");
+		formatToOpcode("BIT 1, L");
 		BIT_r8(BitSelect::B1, m_registerHL.lo);
 		break;
 
 	case 0x4E:
-		setInstructionString("BIT 1, (HL)");
+		formatToOpcode("BIT 1, (HL)");
 		BIT_indirect_HL(BitSelect::B1);
 		break;
 
 	case 0x4F:
-		setInstructionString("BIT 1, A");
+		formatToOpcode("BIT 1, A");
 		BIT_r8(BitSelect::B1, m_registerAF.accumulator);
 		break;
 
 	case 0x50:
-		setInstructionString("BIT 2, B");
+		formatToOpcode("BIT 2, B");
 		BIT_r8(BitSelect::B2, m_registerBC.hi);
 		break;
 
 	case 0x51:
-		setInstructionString("BIT 2, C");
+		formatToOpcode("BIT 2, C");
 		BIT_r8(BitSelect::B2, m_registerBC.lo);
 		break;
 
 	case 0x52:
-		setInstructionString("BIT 2, D");
+		formatToOpcode("BIT 2, D");
 		BIT_r8(BitSelect::B2, m_registerDE.hi);
 		break;
 
 	case 0x53:
-		setInstructionString("BIT 2, E");
+		formatToOpcode("BIT 2, E");
 		BIT_r8(BitSelect::B2, m_registerDE.lo);
 		break;
 
 	case 0x54:
-		setInstructionString("BIT 2, H");
+		formatToOpcode("BIT 2, H");
 		BIT_r8(BitSelect::B2, m_registerHL.hi);
 		break;
 
 	case 0x55:
-		setInstructionString("BIT 2, L");
+		formatToOpcode("BIT 2, L");
 		BIT_r8(BitSelect::B2, m_registerHL.lo);
 		break;
 
 	case 0x56:
-		setInstructionString("BIT 2, (HL)");
+		formatToOpcode("BIT 2, (HL)");
 		BIT_indirect_HL(BitSelect::B2);
 		break;
 
 	case 0x57:
-		setInstructionString("BIT 2, A");
+		formatToOpcode("BIT 2, A");
 		BIT_r8(BitSelect::B2, m_registerAF.accumulator);
 		break;
 
 	case 0x58:
-		setInstructionString("BIT 3, B");
+		formatToOpcode("BIT 3, B");
 		BIT_r8(BitSelect::B3, m_registerBC.hi);
 		break;
 
 	case 0x59:
-		setInstructionString("BIT 3, C");
+		formatToOpcode("BIT 3, C");
 		BIT_r8(BitSelect::B3, m_registerBC.lo);
 		break;
 
 	case 0x5A:
-		setInstructionString("BIT 3, D");
+		formatToOpcode("BIT 3, D");
 		BIT_r8(BitSelect::B3, m_registerDE.hi);
 		break;
 
 	case 0x5B:
-		setInstructionString("BIT 3, E");
+		formatToOpcode("BIT 3, E");
 		BIT_r8(BitSelect::B3, m_registerDE.lo);
 		break;
 
 	case 0x5C:
-		setInstructionString("BIT 3, H");
+		formatToOpcode("BIT 3, H");
 		BIT_r8(BitSelect::B3, m_registerHL.hi);
 		break;
 
 	case 0x5D:
-		setInstructionString("BIT 3, L");
+		formatToOpcode("BIT 3, L");
 		BIT_r8(BitSelect::B3, m_registerHL.lo);
 		break;
 
 	case 0x5E:
-		setInstructionString("BIT 3, (HL)");
+		formatToOpcode("BIT 3, (HL)");
 		BIT_indirect_HL(BitSelect::B3);
 		break;
 
 	case 0x5F:
-		setInstructionString("BIT 3, A");
+		formatToOpcode("BIT 3, A");
 		BIT_r8(BitSelect::B3, m_registerAF.accumulator);
 		break;
 
 	case 0x60:
-		setInstructionString("BIT 4, B");
+		formatToOpcode("BIT 4, B");
 		BIT_r8(BitSelect::B4, m_registerBC.hi);
 		break;
 
 	case 0x61:
-		setInstructionString("BIT 4, C");
+		formatToOpcode("BIT 4, C");
 		BIT_r8(BitSelect::B4, m_registerBC.lo);
 		break;
 
 	case 0x62:
-		setInstructionString("BIT 4, D");
+		formatToOpcode("BIT 4, D");
 		BIT_r8(BitSelect::B4, m_registerDE.hi);
 		break;
 
 	case 0x63:
-		setInstructionString("BIT 4, E");
+		formatToOpcode("BIT 4, E");
 		BIT_r8(BitSelect::B4, m_registerDE.lo);
 		break;
 
 	case 0x64:
-		setInstructionString("BIT 4, H");
+		formatToOpcode("BIT 4, H");
 		BIT_r8(BitSelect::B4, m_registerHL.hi);
 		break;
 
 	case 0x65:
-		setInstructionString("BIT 4, L");
+		formatToOpcode("BIT 4, L");
 		BIT_r8(BitSelect::B4, m_registerHL.lo);
 		break;
 
 	case 0x66:
-		setInstructionString("BIT 4, (HL)");
+		formatToOpcode("BIT 4, (HL)");
 		BIT_indirect_HL(BitSelect::B4);
 		break;
 
 	case 0x67:
-		setInstructionString("BIT 4, A");
+		formatToOpcode("BIT 4, A");
 		BIT_r8(BitSelect::B4, m_registerAF.accumulator);
 		break;
 
 	case 0x68:
-		setInstructionString("BIT 5, B");
+		formatToOpcode("BIT 5, B");
 		BIT_r8(BitSelect::B5, m_registerBC.hi);
 		break;
 
 	case 0x69:
-		setInstructionString("BIT 5, C");
+		formatToOpcode("BIT 5, C");
 		BIT_r8(BitSelect::B5, m_registerBC.lo);
 		break;
 
 	case 0x6A:
-		setInstructionString("BIT 5, D");
+		formatToOpcode("BIT 5, D");
 		BIT_r8(BitSelect::B5, m_registerDE.hi);
 		break;
 
 	case 0x6B:
-		setInstructionString("BIT 5, E");
+		formatToOpcode("BIT 5, E");
 		BIT_r8(BitSelect::B5, m_registerDE.lo);
 		break;
 
 	case 0x6C:
-		setInstructionString("BIT 5, H");
+		formatToOpcode("BIT 5, H");
 		BIT_r8(BitSelect::B5, m_registerHL.hi);
 		break;
 
 	case 0x6D:
-		setInstructionString("BIT 5, L");
+		formatToOpcode("BIT 5, L");
 		BIT_r8(BitSelect::B5, m_registerHL.lo);
 		break;
 
 	case 0x6E:
-		setInstructionString("BIT 5, (HL)");
+		formatToOpcode("BIT 5, (HL)");
 		BIT_indirect_HL(BitSelect::B5);
 		break;
 
 	case 0x6F:
-		setInstructionString("BIT 5, A");
+		formatToOpcode("BIT 5, A");
 		BIT_r8(BitSelect::B5, m_registerAF.accumulator);
 		break;
 
 	case 0x70:
-		setInstructionString("BIT 6, B");
+		formatToOpcode("BIT 6, B");
 		BIT_r8(BitSelect::B6, m_registerBC.hi);
 		break;
 
 	case 0x71:
-		setInstructionString("BIT 6, C");
+		formatToOpcode("BIT 6, C");
 		BIT_r8(BitSelect::B6, m_registerBC.lo);
 		break;
 
 	case 0x72:
-		setInstructionString("BIT 6, D");
+		formatToOpcode("BIT 6, D");
 		BIT_r8(BitSelect::B6, m_registerDE.hi);
 		break;
 
 	case 0x73:
-		setInstructionString("BIT 6, E");
+		formatToOpcode("BIT 6, E");
 		BIT_r8(BitSelect::B6, m_registerDE.lo);
 		break;
 
 	case 0x74:
-		setInstructionString("BIT 6, H");
+		formatToOpcode("BIT 6, H");
 		BIT_r8(BitSelect::B6, m_registerHL.hi);
 		break;
 
 	case 0x75:
-		setInstructionString("BIT 6, L");
+		formatToOpcode("BIT 6, L");
 		BIT_r8(BitSelect::B6, m_registerHL.lo);
 		break;
 
 	case 0x76:
-		setInstructionString("BIT 6, (HL)");
+		formatToOpcode("BIT 6, (HL)");
 		BIT_indirect_HL(BitSelect::B6);
 		break;
 
 	case 0x77:
-		setInstructionString("BIT 6, A");
+		formatToOpcode("BIT 6, A");
 		BIT_r8(BitSelect::B6, m_registerAF.accumulator);
 		break;
 
 	case 0x78:
-		setInstructionString("BIT 7, B");
+		formatToOpcode("BIT 7, B");
 		BIT_r8(BitSelect::B7, m_registerBC.hi);
 		break;
 
 	case 0x79:
-		setInstructionString("BIT 7, C");
+		formatToOpcode("BIT 7, C");
 		BIT_r8(BitSelect::B7, m_registerBC.lo);
 		break;
 
 	case 0x7A:
-		setInstructionString("BIT 7, D");
+		formatToOpcode("BIT 7, D");
 		BIT_r8(BitSelect::B7, m_registerDE.hi);
 		break;
 
 	case 0x7B:
-		setInstructionString("BIT 7, E");
+		formatToOpcode("BIT 7, E");
 		BIT_r8(BitSelect::B7, m_registerDE.lo);
 		break;
 
 	case 0x7C:
-		setInstructionString("BIT 7, H");
+		formatToOpcode("BIT 7, H");
 		BIT_r8(BitSelect::B7, m_registerHL.hi);
 		break;
 
 	case 0x7D:
-		setInstructionString("BIT 7, L");
+		formatToOpcode("BIT 7, L");
 		BIT_r8(BitSelect::B7, m_registerHL.lo);
 		break;
 
 	case 0x7E:
-		setInstructionString("BIT 7, (HL)");
+		formatToOpcode("BIT 7, (HL)");
 		BIT_indirect_HL(BitSelect::B7);
 		break;
 
 	case 0x7F:
-		setInstructionString("BIT 7, A");
+		formatToOpcode("BIT 7, A");
 		BIT_r8(BitSelect::B7, m_registerAF.accumulator);
 		break;
 
 	case 0x80:
-		setInstructionString("RES 0, B");
+		formatToOpcode("RES 0, B");
 		RES_r8(BitSelect::B0, m_registerBC.hi);
 		break;
 
 	case 0x81:
-		setInstructionString("RES 0, C");
+		formatToOpcode("RES 0, C");
 		RES_r8(BitSelect::B0, m_registerBC.lo);
 		break;
 
 	case 0x82:
-		setInstructionString("RES 0, D");
+		formatToOpcode("RES 0, D");
 		RES_r8(BitSelect::B0, m_registerDE.hi);
 		break;
 
 	case 0x83:
-		setInstructionString("RES 0, E");
+		formatToOpcode("RES 0, E");
 		RES_r8(BitSelect::B0, m_registerDE.lo);
 		break;
 
 	case 0x84:
-		setInstructionString("RES 0, H");
+		formatToOpcode("RES 0, H");
 		RES_r8(BitSelect::B0, m_registerHL.hi);
 		break;
 
 	case 0x85:
-		setInstructionString("RES 0, L");
+		formatToOpcode("RES 0, L");
 		RES_r8(BitSelect::B0, m_registerHL.lo);
 		break;
 
 	case 0x86:
-		setInstructionString("RES 0, (HL)");
+		formatToOpcode("RES 0, (HL)");
 		RES_indirect_HL(BitSelect::B0);
 		break;
 
 	case 0x87:
-		setInstructionString("RES 0, A");
+		formatToOpcode("RES 0, A");
 		RES_r8(BitSelect::B0, m_registerAF.accumulator);
 		break;
 
 	case 0x88:
-		setInstructionString("RES 1, B");
+		formatToOpcode("RES 1, B");
 		RES_r8(BitSelect::B1, m_registerBC.hi);
 		break;
 
 	case 0x89:
-		setInstructionString("RES 1, C");
+		formatToOpcode("RES 1, C");
 		RES_r8(BitSelect::B1, m_registerBC.lo);
 		break;
 
 	case 0x8A:
-		setInstructionString("RES 1, D");
+		formatToOpcode("RES 1, D");
 		RES_r8(BitSelect::B1, m_registerDE.hi);
 		break;
 
 	case 0x8B:
-		setInstructionString("RES 1, E");
+		formatToOpcode("RES 1, E");
 		RES_r8(BitSelect::B1, m_registerDE.lo);
 		break;
 
 	case 0x8C:
-		setInstructionString("RES 1, H");
+		formatToOpcode("RES 1, H");
 		RES_r8(BitSelect::B1, m_registerHL.hi);
 		break;
 
 	case 0x8D:
-		setInstructionString("RES 1, L");
+		formatToOpcode("RES 1, L");
 		RES_r8(BitSelect::B1, m_registerHL.lo);
 		break;
 
 	case 0x8E:
-		setInstructionString("RES 1, (HL)");
+		formatToOpcode("RES 1, (HL)");
 		RES_indirect_HL(BitSelect::B1);
 		break;
 
 	case 0x8F:
-		setInstructionString("RES 1, A");
+		formatToOpcode("RES 1, A");
 		RES_r8(BitSelect::B1, m_registerAF.accumulator);
 		break;
 
 	case 0x90:
-		setInstructionString("RES 2, B");
+		formatToOpcode("RES 2, B");
 		RES_r8(BitSelect::B2, m_registerBC.hi);
 		break;
 
 	case 0x91:
-		setInstructionString("RES 2, C");
+		formatToOpcode("RES 2, C");
 		RES_r8(BitSelect::B2, m_registerBC.lo);
 		break;
 
 	case 0x92:
-		setInstructionString("RES 2, D");
+		formatToOpcode("RES 2, D");
 		RES_r8(BitSelect::B2, m_registerDE.hi);
 		break;
 
 	case 0x93:
-		setInstructionString("RES 2, E");
+		formatToOpcode("RES 2, E");
 		RES_r8(BitSelect::B2, m_registerDE.lo);
 		break;
 
 	case 0x94:
-		setInstructionString("RES 2, H");
+		formatToOpcode("RES 2, H");
 		RES_r8(BitSelect::B2, m_registerHL.hi);
 		break;
 
 	case 0x95:
-		setInstructionString("RES 2, L");
+		formatToOpcode("RES 2, L");
 		RES_r8(BitSelect::B2, m_registerHL.lo);
 		break;
 
 	case 0x96:
-		setInstructionString("RES 2, (HL)");
+		formatToOpcode("RES 2, (HL)");
 		RES_indirect_HL(BitSelect::B2);
 		break;
 
 	case 0x97:
-		setInstructionString("RES 2, A");
+		formatToOpcode("RES 2, A");
 		RES_r8(BitSelect::B2, m_registerAF.accumulator);
 		break;
 
 	case 0x98:
-		setInstructionString("RES 3, B");
+		formatToOpcode("RES 3, B");
 		RES_r8(BitSelect::B3, m_registerBC.hi);
 		break;
 
 	case 0x99:
-		setInstructionString("RES 3, C");
+		formatToOpcode("RES 3, C");
 		RES_r8(BitSelect::B3, m_registerBC.lo);
 		break;
 
 	case 0x9A:
-		setInstructionString("RES 3, D");
+		formatToOpcode("RES 3, D");
 		RES_r8(BitSelect::B3, m_registerDE.hi);
 		break;
 
 	case 0x9B:
-		setInstructionString("RES 3, E");
+		formatToOpcode("RES 3, E");
 		RES_r8(BitSelect::B3, m_registerDE.lo);
 		break;
 
 	case 0x9C:
-		setInstructionString("RES 3, H");
+		formatToOpcode("RES 3, H");
 		RES_r8(BitSelect::B3, m_registerHL.hi);
 		break;
 
 	case 0x9D:
-		setInstructionString("RES 3, L");
+		formatToOpcode("RES 3, L");
 		RES_r8(BitSelect::B3, m_registerHL.lo);
 		break;
 
 	case 0x9E:
-		setInstructionString("RES 3, (HL)");
+		formatToOpcode("RES 3, (HL)");
 		RES_indirect_HL(BitSelect::B3);
 		break;
 
 	case 0x9F:
-		setInstructionString("RES 3, A");
+		formatToOpcode("RES 3, A");
 		RES_r8(BitSelect::B3, m_registerAF.accumulator);
 		break;
 
 	case 0xA0:
-		setInstructionString("RES 4, B");
+		formatToOpcode("RES 4, B");
 		RES_r8(BitSelect::B4, m_registerBC.hi);
 		break;
 
 	case 0xA1:
-		setInstructionString("RES 4, C");
+		formatToOpcode("RES 4, C");
 		RES_r8(BitSelect::B4, m_registerBC.lo);
 		break;
 
 	case 0xA2:
-		setInstructionString("RES 4, D");
+		formatToOpcode("RES 4, D");
 		RES_r8(BitSelect::B4, m_registerDE.hi);
 		break;
 
 	case 0xA3:
-		setInstructionString("RES 4, E");
+		formatToOpcode("RES 4, E");
 		RES_r8(BitSelect::B4, m_registerDE.lo);
 		break;
 
 	case 0xA4:
-		setInstructionString("RES 4, H");
+		formatToOpcode("RES 4, H");
 		RES_r8(BitSelect::B4, m_registerHL.hi);
 		break;
 
 	case 0xA5:
-		setInstructionString("RES 4, L");
+		formatToOpcode("RES 4, L");
 		RES_r8(BitSelect::B4, m_registerHL.lo);
 		break;
 
 	case 0xA6:
-		setInstructionString("RES 4, (HL)");
+		formatToOpcode("RES 4, (HL)");
 		RES_indirect_HL(BitSelect::B4);
 		break;
 
 	case 0xA7:
-		setInstructionString("RES 4, A");
+		formatToOpcode("RES 4, A");
 		RES_r8(BitSelect::B4, m_registerAF.accumulator);
 		break;
 
 	case 0xA8:
-		setInstructionString("RES 5, B");
+		formatToOpcode("RES 5, B");
 		RES_r8(BitSelect::B5, m_registerBC.hi);
 		break;
 
 	case 0xA9:
-		setInstructionString("RES 5, C");
+		formatToOpcode("RES 5, C");
 		RES_r8(BitSelect::B5, m_registerBC.lo);
 		break;
 
 	case 0xAA:
-		setInstructionString("RES 5, D");
+		formatToOpcode("RES 5, D");
 		RES_r8(BitSelect::B5, m_registerDE.hi);
 		break;
 
 	case 0xAB:
-		setInstructionString("RES 5, E");
+		formatToOpcode("RES 5, E");
 		RES_r8(BitSelect::B5, m_registerDE.lo);
 		break;
 
 	case 0xAC:
-		setInstructionString("RES 5, H");
+		formatToOpcode("RES 5, H");
 		RES_r8(BitSelect::B5, m_registerHL.hi);
 		break;
 
 	case 0xAD:
-		setInstructionString("RES 5, L");
+		formatToOpcode("RES 5, L");
 		RES_r8(BitSelect::B5, m_registerHL.lo);
 		break;
 
 	case 0xAE:
-		setInstructionString("RES 5, (HL)");
+		formatToOpcode("RES 5, (HL)");
 		RES_indirect_HL(BitSelect::B5);
 		break;
 
 	case 0xAF:
-		setInstructionString("RES 5, A");
+		formatToOpcode("RES 5, A");
 		RES_r8(BitSelect::B5, m_registerAF.accumulator);
 		break;
 
 	case 0xB0:
-		setInstructionString("RES 6, B");
+		formatToOpcode("RES 6, B");
 		RES_r8(BitSelect::B6, m_registerBC.hi);
 		break;
 
 	case 0xB1:
-		setInstructionString("RES 6, C");
+		formatToOpcode("RES 6, C");
 		RES_r8(BitSelect::B6, m_registerBC.lo);
 		break;
 
 	case 0xB2:
-		setInstructionString("RES 6, D");
+		formatToOpcode("RES 6, D");
 		RES_r8(BitSelect::B6, m_registerDE.hi);
 		break;
 
 	case 0xB3:
-		setInstructionString("RES 6, E");
+		formatToOpcode("RES 6, E");
 		RES_r8(BitSelect::B6, m_registerDE.lo);
 		break;
 
 	case 0xB4:
-		setInstructionString("RES 6, H");
+		formatToOpcode("RES 6, H");
 		RES_r8(BitSelect::B6, m_registerHL.hi);
 		break;
 
 	case 0xB5:
-		setInstructionString("RES 6, L");
+		formatToOpcode("RES 6, L");
 		RES_r8(BitSelect::B6, m_registerHL.lo);
 		break;
 
 	case 0xB6:
-		setInstructionString("RES 6, (HL)");
+		formatToOpcode("RES 6, (HL)");
 		RES_indirect_HL(BitSelect::B6);
 		break;
 
 	case 0xB7:
-		setInstructionString("RES 6, A");
+		formatToOpcode("RES 6, A");
 		RES_r8(BitSelect::B6, m_registerAF.accumulator);
 		break;
 
 	case 0xB8:
-		setInstructionString("RES 7, B");
+		formatToOpcode("RES 7, B");
 		RES_r8(BitSelect::B7, m_registerBC.hi);
 		break;
 
 	case 0xB9:
-		setInstructionString("RES 7, C");
+		formatToOpcode("RES 7, C");
 		RES_r8(BitSelect::B7, m_registerBC.lo);
 		break;
 
 	case 0xBA:
-		setInstructionString("RES 7, D");
+		formatToOpcode("RES 7, D");
 		RES_r8(BitSelect::B7, m_registerDE.hi);
 		break;
 
 	case 0xBB:
-		setInstructionString("RES 7, E");
+		formatToOpcode("RES 7, E");
 		RES_r8(BitSelect::B7, m_registerDE.lo);
 		break;
 
 	case 0xBC:
-		setInstructionString("RES 7, H");
+		formatToOpcode("RES 7, H");
 		RES_r8(BitSelect::B7, m_registerHL.hi);
 		break;
 
 	case 0xBD:
-		setInstructionString("RES 7, L");
+		formatToOpcode("RES 7, L");
 		RES_r8(BitSelect::B7, m_registerHL.lo);
 		break;
 
 	case 0xBE:
-		setInstructionString("RES 7, (HL)");
+		formatToOpcode("RES 7, (HL)");
 		RES_indirect_HL(BitSelect::B7);
 		break;
 
 	case 0xBF:
-		setInstructionString("RES 7, A");
+		formatToOpcode("RES 7, A");
 		RES_r8(BitSelect::B7, m_registerAF.accumulator);
 		break;
 
 	case 0xC0:
-		setInstructionString("SET 0, B");
+		formatToOpcode("SET 0, B");
 		SET_r8(BitSelect::B0, m_registerBC.hi);
 		break;
 
 	case 0xC1:
-		setInstructionString("SET 6, C");
+		formatToOpcode("SET 0, C");
 		SET_r8(BitSelect::B0, m_registerBC.lo);
 		break;
 
 	case 0xC2:
-		setInstructionString("SET 6, D");
+		formatToOpcode("SET 0, D");
 		SET_r8(BitSelect::B0, m_registerDE.hi);
 		break;
 
 	case 0xC3:
-		setInstructionString("SET 6, E");
+		formatToOpcode("SET 0, E");
 		SET_r8(BitSelect::B0, m_registerDE.lo);
 		break;
 
 	case 0xC4:
-		setInstructionString("SET 6, H");
+		formatToOpcode("SET 0, H");
 		SET_r8(BitSelect::B0, m_registerHL.hi);
 		break;
 
 	case 0xC5:
-		setInstructionString("SET 6, L");
+		formatToOpcode("SET 0, L");
 		SET_r8(BitSelect::B0, m_registerHL.lo);
 		break;
 
 	case 0xC6:
-		setInstructionString("SET 6, (HL)");
+		formatToOpcode("SET 0, (HL)");
 		SET_indirect_HL(BitSelect::B0);
 		break;
 
 	case 0xC7:
-		setInstructionString("SET 6, A");
+		formatToOpcode("SET 0, A");
 		SET_r8(BitSelect::B0, m_registerAF.accumulator);
 		break;
 
 	case 0xC8:
-		setInstructionString("SET 1, B");
+		formatToOpcode("SET 1, B");
 		SET_r8(BitSelect::B1, m_registerBC.hi);
 		break;
 
 	case 0xC9:
-		setInstructionString("SET 1, C");
+		formatToOpcode("SET 1, C");
 		SET_r8(BitSelect::B1, m_registerBC.lo);
 		break;
 
 	case 0xCA:
-		setInstructionString("SET 1, D");
+		formatToOpcode("SET 1, D");
 		SET_r8(BitSelect::B1, m_registerDE.hi);
 		break;
 
 	case 0xCB:
-		setInstructionString("SET 1, E");
+		formatToOpcode("SET 1, E");
 		SET_r8(BitSelect::B1, m_registerDE.lo);
 		break;
 
 	case 0xCC:
-		setInstructionString("SET 1, H");
+		formatToOpcode("SET 1, H");
 		SET_r8(BitSelect::B1, m_registerHL.hi);
 		break;
 
 	case 0xCD:
-		setInstructionString("SET 1, L");
+		formatToOpcode("SET 1, L");
 		SET_r8(BitSelect::B1, m_registerHL.lo);
 		break;
 
 	case 0xCE:
-		setInstructionString("SET 1, (HL)");
+		formatToOpcode("SET 1, (HL)");
 		SET_indirect_HL(BitSelect::B1);
 		break;
 
 	case 0xCF:
-		setInstructionString("SET 1, A");
+		formatToOpcode("SET 1, A");
 		SET_r8(BitSelect::B1, m_registerAF.accumulator);
 		break;
 
 	case 0xD0:
-		setInstructionString("SET 0, B");
+		formatToOpcode("SET 2, B");
 		SET_r8(BitSelect::B2, m_registerBC.hi);
 		break;
 
 	case 0xD1:
-		setInstructionString("SET 2, C");
+		formatToOpcode("SET 2, C");
 		SET_r8(BitSelect::B2, m_registerBC.lo);
 		break;
 
 	case 0xD2:
-		setInstructionString("SET 2, D");
+		formatToOpcode("SET 2, D");
 		SET_r8(BitSelect::B2, m_registerDE.hi);
 		break;
 
 	case 0xD3:
-		setInstructionString("SET 2, E");
+		formatToOpcode("SET 2, E");
 		SET_r8(BitSelect::B2, m_registerDE.lo);
 		break;
 
 	case 0xD4:
-		setInstructionString("SET 2, H");
+		formatToOpcode("SET 2, H");
 		SET_r8(BitSelect::B2, m_registerHL.hi);
 		break;
 
 	case 0xD5:
-		setInstructionString("SET 2, L");
+		formatToOpcode("SET 2, L");
 		SET_r8(BitSelect::B2, m_registerHL.lo);
 		break;
 
 	case 0xD6:
-		setInstructionString("SET 2, (HL)");
+		formatToOpcode("SET 2, (HL)");
 		SET_indirect_HL(BitSelect::B2);
 		break;
 
 	case 0xD7:
-		setInstructionString("SET 2, A");
+		formatToOpcode("SET 2, A");
 		SET_r8(BitSelect::B2, m_registerAF.accumulator);
 		break;
 
 	case 0xD8:
-		setInstructionString("SET 3, B");
+		formatToOpcode("SET 3, B");
 		SET_r8(BitSelect::B3, m_registerBC.hi);
 		break;
 
 	case 0xD9:
-		setInstructionString("SET 3, C");
+		formatToOpcode("SET 3, C");
 		SET_r8(BitSelect::B3, m_registerBC.lo);
 		break;
 
 	case 0xDA:
-		setInstructionString("SET 3, D");
+		formatToOpcode("SET 3, D");
 		SET_r8(BitSelect::B3, m_registerDE.hi);
 		break;
 
 	case 0xDB:
-		setInstructionString("SET 3, E");
+		formatToOpcode("SET 3, E");
 		SET_r8(BitSelect::B3, m_registerDE.lo);
 		break;
 
 	case 0xDC:
-		setInstructionString("SET 3, H");
+		formatToOpcode("SET 3, H");
 		SET_r8(BitSelect::B3, m_registerHL.hi);
 		break;
 
 	case 0xDD:
-		setInstructionString("SET 3, L");
+		formatToOpcode("SET 3, L");
 		SET_r8(BitSelect::B3, m_registerHL.lo);
 		break;
 
 	case 0xDE:
-		setInstructionString("SET 3, (HL)");
+		formatToOpcode("SET 3, (HL)");
 		SET_indirect_HL(BitSelect::B3);
 		break;
 
 	case 0xDF:
-		setInstructionString("SET 3, A");
+		formatToOpcode("SET 3, A");
 		SET_r8(BitSelect::B3, m_registerAF.accumulator);
 		break;
 
 	case 0xE0:
-		setInstructionString("SET 0, B");
+		formatToOpcode("SET 4, B");
 		SET_r8(BitSelect::B4, m_registerBC.hi);
 		break;
 
 	case 0xE1:
-		setInstructionString("SET 4, C");
+		formatToOpcode("SET 4, C");
 		SET_r8(BitSelect::B4, m_registerBC.lo);
 		break;
 
 	case 0xE2:
-		setInstructionString("SET 4, D");
+		formatToOpcode("SET 4, D");
 		SET_r8(BitSelect::B4, m_registerDE.hi);
 		break;
 
 	case 0xE3:
-		setInstructionString("SET 4, E");
+		formatToOpcode("SET 4, E");
 		SET_r8(BitSelect::B4, m_registerDE.lo);
 		break;
 
 	case 0xE4:
-		setInstructionString("SET 4, H");
+		formatToOpcode("SET 4, H");
 		SET_r8(BitSelect::B4, m_registerHL.hi);
 		break;
 
 	case 0xE5:
-		setInstructionString("SET 4, L");
+		formatToOpcode("SET 4, L");
 		SET_r8(BitSelect::B4, m_registerHL.lo);
 		break;
 
 	case 0xE6:
-		setInstructionString("SET 4, (HL)");
+		formatToOpcode("SET 4, (HL)");
 		SET_indirect_HL(BitSelect::B4);
 		break;
 
 	case 0xE7:
-		setInstructionString("SET 4, A");
+		formatToOpcode("SET 4, A");
 		SET_r8(BitSelect::B4, m_registerAF.accumulator);
 		break;
 
 	case 0xE8:
-		setInstructionString("SET 5, B");
+		formatToOpcode("SET 5, B");
 		SET_r8(BitSelect::B5, m_registerBC.hi);
 		break;
 
 	case 0xE9:
-		setInstructionString("SET 5, C");
+		formatToOpcode("SET 5, C");
 		SET_r8(BitSelect::B5, m_registerBC.lo);
 		break;
 
 	case 0xEA:
-		setInstructionString("SET 5, D");
+		formatToOpcode("SET 5, D");
 		SET_r8(BitSelect::B5, m_registerDE.hi);
 		break;
 
 	case 0xEB:
-		setInstructionString("SET 5, E");
+		formatToOpcode("SET 5, E");
 		SET_r8(BitSelect::B5, m_registerDE.lo);
 		break;
 
 	case 0xEC:
-		setInstructionString("SET 5, H");
+		formatToOpcode("SET 5, H");
 		SET_r8(BitSelect::B5, m_registerHL.hi);
 		break;
 
 	case 0xED:
-		setInstructionString("SET 5, L");
+		formatToOpcode("SET 5, L");
 		SET_r8(BitSelect::B5, m_registerHL.lo);
 		break;
 
 	case 0xEE:
-		setInstructionString("SET 5, (HL)");
+		formatToOpcode("SET 5, (HL)");
 		SET_indirect_HL(BitSelect::B5);
 		break;
 
 	case 0xEF:
-		setInstructionString("SET 5, A");
+		formatToOpcode("SET 5, A");
 		SET_r8(BitSelect::B5, m_registerAF.accumulator);
 		break;
 
 	case 0xF0:
-		setInstructionString("SET 0, B");
+		formatToOpcode("SET 6, B");
 		SET_r8(BitSelect::B6, m_registerBC.hi);
 		break;
 
 	case 0xF1:
-		setInstructionString("SET 6, C");
+		formatToOpcode("SET 6, C");
 		SET_r8(BitSelect::B6, m_registerBC.lo);
 		break;
 
 	case 0xF2:
-		setInstructionString("SET 6, D");
+		formatToOpcode("SET 6, D");
 		SET_r8(BitSelect::B6, m_registerDE.hi);
 		break;
 
 	case 0xF3:
-		setInstructionString("SET 6, E");
+		formatToOpcode("SET 6, E");
 		SET_r8(BitSelect::B6, m_registerDE.lo);
 		break;
 
 	case 0xF4:
-		setInstructionString("SET 6, H");
+		formatToOpcode("SET 6, H");
 		SET_r8(BitSelect::B6, m_registerHL.hi);
 		break;
 
 	case 0xF5:
-		setInstructionString("SET 6, L");
+		formatToOpcode("SET 6, L");
 		SET_r8(BitSelect::B6, m_registerHL.lo);
 		break;
 
 	case 0xF6:
-		setInstructionString("SET 6, (HL)");
+		formatToOpcode("SET 6, (HL)");
 		SET_indirect_HL(BitSelect::B6);
 		break;
 
 	case 0xF7:
-		setInstructionString("SET 6, A");
+		formatToOpcode("SET 6, A");
 		SET_r8(BitSelect::B6, m_registerAF.accumulator);
 		break;
 
 	case 0xF8:
-		setInstructionString("SET 7, B");
+		formatToOpcode("SET 7, B");
 		SET_r8(BitSelect::B7, m_registerBC.hi);
 		break;
 
 	case 0xF9:
-		setInstructionString("SET 7, C");
+		formatToOpcode("SET 7, C");
 		SET_r8(BitSelect::B7, m_registerBC.lo);
 		break;
 
 	case 0xFA:
-		setInstructionString("SET 7, D");
+		formatToOpcode("SET 7, D");
 		SET_r8(BitSelect::B7, m_registerDE.hi);
 		break;
 
 	case 0xFB:
-		setInstructionString("SET 7, E");
+		formatToOpcode("SET 7, E");
 		SET_r8(BitSelect::B7, m_registerDE.lo);
 		break;
 
 	case 0xFC:
-		setInstructionString("SET 7, H");
+		formatToOpcode("SET 7, H");
 		SET_r8(BitSelect::B7, m_registerHL.hi);
 		break;
 
 	case 0xFD:
-		setInstructionString("SET 7, L");
+		formatToOpcode("SET 7, L");
 		SET_r8(BitSelect::B7, m_registerHL.lo);
 		break;
 
 	case 0xFE:
-		setInstructionString("SET 7, (HL)");
+		formatToOpcode("SET 7, (HL)");
 		SET_indirect_HL(BitSelect::B7);
 		break;
 
 	case 0xFF:
-		setInstructionString("SET 7, A");
+		formatToOpcode("SET 7, A");
 		SET_r8(BitSelect::B7, m_registerAF.accumulator);
 		break;
 
@@ -2653,8 +2598,10 @@ void Sm83::decodeExecutePrefixedMode(uint8_t opcode)
 
 void Sm83::LDH_indirect_n8_A()
 {
-	uint16_t address = 0xFF00 + cpuFetch();
+	uint8_t offset = cpuFetch();
+	uint16_t address = 0xFF00 + offset;
 	m_bus->cpuWrite(address, m_registerAF.accumulator);
+	formatToOpcode("$(FF00 + {:02X}), A", offset);
 }
 
 void Sm83::LDH_indirect_C_A()
@@ -2665,8 +2612,10 @@ void Sm83::LDH_indirect_C_A()
 
 void Sm83::LDH_A_indirect_n8()
 {
-	uint16_t address = 0xFF00 + cpuFetch();
+	uint8_t offset = cpuFetch();
+	uint16_t address = 0xFF00 + offset;
 	m_registerAF.accumulator = m_bus->cpuRead(address);
+	formatToOpcode("$(FF00 + {:02X})", offset);
 }
 
 void Sm83::LDH_A_indirect_C()
@@ -2699,6 +2648,7 @@ void Sm83::LD_HL_SP_i8()
 void Sm83::LD_r8_n8(uint8_t &dest)
 {
 	dest = cpuFetch();
+	formatToOpcode("${:02X}", dest);
 }
 
 void Sm83::LD_r8_r8(uint8_t &dest, uint8_t &src)
@@ -2710,11 +2660,13 @@ void Sm83::LD_r16_n16(Sm83Register &dest)
 {
 	dest.lo = cpuFetch();
 	dest.hi = cpuFetch();
+	formatToOpcode("${:04X}", (dest.hi << 8) | dest.lo);
 }
 
 void Sm83::LD_SP_n16()
 {
 	m_stackPointer = cpuFetch() | (cpuFetch() << 8);
+	formatToOpcode("${:04X}", m_stackPointer);
 }
 void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
 {
@@ -2726,12 +2678,14 @@ void Sm83::LD_indirect_n16_A()
 {
 	uint16_t address = cpuFetch() | (cpuFetch() << 8);
 	m_bus->cpuWrite(address, m_registerAF.accumulator);
+	formatToOpcode("$({:04X}), A", address);
 }
 
 void Sm83::LD_A_indirect_n16()
 {
 	uint16_t address = cpuFetch() | (cpuFetch() << 8);
 	m_registerAF.accumulator = m_bus->cpuRead(address);
+	formatToOpcode("$({:04X})", address);
 }
 
 void Sm83::LD_A_indirect_r16(Sm83Register &src)
@@ -2745,6 +2699,7 @@ void Sm83::LD_indirect_HL_n8()
 	uint8_t value = cpuFetch();
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
 	m_bus->cpuWrite(address, value);
+	formatToOpcode("${:02X}", value);
 }
 
 void Sm83::LD_r8_indirect_HL(uint8_t &dest)
@@ -2797,6 +2752,7 @@ void Sm83::LD_indirect_n16_SP()
 	// store lo byte the hi byte at next address
 	m_bus->cpuWrite(address, m_stackPointer & 0xFF);
 	m_bus->cpuWrite(address + 1, (m_stackPointer & 0xFF00) >> 8);
+	formatToOpcode("(${:04X}), SP", address);
 }
 
 void Sm83::INC_r8(uint8_t &dest)
@@ -3068,6 +3024,7 @@ void Sm83::ADD_SP_i8()
 
 	mTick();
 	m_stackPointer = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(operand));
+	formatToOpcode("+- ${:02X}", operand);
 }
 
 void Sm83::ADD_HL_r16(Sm83Register &operand)
@@ -3115,6 +3072,7 @@ void Sm83::ADD_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	ADD_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::ADD_A_indirect_HL()
@@ -3144,6 +3102,7 @@ void Sm83::ADC_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	ADC_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::SUB_A_r8(uint8_t &operand)
@@ -3166,6 +3125,7 @@ void Sm83::SUB_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	SUB_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::SUB_A_indirect_HL()
@@ -3197,6 +3157,7 @@ void Sm83::SBC_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	SBC_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::SBC_A_indirect_HL()
@@ -3210,6 +3171,7 @@ void Sm83::JR_i8()
 	int8_t offset = static_cast<int8_t>(cpuFetch());
 	mTick();
 	m_programCounter += offset;
+	formatToOpcode("${:04X}", m_programCounter);
 }
 
 void Sm83::JR_CC_i8(bool condition)
@@ -3223,6 +3185,8 @@ void Sm83::JR_CC_i8(bool condition)
 		mTick();
 		m_programCounter += offset;
 	}
+
+	formatToOpcode("${:04X}", m_programCounter);
 }
 
 void Sm83::JP_CC_n16(bool condition)
@@ -3234,6 +3198,8 @@ void Sm83::JP_CC_n16(bool condition)
 		mTick();
 		m_programCounter = address;
 	}
+
+	formatToOpcode("${:04X}", m_programCounter);
 }
 
 void Sm83::JP_n16()
@@ -3241,6 +3207,7 @@ void Sm83::JP_n16()
 	uint16_t address = cpuFetch() | (cpuFetch() << 8);
 	mTick();
 	m_programCounter = address;
+	formatToOpcode("${:04X}", m_programCounter);
 }
 
 void Sm83::JP_HL()
@@ -3313,6 +3280,7 @@ void Sm83::AND_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	AND_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::AND_A_indirect_HL()
@@ -3335,6 +3303,7 @@ void Sm83::XOR_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	XOR_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::XOR_A_indirect_HL()
@@ -3357,6 +3326,7 @@ void Sm83::OR_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	OR_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::OR_A_indirect_HL()
@@ -3380,6 +3350,7 @@ void Sm83::CP_A_n8()
 {
 	uint8_t operand = cpuFetch();
 	CP_A_r8(operand);
+	formatToOpcode("${:02X}", operand);
 }
 
 void Sm83::CP_A_indirect_HL()
@@ -3452,6 +3423,7 @@ void Sm83::CALL_n16()
 	m_bus->cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
 
 	m_programCounter = callAddress;
+	formatToOpcode("${:04X}", m_programCounter);
 }
 
 void Sm83::CALL_CC_n16(bool condition)
@@ -3468,6 +3440,8 @@ void Sm83::CALL_CC_n16(bool condition)
 
 		m_programCounter = callAddress;
 	}
+
+	formatToOpcode("${:04X}", m_programCounter);
 }
 
 void Sm83::RST(RstVector vec)
@@ -3527,5 +3501,4 @@ void Sm83::DI()
 
 void Sm83::EI()
 {
-
 }

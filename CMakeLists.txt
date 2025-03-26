@@ -35,7 +35,7 @@ target_include_directories(BudgetGB PRIVATE
 target_link_libraries(BudgetGB PRIVATE NlohmannJson fmt::fmt)
 
 if (MSVC)
-	target_compile_options(BudgetGB PRIVATE /W4 /Zc:__cplusplus)
+	target_compile_options(BudgetGB PRIVATE /W4)
 else(MSVC)
 	target_compile_options(BudgetGB PRIVATE -O3 -Wall -Wextra -Wpedantic)
 endif(MSVC)
