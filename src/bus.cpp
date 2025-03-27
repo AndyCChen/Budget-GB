@@ -2,9 +2,10 @@
 
 using namespace BusConstants;
 
-Bus::Bus(BusMode mode)
-{ 
+Bus::Bus(Cartridge *cartridge, BusMode mode)
+{
 	m_mode = mode;
+	m_cartridge = cartridge;
 	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 
 	switch (m_mode)
@@ -17,7 +18,6 @@ Bus::Bus(BusMode mode)
 	case Bus::BusMode::SM83_TEST:
 		m_wram.resize(TEST_MODE_WRAM_SIZE);
 		break;
-
 	}
 }
 
@@ -32,7 +32,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 	{
 		if (position < CARTRIDGE_ROM_END)
 		{
-			return 0;
+			return m_cartridge->cartridgeRead(position);
 		}
 		else if (position < VRAM_END)
 		{
@@ -63,14 +63,11 @@ uint8_t Bus::cpuRead(uint16_t position)
 		{
 			return 0;
 		}
-
 	}
 	else
 	{
 		return m_wram[position];
 	}
-
-
 }
 
 void Bus::cpuWrite(uint16_t position, uint8_t data)
@@ -79,7 +76,6 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	{
 		if (position < CARTRIDGE_ROM_END)
 		{
-			
 		}
 		else if (position < VRAM_END)
 		{
@@ -87,7 +83,6 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 		}
 		else if (position < EXTERNAL_RAM_END)
 		{
-			
 		}
 		else if (position < ECHO_RAM_END)
 		{
@@ -95,25 +90,20 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 		}
 		else if (position < UNUSABLE_END)
 		{
-			
 		}
 		else if (position < IO_REGISTERS_END)
 		{
-			
 		}
 		else if (position < HRAM_END)
 		{
-			
 		}
 		// interrupt enable register at 0xFFFF
 		else
 		{
-			
 		}
 	}
 	else
 	{
 		m_wram[position] = data;
 	}
-
 }

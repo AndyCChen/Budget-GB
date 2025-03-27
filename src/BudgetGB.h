@@ -1,21 +1,19 @@
 #pragma once
 
-#include <memory>
+#include <string>
 
-#include "sm83.h"
 #include "bus.h"
+#include "cartridge.h"
+#include "sm83.h"
 
 class BudgetGB
 {
-public:
+  public:
+	BudgetGB();
+	BudgetGB(const std::string &romPath);
 
-	BudgetGB() 
-	{
-		m_bus = std::make_unique<Bus>();
-		m_cpu = std::make_unique<Sm83>(m_bus.get());
-	};
-
-private:
-	std::unique_ptr<Bus> m_bus;
-	std::unique_ptr<Sm83> m_cpu;
+  private:
+	Bus m_bus;
+	Sm83 m_cpu;
+	Cartridge m_cartridge;
 };

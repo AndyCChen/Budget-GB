@@ -25,6 +25,8 @@ add_executable(BudgetGB
 	src/bus.h
 	src/sm83JsonTest.cpp
 	src/sm83JsonTest.h
+	src/cartridge.cpp
+	src/cartridge.h
 )
 
 target_include_directories(BudgetGB PRIVATE
