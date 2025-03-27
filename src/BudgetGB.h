@@ -7,8 +7,6 @@
 
 class BudgetGB
 {
-	friend class Sm83JsonTest;
-
 public:
 
 	BudgetGB() 
@@ -18,6 +16,6 @@ public:
 	};
 
 private:
-	std::unique_ptr<Sm83> m_cpu;
 	std::unique_ptr<Bus> m_bus;
+	std::unique_ptr<Sm83> m_cpu;
 };

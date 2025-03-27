@@ -2665,7 +2665,9 @@ void Sm83::LD_r16_n16(Sm83Register &dest)
 
 void Sm83::LD_SP_n16()
 {
-	m_stackPointer = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	m_stackPointer = lo | (hi << 8);
 	formatToOpcode("${:04X}", m_stackPointer);
 }
 void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
@@ -2676,14 +2678,18 @@ void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
 
 void Sm83::LD_indirect_n16_A()
 {
-	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t address = lo | (hi << 8);
 	m_bus->cpuWrite(address, m_registerAF.accumulator);
 	formatToOpcode("$({:04X}), A", address);
 }
 
 void Sm83::LD_A_indirect_n16()
 {
-	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t address = lo | (hi << 8);
 	m_registerAF.accumulator = m_bus->cpuRead(address);
 	formatToOpcode("$({:04X})", address);
 }
@@ -2747,7 +2753,9 @@ void Sm83::LD_A_indirect_HLD()
 void Sm83::LD_indirect_n16_SP()
 {
 	// fetch lo byte then hi byte
-	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t address = lo | (hi << 8);
 
 	// store lo byte the hi byte at next address
 	m_bus->cpuWrite(address, m_stackPointer & 0xFF);
@@ -3191,7 +3199,9 @@ void Sm83::JR_CC_i8(bool condition)
 
 void Sm83::JP_CC_n16(bool condition)
 {
-	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t address = lo | (hi << 8);
 
 	if (condition)
 	{
@@ -3204,7 +3214,10 @@ void Sm83::JP_CC_n16(bool condition)
 
 void Sm83::JP_n16()
 {
-	uint16_t address = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t address = lo | (hi << 8);
+
 	mTick();
 	m_programCounter = address;
 	formatToOpcode("${:04X}", m_programCounter);
@@ -3414,7 +3427,9 @@ void Sm83::PUSH_AF()
 
 void Sm83::CALL_n16()
 {
-	uint16_t callAddress = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t callAddress = lo | (hi << 8);
 
 	mTick();
 
@@ -3428,7 +3443,9 @@ void Sm83::CALL_n16()
 
 void Sm83::CALL_CC_n16(bool condition)
 {
-	uint16_t callAddress = cpuFetch() | (cpuFetch() << 8);
+	uint8_t lo = cpuFetch();
+	uint8_t hi = cpuFetch();
+	uint16_t callAddress = lo | (hi << 8);
 
 	if (condition)
 	{
