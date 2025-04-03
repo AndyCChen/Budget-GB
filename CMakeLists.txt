@@ -3,7 +3,7 @@ project(Budget_Gameboy_Emulator)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 
 # nlhomannJson parsing library
 add_library(NlohmannJson INTERFACE)
@@ -12,7 +12,7 @@ target_include_directories(NlohmannJson INTERFACE
 )
 
 # fmt library
-add_subdirectory(vendor/fmt)
+add_subdirectory(vendor/fmt/)
 
 add_executable(BudgetGB
 	main.cpp
@@ -32,8 +32,8 @@ add_executable(BudgetGB
 )
 
 target_include_directories(BudgetGB PRIVATE
-	vendor
-	src
+	vendor/
+	src/
 )
 
 target_link_libraries(BudgetGB PRIVATE NlohmannJson fmt::fmt)

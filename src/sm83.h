@@ -4,15 +4,15 @@
 #include <iterator>
 #include <string>
 
-#include "fmt/base.h"
 #include "bus.h"
 #include "disassembler.h"
+#include "fmt/base.h"
 
 class Sm83
 {
 	friend class Sm83JsonTest;
 
-  private:
+private:
 	struct Sm83FlagsRegister
 	{
 		unsigned int Z : 1; // bit 7, zero flag
@@ -55,7 +55,7 @@ class Sm83
 		uint8_t lo;
 	};
 
-  public:
+public:
 	uint16_t m_programCounter;
 	uint16_t m_stackPointer;
 	Sm83RegisterAF m_registerAF;
@@ -73,34 +73,9 @@ class Sm83
 	 */
 	void runInstruction();
 
-  private:
-	std::string m_instructionString;
+private:
 	Bus &m_bus;
 	Disassembler &m_disassembler;
-
-	/**
-	 * @brief Set instruction string for logging.
-	 *
-	 * @param in
-	 */
-	void setInstructionString(const std::string &in)
-	{
-		m_instructionString = in;
-	}
-
-	/**
-	 * @brief Append formatted string to instruction string
-	 * for logging.
-	 *
-	 * @tparam T 
-	 * @param format 
-	 * @param args 
-	 */
-	template <typename... T> void formatToOpcode(fmt::format_string<T...> format, T &&...args)
-	{
-		if (m_logEnable)
-			fmt::format_to(std::back_inserter(m_instructionString), format, std::forward<T>(args)...);
-	}
 
 	/**
 	 * @brief Read from memory currently pointed to by program counter
@@ -246,7 +221,7 @@ class Sm83
 	void LD_A_indirect_HLI();
 
 	/**
-	 * @brief Load accumulator with value at memory addres in HL register.
+	 * @brief Load accumulator with value at memory address in HL register.
 	 * Decrements HL register.
 	 */
 	void LD_A_indirect_HLD();

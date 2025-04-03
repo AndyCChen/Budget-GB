@@ -16,8 +16,8 @@ class BudgetGB
 	void run();
 
   private:
-	Bus m_bus;
-	Sm83 m_cpu;
 	Cartridge m_cartridge;
+	Bus m_bus;
 	Disassembler m_disassembler;
+	Sm83 m_cpu;
 };

@@ -28,38 +28,45 @@ void Bus::clearWram()
 
 uint8_t Bus::cpuReadNoTick(uint16_t position)
 {
-	if (position < CARTRIDGE_ROM_END)
+	if (m_mode == BusMode::NONE)
 	{
-		return m_cartridge.cartridgeRead(position);
+		if (position < CARTRIDGE_ROM_END)
+		{
+			return m_cartridge.cartridgeRead(position);
+		}
+		else if (position < VRAM_END)
+		{
+			return m_vram[position & 0x1FFF];
+		}
+		else if (position < EXTERNAL_RAM_END)
+		{
+			return 0;
+		}
+		else if (position < ECHO_RAM_END)
+		{
+			return m_wram[(position & 0xDFFF) & 0x1FFF];
+		}
+		else if (position < UNUSABLE_END)
+		{
+			return 0;
+		}
+		else if (position < IO_REGISTERS_END)
+		{
+			return 0;
+		}
+		else if (position < HRAM_END)
+		{
+			return m_hram[position & 0x7F];
+		}
+		// interrupt enable register at 0xFFFF
+		else
+		{
+			return 0;
+		}
 	}
-	else if (position < VRAM_END)
-	{
-		return m_vram[position & 0x1FFF];
-	}
-	else if (position < EXTERNAL_RAM_END)
-	{
-		return 0;
-	}
-	else if (position < ECHO_RAM_END)
-	{
-		return m_wram[(position & 0xDFFF) & 0x1FFF];
-	}
-	else if (position < UNUSABLE_END)
-	{
-		return 0;
-	}
-	else if (position < IO_REGISTERS_END)
-	{
-		return 0;
-	}
-	else if (position < HRAM_END)
-	{
-		return m_hram[position & 0x7F];
-	}
-	// interrupt enable register at 0xFFFF
 	else
 	{
-		return 0;
+		return m_wram[position];
 	}
 }
 

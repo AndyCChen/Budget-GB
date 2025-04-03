@@ -1,29 +1,30 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include <cstdint>
 #include <iterator>
+#include <string>
+#include <vector>
 
 #include "bus.h"
 #include "fmt/base.h"
+#include "fmt/format.h"
 
 struct DisassembledInstruction
 {
-	uint16_t m_instructionAddress;
-	std::string m_instructionBytes;
-	std::string m_instructionString;
+	uint16_t m_opcodeAddress;
+	std::string m_opcodeBytes;
+	std::string m_opcodeString;
 
 	void clear()
 	{
-		m_instructionBytes.clear();
-		m_instructionString.clear();
+		m_opcodeBytes.clear();
+		m_opcodeString.clear();
 	}
 };
 
 class Disassembler
 {
-  public:
+public:
 	Disassembler(Bus &bus) : m_bus(bus)
 	{
 		m_programCounter = 0;
@@ -40,7 +41,7 @@ class Disassembler
 	{
 		m_programCounter = pc;
 	}
-	
+
 	void logToConsole();
 
 private:
@@ -50,18 +51,42 @@ private:
 	std::size_t m_bufferPosition;
 	std::vector<DisassembledInstruction> m_buffer;
 
-	uint8_t fetch()
+	uint8_t fetch_n8()
 	{
 		uint8_t value = m_bus.cpuReadNoTick(m_programCounter++);
-		formatToInstructionBytes("{:02X} ", value);
+		formatToOpcodeBytes("{:02X} ", value);
 		return value;
 	}
-	
+
 	/**
-	 * @brief Handle disassembly of opcode. 
-	 * @param cartridgeRom 
+	 * @brief Fetch 2 byte values stored in little endian order.
+	 *
+	 * @return 
 	 */
-	void disassembleOpcode(uint8_t opcode);	
+	uint16_t fetch_n16()
+	{
+		uint8_t lo = fetch_n8();
+		uint8_t hi = fetch_n8();
+
+		return (hi << 8) | lo;
+	}
+
+	/**
+	 * @brief Gets the relative jump address for JR instructions
+	 *
+	 * @return 
+	 */
+	uint16_t computeRelativeJump()
+	{
+		int8_t offset = static_cast<int8_t>(fetch_n8());
+		return m_programCounter + static_cast<int8_t>(offset);
+	}
+
+	/**
+	 * @brief Handle disassembly of opcode.
+	 * @param cartridgeRom
+	 */
+	void disassembleOpcode(uint8_t opcode);
 
 	/**
 	 * @brief Handle disassembly of the second opcode table of prefixed instructions.
@@ -69,14 +94,15 @@ private:
 	 */
 	void disassemblePrefixedOpcode(uint8_t opcode);
 
-	template <typename... T> void formatToInstructionBytes(fmt::format_string<T...> format, T&&... args)
+	template <typename... T> void formatToOpcodeBytes(fmt::format_string<T...> format, T &&...args)
 	{
-		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_instructionBytes), format, std::forward<T>(args)...);
+		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeBytes), format,
+					   std::forward<T>(args)...);
 	}
 
-	template <typename... T> void formatToInstructionString(fmt::format_string<T...> format, T &&...args)
+	template <typename... T> void formatToOpcodeString(fmt::format_string<T...> format, T &&...args)
 	{
-		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_instructionString), format, std::forward<T>(args)...);
+		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeString), format,
+					   std::forward<T>(args)...);
 	}
-
 };

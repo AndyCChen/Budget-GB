@@ -32,7 +32,7 @@ class Bus
 {
 	friend class Sm83JsonTest;
 
-  public:
+public:
 	enum class BusMode
 	{
 		NONE = 0,
@@ -46,22 +46,22 @@ class Bus
 	/**
 	 * @brief Same as cpuRead() but does not clock the cpu. Meant to be used by disassembler to read data without
 	 * affected cpu state.
-	 * @param position 
-	 * @return 
+	 * @param position
+	 * @return
 	 */
 	uint8_t cpuReadNoTick(uint16_t position);
 
 	/**
 	 * @brief Reads contents off bus based on cpu memory map, clocks cpu for 1 M-cycle.
-	 * @param position 
-	 * @return 
+	 * @param position
+	 * @return
 	 */
 	uint8_t cpuRead(uint16_t position);
 
 	/**
 	 * @brief Write content to the bus based on cpu memory map, clocks for 1 M-cycle.
-	 * @param position 
-	 * @param data 
+	 * @param position
+	 * @param data
 	 */
 	void cpuWrite(uint16_t position, uint8_t data);
 
@@ -70,7 +70,7 @@ class Bus
 	 */
 	void cpuTickM();
 
-  private:
+private:
 	BusMode m_mode;
 	Cartridge &m_cartridge;
 
