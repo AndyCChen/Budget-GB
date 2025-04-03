@@ -27,6 +27,8 @@ add_executable(BudgetGB
 	src/sm83JsonTest.h
 	src/cartridge.cpp
 	src/cartridge.h
+	src/disassembler.cpp
+	src/disassembler.h
 )
 
 target_include_directories(BudgetGB PRIVATE

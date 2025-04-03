@@ -1,11 +1,11 @@
 #include "bus.h"
+#include "fmt/base.h"
 
 using namespace BusConstants;
 
-Bus::Bus(Cartridge *cartridge, BusMode mode)
+Bus::Bus(Cartridge &cartridge, BusMode mode) : m_cartridge(cartridge)
 {
 	m_mode = mode;
-	m_cartridge = cartridge;
 	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 
 	switch (m_mode)
@@ -26,13 +26,52 @@ void Bus::clearWram()
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 }
 
+uint8_t Bus::cpuReadNoTick(uint16_t position)
+{
+	if (position < CARTRIDGE_ROM_END)
+	{
+		return m_cartridge.cartridgeRead(position);
+	}
+	else if (position < VRAM_END)
+	{
+		return m_vram[position & 0x1FFF];
+	}
+	else if (position < EXTERNAL_RAM_END)
+	{
+		return 0;
+	}
+	else if (position < ECHO_RAM_END)
+	{
+		return m_wram[(position & 0xDFFF) & 0x1FFF];
+	}
+	else if (position < UNUSABLE_END)
+	{
+		return 0;
+	}
+	else if (position < IO_REGISTERS_END)
+	{
+		return 0;
+	}
+	else if (position < HRAM_END)
+	{
+		return m_hram[position & 0x7F];
+	}
+	// interrupt enable register at 0xFFFF
+	else
+	{
+		return 0;
+	}
+}
+
 uint8_t Bus::cpuRead(uint16_t position)
 {
+	cpuTickM();
+
 	if (m_mode == BusMode::NONE)
 	{
 		if (position < CARTRIDGE_ROM_END)
 		{
-			return m_cartridge->cartridgeRead(position);
+			return m_cartridge.cartridgeRead(position);
 		}
 		else if (position < VRAM_END)
 		{
@@ -56,7 +95,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 		}
 		else if (position < HRAM_END)
 		{
-			return 0;
+			return m_hram[position & 0x7F];
 		}
 		// interrupt enable register at 0xFFFF
 		else
@@ -72,6 +111,8 @@ uint8_t Bus::cpuRead(uint16_t position)
 
 void Bus::cpuWrite(uint16_t position, uint8_t data)
 {
+	cpuTickM();
+
 	if (m_mode == BusMode::NONE)
 	{
 		if (position < CARTRIDGE_ROM_END)
@@ -93,9 +134,14 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 		}
 		else if (position < IO_REGISTERS_END)
 		{
+			if (position == 0xFF01)
+			{
+				fmt::print("{:c}", static_cast<char>(data));
+			}
 		}
 		else if (position < HRAM_END)
 		{
+			m_hram[position & 0x7F] = data;
 		}
 		// interrupt enable register at 0xFFFF
 		else
@@ -106,4 +152,8 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	{
 		m_wram[position] = data;
 	}
+}
+
+void Bus::cpuTickM()
+{
 }

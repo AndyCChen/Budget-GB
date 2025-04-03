@@ -4,8 +4,9 @@
 #include <iterator>
 #include <string>
 
+#include "fmt/base.h"
 #include "bus.h"
-#include <fmt/base.h>
+#include "disassembler.h"
 
 class Sm83
 {
@@ -65,7 +66,7 @@ class Sm83
 
 	bool m_logEnable;
 
-	Sm83(Bus *bus);
+	Sm83(Bus &bus, Disassembler &disassembler);
 
 	/**
 	 * @brief Emulate cpu for a single instruction.
@@ -74,7 +75,8 @@ class Sm83
 
   private:
 	std::string m_instructionString;
-	Bus *m_bus;
+	Bus &m_bus;
+	Disassembler &m_disassembler;
 
 	/**
 	 * @brief Set instruction string for logging.
@@ -107,14 +109,7 @@ class Sm83
 	 */
 	uint8_t cpuFetch()
 	{
-		return m_bus->cpuRead(m_programCounter++);
-	}
-
-	/**
-	 * @brief Clock cpu for one machine cycle.
-	 */
-	void mTick()
-	{
+		return m_bus.cpuRead(m_programCounter++);
 	}
 
 	/**

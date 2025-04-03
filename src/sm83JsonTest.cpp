@@ -59,12 +59,12 @@ void Sm83JsonTest::initState(Sm83& cpu, nlohmann::json &item)
 	cpu.m_registerHL.lo = item["l"];
 
 	// zero out ram before setting ram values
-	cpu.m_bus->clearWram();
+	cpu.m_bus.clearWram();
 	for (size_t i = 0; i < item["ram"].size(); ++i)
 	{
 		uint16_t address = static_cast<uint16_t>(item["ram"][i][0]);
 		uint8_t data = static_cast<uint8_t>(item["ram"][i][1]);
-		cpu.m_bus->m_wram[address] = data;
+		cpu.m_bus.m_wram[address] = data;
 	}
 }
 
@@ -116,7 +116,7 @@ bool Sm83JsonTest::checkState(Sm83 &cpu, nlohmann::json &item)
 	{
 		uint16_t address = static_cast<uint16_t>(item["ram"][i][0]);
 		uint8_t data = static_cast<uint8_t>(item["ram"][i][1]);
-		SM83_CHECK(cpu.m_bus->m_wram[address] != data, "Ram content mismatch!");
+		SM83_CHECK(cpu.m_bus.m_wram[address] != data, "Ram content mismatch!");
 	}
 
 #undef SM83_CHECK
@@ -135,7 +135,7 @@ void Sm83JsonTest::logState(Sm83 &cpu, nlohmann::json &item)
 	for (size_t i = 0; i < ram.size(); ++i)
 	{
 		uint16_t address = static_cast<uint16_t>(item["final"]["ram"][i][0]);
-		ram[i] = { address, cpu.m_bus->m_wram[address] };
+		ram[i] = { address, cpu.m_bus.m_wram[address] };
 	}
 
 	nlohmann::json output =
