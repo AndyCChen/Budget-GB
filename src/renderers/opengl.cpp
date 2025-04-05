@@ -9,7 +9,7 @@ namespace
 SDL_GLContext m_glContext;
 }
 
-void RendererGB::init(SDL_Window *window)
+void RendererGB::init(SDL_Window *&window)
 {
 	if (!SDL_Init(SDL_INIT_VIDEO))
 	{
@@ -63,7 +63,7 @@ void RendererGB::render(SDL_Window *window)
 	SDL_GL_SwapWindow(window);
 }
 
-void RendererGB::free(SDL_Window *window)
+void RendererGB::free(SDL_Window *&window)
 {
 	SDL_GL_DestroyContext(m_glContext);
 	SDL_DestroyWindow(window);

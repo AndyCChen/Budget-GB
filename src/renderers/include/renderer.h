@@ -4,7 +4,7 @@
 
 namespace RendererGB
 {
-void init(SDL_Window* window);
-void render(SDL_Window *window);
-void free(SDL_Window *window);
+void init(SDL_Window*& window);
+void render(SDL_Window* window);
+void free(SDL_Window*& window);
 }
