@@ -2,15 +2,28 @@
 #include "renderer.h"
 
 #include <cstdlib>
-#include <cstdint>
 
-namespace
+struct RendererGB::RenderContext
 {
-SDL_GLContext m_glContext;
-}
+	SDL_GLContext glContext;
 
-void RendererGB::init(SDL_Window *&window)
+	RenderContext()
+	{
+		glContext = NULL;
+		SDL_Log("Constructing glContext");
+	}
+
+	~RenderContext()
+	{
+		SDL_Log("Destructing glContext");
+	}
+};
+
+void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 {
+	renderContext = new RenderContext;
+	SDL_GLContext &glContext = renderContext->glContext;
+
 	if (!SDL_Init(SDL_INIT_VIDEO))
 	{
 		SDL_LogError(0, "Failed to init SDL video! SDL error: %s", SDL_GetError());
@@ -28,9 +41,9 @@ void RendererGB::init(SDL_Window *&window)
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-	uint32_t windowFlags = SDL_WINDOW_OPENGL;
+	SDL_WindowFlags windowFlags = static_cast<SDL_WindowFlags>(SDL_WINDOW_OPENGL);
 	window = SDL_CreateWindow("Budget Gameboy", 600, 600, windowFlags);
-	if (window == nullptr)
+	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
 		std::exit(1);
@@ -38,14 +51,14 @@ void RendererGB::init(SDL_Window *&window)
 
 	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
-	m_glContext = SDL_GL_CreateContext(window);
-	if (m_glContext == nullptr)
+	glContext = SDL_GL_CreateContext(window);
+	if (!glContext)
 	{
 		SDL_LogError(0, "Failed to create openGL context! SDL error: %s", SDL_GetError());
 		std::exit(1);
 	}
 
-	SDL_GL_MakeCurrent(window, m_glContext);
+	SDL_GL_MakeCurrent(window, glContext);
 
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
@@ -54,6 +67,7 @@ void RendererGB::init(SDL_Window *&window)
 	}
 
 	SDL_GL_SetSwapInterval(1); // vsync
+	SDL_Log("OpenGl Version: %s", (char*)glGetString(GL_VERSION));
 }
 
 void RendererGB::render(SDL_Window *window)
@@ -63,8 +77,9 @@ void RendererGB::render(SDL_Window *window)
 	SDL_GL_SwapWindow(window);
 }
 
-void RendererGB::free(SDL_Window *&window)
+void RendererGB::free(SDL_Window *&window, RenderContext *&renderContext)
 {
-	SDL_GL_DestroyContext(m_glContext);
+	SDL_GL_DestroyContext(renderContext->glContext);
+	delete renderContext;
 	SDL_DestroyWindow(window);
 }

@@ -6,6 +6,7 @@
 #include "bus.h"
 #include "cartridge.h"
 #include "disassembler.h"
+#include "renderer.h"
 #include "sm83.h"
 
 class BudgetGB
@@ -26,6 +27,7 @@ private:
 	Sm83 m_cpu;
 
 	SDL_Window *m_window;
+	RendererGB::RenderContext *m_renderContext;
 
 	void gbProcessEvent();
 };

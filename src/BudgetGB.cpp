@@ -1,4 +1,3 @@
-#include "renderer.h"
 #include "BudgetGB.h"
 
 #include <cstdio>
@@ -6,19 +5,19 @@
 
 BudgetGB::BudgetGB() : m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
 {
-	RendererGB::init(m_window);
+	RendererGB::init(m_window, m_renderContext);
 }
 
 BudgetGB::BudgetGB(const std::string &romPath)
 	: m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
 {
-	RendererGB::init(m_window);
+	RendererGB::init(m_window, m_renderContext);
 	m_cartridge.loadRomFromPath(romPath);
 }
 
 BudgetGB::~BudgetGB()
 {
-	RendererGB::free(m_window);
+	RendererGB::free(m_window, m_renderContext);
 	SDL_Quit();
 }
 
