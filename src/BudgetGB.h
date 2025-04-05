@@ -2,22 +2,32 @@
 
 #include <string>
 
+#include "SDL3/SDL.h"
 #include "bus.h"
 #include "cartridge.h"
-#include "sm83.h"
 #include "disassembler.h"
+#include "sm83.h"
 
 class BudgetGB
 {
-  public:
+public:
 	BudgetGB();
 	BudgetGB(const std::string &romPath);
 
+	~BudgetGB();
+
 	void run();
 
-  private:
+private:
+	bool m_isRunning = true;
 	Cartridge m_cartridge;
 	Bus m_bus;
 	Disassembler m_disassembler;
 	Sm83 m_cpu;
+
+	SDL_Window *m_window;
+	SDL_GLContext m_glContext;
+
+	void initSDL_GL();
+	void gbProcessEvent();
 };

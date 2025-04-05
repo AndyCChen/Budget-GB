@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <nlohmann/json.hpp>
+#include "nlohmann/json.hpp"
 #include "sm83.h"
 
 class Sm83JsonTest
