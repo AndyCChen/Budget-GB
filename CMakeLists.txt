@@ -31,9 +31,8 @@ target_include_directories(glad PRIVATE
 	vendor/glad/include/
 )
 
-add_executable(BudgetGB
+set(SOURCE_FILES
 	main.cpp
-
 	src/BudgetGB.cpp
 	src/BudgetGB.h
 	src/sm83.cpp
@@ -46,19 +45,29 @@ add_executable(BudgetGB
 	src/cartridge.h
 	src/disassembler.cpp
 	src/disassembler.h
+	src/renderers/include/renderer.h
 )
+
+list(APPEND SOURCE_FILES
+	src/renderers/opengl.cpp
+)
+
+add_executable(BudgetGB ${SOURCE_FILES})
 
 target_include_directories(BudgetGB PRIVATE
 	vendor/fmt/include/
 	vendor/nlohmann/include/
 	vendor/glad/include/
+	src/renderers/include/
 	src/
 )
 
 target_link_libraries(BudgetGB PRIVATE OpenGL::GL SDL3::SDL3 glad NlohmannJson fmt::fmt)
 
-if (MSVC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	target_compile_options(BudgetGB PRIVATE /W4)
-else(MSVC)
+	message(STATUS "MSVC COMPILER")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 	target_compile_options(BudgetGB PRIVATE -O3 -Wall -Wextra -Wpedantic)
-endif(MSVC)
+	message(STATUS "GNU COMPILER")
+endif()

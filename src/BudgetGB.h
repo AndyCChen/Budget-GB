@@ -26,8 +26,6 @@ private:
 	Sm83 m_cpu;
 
 	SDL_Window *m_window;
-	SDL_GLContext m_glContext;
 
-	void initSDL_GL();
 	void gbProcessEvent();
 };
