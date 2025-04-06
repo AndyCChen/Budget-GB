@@ -50,6 +50,10 @@ target_include_directories(Imgui PRIVATE
 	vendor/SDL/include/
 )
 
+target_compile_features(Imgui PRIVATE cxx_std_17)
+
+# BudgetGB executable
+
 set(SOURCE_FILES
 	main.cpp
 	src/BudgetGB.cpp
