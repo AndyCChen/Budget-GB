@@ -19,7 +19,7 @@ struct RendererGB::RenderContext
 
 	~RenderContext()
 	{
-		SDL_Log("Destructing glContext");
+		SDL_Log("Deconstructing glContext");
 	}
 };
 
@@ -34,6 +34,20 @@ void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 		std::exit(1);
 	}
 
+#ifdef __APPLE__
+	// opengl 4.1 with glsl 4.10
+	const char *glsl_version = "#version 410";
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+#endif
+
+#ifdef _WIN32
 	// opengl 4.3 with glsl 4.30
 	const char *glsl_version = "#version 430";
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
@@ -44,6 +58,7 @@ void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+#endif
 
 	window = SDL_CreateWindow("Budget Gameboy", 600, 600, SDL_WINDOW_OPENGL);
 	if (!window)
@@ -75,16 +90,19 @@ void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 	// set up ImGui
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
+	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	io.ConfigViewportsNoDefaultParent = true;
 
-	ImGui::StyleColorsDark();
+	ImGui::StyleColorsLight();
 
 	ImGui_ImplSDL3_InitForOpenGL(window, glContext);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	io.Fonts->AddFontFromFileTTF("resources/fonts/MononokiNerdFont-Regular.ttf", 18.0);
 }
 
 void RendererGB::newFrame()
@@ -92,7 +110,6 @@ void RendererGB::newFrame()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
-
 }
 
 void RendererGB::render(SDL_Window *window)
