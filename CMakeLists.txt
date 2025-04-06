@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(Budget_Gameboy_Emulator)
 
-set(CMAKE_CXX_STANDARD 20)
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 
@@ -18,17 +16,38 @@ add_subdirectory(vendor/fmt/)
 # sdl3 library
 add_subdirectory(vendor/SDL/ EXCLUDE_FROM_ALL)
 
-# opengl
-find_package(OpenGL REQUIRED)
-
 # glad loader
-add_library(glad STATIC
+add_library(Glad STATIC
 	vendor/glad/src/glad.c
-	vendor/glad/include/glad/glad.h
-	vendor/glad/include/KHR/khrplatform.h
 )
-target_include_directories(glad PRIVATE
+
+target_include_directories(Glad PRIVATE
 	vendor/glad/include/
+)
+
+# imgui library
+set(IMGUI_SOURCE_FILES
+	vendor/imgui/imgui.cpp
+	vendor/imgui/imgui_demo.cpp
+	vendor/imgui/imgui_draw.cpp
+	vendor/imgui/imgui_tables.cpp
+	vendor/imgui/imgui_widgets.cpp
+)
+
+# sdl3 + opengl3 backends for imgui
+list(APPEND IMGUI_SOURCE_FILES
+	vendor/imgui/backends/imgui_impl_sdl3.cpp
+	vendor/imgui/backends/imgui_impl_opengl3.cpp
+)
+
+add_library(Imgui STATIC
+	${IMGUI_SOURCE_FILES}
+)
+
+target_include_directories(Imgui PRIVATE
+	vendor/imgui/
+	vendor/imgui/backends/
+	vendor/SDL/include/
 )
 
 set(SOURCE_FILES
@@ -53,16 +72,26 @@ list(APPEND SOURCE_FILES
 )
 
 add_executable(BudgetGB ${SOURCE_FILES})
+target_compile_features(BudgetGB PRIVATE cxx_std_17)
 
 target_include_directories(BudgetGB PRIVATE
+	src/
+	src/renderers/include/
+
 	vendor/fmt/include/
 	vendor/nlohmann/include/
 	vendor/glad/include/
-	src/renderers/include/
-	src/
+	vendor/imgui/
+	vendor/imgui/backends/
 )
 
-target_link_libraries(BudgetGB PRIVATE OpenGL::GL SDL3::SDL3 glad NlohmannJson fmt::fmt)
+target_link_libraries(BudgetGB PRIVATE 
+	Imgui
+	SDL3::SDL3 
+	Glad 
+	NlohmannJson 
+	fmt::fmt
+)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	target_compile_options(BudgetGB PRIVATE /W4)

@@ -1,3 +1,7 @@
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_opengl3.h"
+
 #include "glad/glad.h"
 #include "renderer.h"
 
@@ -31,7 +35,7 @@ void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 	}
 
 	// opengl 4.3 with glsl 4.30
-	// const char *glsl_version = "#version 430";
+	const char *glsl_version = "#version 430";
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -41,8 +45,7 @@ void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-	SDL_WindowFlags windowFlags = static_cast<SDL_WindowFlags>(SDL_WINDOW_OPENGL);
-	window = SDL_CreateWindow("Budget Gameboy", 600, 600, windowFlags);
+	window = SDL_CreateWindow("Budget Gameboy", 600, 600, SDL_WINDOW_OPENGL);
 	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
@@ -68,17 +71,57 @@ void RendererGB::init(SDL_Window *&window, RenderContext *&renderContext)
 
 	SDL_GL_SetSwapInterval(1); // vsync
 	SDL_Log("OpenGl Version: %s", (char*)glGetString(GL_VERSION));
+
+	// set up ImGui
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+	ImGui::StyleColorsDark();
+
+	ImGui_ImplSDL3_InitForOpenGL(window, glContext);
+	ImGui_ImplOpenGL3_Init(glsl_version);
+}
+
+void RendererGB::newFrame()
+{
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
+
 }
 
 void RendererGB::render(SDL_Window *window)
 {
+	ImGui::Render();
+	ImGuiIO& io = ImGui::GetIO();
+	glViewport(0, 0, (int) io.DisplaySize.x, (int) io.DisplaySize.y);
 	glClearColor(0.8784f, 0.9725f, 0.8156f, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		SDL_Window* backupCurrentWindow = SDL_GL_GetCurrentWindow();
+		SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+		SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
+	}
+
 	SDL_GL_SwapWindow(window);
 }
 
 void RendererGB::free(SDL_Window *&window, RenderContext *&renderContext)
 {
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
+
 	SDL_GL_DestroyContext(renderContext->glContext);
 	delete renderContext;
 	SDL_DestroyWindow(window);

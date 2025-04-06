@@ -5,3 +5,4 @@ bin/
 CMakeSettings.json
 dmg_boot.bin
 testRoms/
+imgui.ini

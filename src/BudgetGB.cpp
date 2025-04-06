@@ -1,3 +1,5 @@
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
 #include "BudgetGB.h"
 
 #include <cstdio>
@@ -27,6 +29,12 @@ void BudgetGB::run()
 	{
 		gbProcessEvent();
 
+		RendererGB::newFrame();
+
+		static bool flag = true;
+		if (flag)
+			ImGui::ShowDemoWindow(&flag);
+
 		m_cpu.runInstruction();
 
 		RendererGB::render(m_window);
@@ -38,6 +46,8 @@ void BudgetGB::gbProcessEvent()
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
+		ImGui_ImplSDL3_ProcessEvent(&event);
+		
 		if (event.type == SDL_EVENT_QUIT)
 			m_isRunning = false;
 		if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(m_window))
