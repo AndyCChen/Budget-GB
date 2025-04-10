@@ -72,15 +72,22 @@ set(SOURCE_FILES
 )
 
 list(APPEND SOURCE_FILES
-	src/renderers/opengl.cpp
+	src/renderers/opengl/opengl.cpp
+	src/renderers/opengl/shader.cpp
+	src/renderers/opengl/shader.h
 )
 
 add_executable(BudgetGB ${SOURCE_FILES})
 target_compile_features(BudgetGB PRIVATE cxx_std_17)
 
+if (APPLE)
+	target_compile_definitions(BudgetGB PRIVATE USE_GL_VERSION_410)
+endif(APPLE)
+
 target_include_directories(BudgetGB PRIVATE
 	src/
 	src/renderers/include/
+	src/renderers/
 
 	vendor/fmt/include/
 	vendor/nlohmann/include/

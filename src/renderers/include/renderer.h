@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SDL3/SDL.h"
+#include <cstdint>
+#include <vector>
 
 //  Handles specific rendering operations such as for openGL and (in the future maybe) metal api
 namespace RendererGB
@@ -14,10 +16,11 @@ typedef struct RenderContext RenderContext;
  * @param window 
  * @param renderContext 
  */
-void init(SDL_Window *&window, RenderContext *&renderContext);
+void initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 
 void newFrame();
-void render(SDL_Window *window);
+void drawMainViewport(std::vector<uint8_t> &pixelBuffer, RenderContext *renderContext);
+void endFrame(SDL_Window *window);
 
 /**
  * @brief Frees the main window and ImGui resources.
@@ -25,5 +28,5 @@ void render(SDL_Window *window);
  * @param window 
  * @param renderContext 
  */
-void free(SDL_Window *&window, RenderContext *&renderContext);
+void freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 } // namespace RendererGB
