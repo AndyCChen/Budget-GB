@@ -12,15 +12,12 @@
 #include "sm83.h"
 #include "utils/vec.h"
 
-namespace BudgetGBconstants
-{
-inline constexpr std::size_t LCD_WIDTH  = 160;
-inline constexpr std::size_t LCD_HEIGHT = 144;
-} // namespace BudgetGBconstants
-
 class BudgetGB
 {
   public:
+	static constexpr std::size_t LCD_WIDTH  = 160;
+	static constexpr std::size_t LCD_HEIGHT = 144;
+
 	BudgetGB();
 	BudgetGB(const std::string &romPath);
 

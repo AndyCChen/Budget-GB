@@ -4,8 +4,6 @@
 
 #include <random>
 
-using namespace BudgetGBconstants;
-
 BudgetGB::BudgetGB() : m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);

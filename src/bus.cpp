@@ -1,8 +1,6 @@
 #include "bus.h"
 #include "fmt/base.h"
 
-using namespace BusConstants;
-
 Bus::Bus(Cartridge &cartridge, BusMode mode) : m_cartridge(cartridge)
 {
 	m_mode = mode;

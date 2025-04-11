@@ -145,7 +145,7 @@ void RendererGB::newFrame()
 void RendererGB::drawMainViewport(std::vector<Utils::vec3> &pixelBuffer, RenderContext *renderContext)
 {
 	glBindTexture(GL_TEXTURE_2D, renderContext->mainViewport.m_viewportTexture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGBconstants::LCD_WIDTH, BudgetGBconstants::LCD_HEIGHT, GL_RGB,
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, GL_RGB,
 	                GL_UNSIGNED_BYTE, pixelBuffer.data());
 
 	renderContext->mainViewport.m_viewportShader.useProgram();
@@ -188,8 +188,6 @@ namespace
 GbMainViewport::GbMainViewport()
 	: m_viewportShader("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/viewport.frag")
 {
-	using namespace BudgetGBconstants;
-
 	// clang-format off
 	// quad vertices with texure coordinates
 	float quad[] =
@@ -231,7 +229,7 @@ GbMainViewport::GbMainViewport()
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, LCD_WIDTH, LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
