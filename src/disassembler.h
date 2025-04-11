@@ -11,7 +11,7 @@
 
 struct DisassembledInstruction
 {
-	uint16_t m_opcodeAddress;
+	uint16_t    m_opcodeAddress;
 	std::string m_opcodeBytes;
 	std::string m_opcodeString;
 
@@ -24,7 +24,7 @@ struct DisassembledInstruction
 
 class Disassembler
 {
-public:
+  public:
 	Disassembler(Bus &bus) : m_bus(bus)
 	{
 		m_programCounter = 0;
@@ -44,11 +44,11 @@ public:
 
 	void logToConsole();
 
-private:
-	Bus &m_bus;
+  private:
+	Bus     &m_bus;
 	uint16_t m_programCounter;
 
-	std::size_t m_bufferPosition;
+	std::size_t                          m_bufferPosition;
 	std::vector<DisassembledInstruction> m_buffer;
 
 	uint8_t fetch_n8()
@@ -61,7 +61,7 @@ private:
 	/**
 	 * @brief Fetch 2 byte values stored in little endian order.
 	 *
-	 * @return 
+	 * @return
 	 */
 	uint16_t fetch_n16()
 	{
@@ -74,7 +74,7 @@ private:
 	/**
 	 * @brief Gets the relative jump address for JR instructions
 	 *
-	 * @return 
+	 * @return
 	 */
 	uint16_t computeRelativeJump()
 	{
@@ -96,13 +96,11 @@ private:
 
 	template <typename... T> void formatToOpcodeBytes(fmt::format_string<T...> format, T &&...args)
 	{
-		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeBytes), format,
-					   std::forward<T>(args)...);
+		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeBytes), format, std::forward<T>(args)...);
 	}
 
 	template <typename... T> void formatToOpcodeString(fmt::format_string<T...> format, T &&...args)
 	{
-		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeString), format,
-					   std::forward<T>(args)...);
+		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeString), format, std::forward<T>(args)...);
 	}
 };

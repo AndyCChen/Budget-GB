@@ -5,18 +5,18 @@
 #include <vector>
 
 #include "SDL3/SDL.h"
-#include "utils/vec.h"
 #include "bus.h"
 #include "cartridge.h"
 #include "disassembler.h"
 #include "renderer.h"
 #include "sm83.h"
+#include "utils/vec.h"
 
 namespace BudgetGBconstants
 {
 inline constexpr std::size_t LCD_WIDTH  = 160;
 inline constexpr std::size_t LCD_HEIGHT = 144;
-} // namespace BudgetGBConstants
+} // namespace BudgetGBconstants
 
 class BudgetGB
 {

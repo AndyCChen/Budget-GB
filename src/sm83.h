@@ -12,7 +12,7 @@ class Sm83
 {
 	friend class Sm83JsonTest;
 
-private:
+  private:
 	struct Sm83FlagsRegister
 	{
 		unsigned int Z : 1; // bit 7, zero flag
@@ -44,8 +44,8 @@ private:
 
 	struct Sm83RegisterAF
 	{
-		uint8_t accumulator;	 // accumulator
-		Sm83FlagsRegister flags; // cpu flags
+		uint8_t           accumulator; // accumulator
+		Sm83FlagsRegister flags;       // cpu flags
 	};
 
 	// general purpose registers
@@ -55,14 +55,14 @@ private:
 		uint8_t lo;
 	};
 
-public:
-	uint16_t m_programCounter;
-	uint16_t m_stackPointer;
+  public:
+	uint16_t       m_programCounter;
+	uint16_t       m_stackPointer;
 	Sm83RegisterAF m_registerAF;
-	Sm83Register m_registerBC;
-	Sm83Register m_registerDE;
-	Sm83Register m_registerHL;
-	bool m_ime; // interupt master enable
+	Sm83Register   m_registerBC;
+	Sm83Register   m_registerDE;
+	Sm83Register   m_registerHL;
+	bool           m_ime; // interupt master enable
 
 	bool m_logEnable;
 
@@ -73,8 +73,8 @@ public:
 	 */
 	void runInstruction();
 
-private:
-	Bus &m_bus;
+  private:
+	Bus          &m_bus;
 	Disassembler &m_disassembler;
 
 	/**

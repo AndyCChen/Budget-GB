@@ -7,7 +7,7 @@ void Disassembler::instructionStep()
 	m_buffer[m_bufferPosition].clear();
 
 	m_buffer[m_bufferPosition].m_opcodeAddress = m_programCounter;
-	uint8_t opcode = fetch_n8();
+	uint8_t opcode                             = fetch_n8();
 	disassembleOpcode(opcode);
 }
 

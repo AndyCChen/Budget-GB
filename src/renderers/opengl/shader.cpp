@@ -6,7 +6,7 @@
 
 Shader::Shader(std::string pathToVertexShader, const std::string &pathTofragmentShader)
 {
-	GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
+	GLuint vertexShaderID   = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
 	if (compileShader(vertexShaderID, pathToVertexShader) && compileShader(fragmentShaderID, pathTofragmentShader))
@@ -18,16 +18,16 @@ Shader::Shader(std::string pathToVertexShader, const std::string &pathTofragment
 
 		glLinkProgram(m_shaderProgramID);
 
-		GLint status;
+		GLint             status;
 		constexpr GLsizei BUFFER_SIZE = 512;
-		GLchar infoLog[BUFFER_SIZE];
+		GLchar            infoLog[BUFFER_SIZE];
 		glGetProgramiv(m_shaderProgramID, GL_LINK_STATUS, &status);
 
 		if (status == GL_FALSE)
 		{
 			glGetProgramInfoLog(m_shaderProgramID, BUFFER_SIZE, nullptr, infoLog);
 			fmt::println(stderr, "Failed to link shaders {}\n{}\n{}", pathToVertexShader, pathTofragmentShader,
-						 infoLog);
+			             infoLog);
 
 			// delete shader program when linking fails
 			glDeleteProgram(m_shaderProgramID);
@@ -69,14 +69,14 @@ bool Shader::compileShader(GLuint shaderID, const std::string &pathToShader)
 		return false;
 
 	const GLchar *sources[] = {shaderVersion.c_str(), shaderSource.c_str()};
-	GLint sourceLengths[] = {static_cast<GLint>(shaderVersion.length()), static_cast<GLint>(shaderSource.length())};
+	GLint sourceLengths[]   = {static_cast<GLint>(shaderVersion.length()), static_cast<GLint>(shaderSource.length())};
 
 	glShaderSource(shaderID, 2, sources, sourceLengths);
 	glCompileShader(shaderID);
 
-	GLint status;
+	GLint             status;
 	constexpr GLsizei BUFFER_SIZE = 512;
-	GLchar infoLog[BUFFER_SIZE];
+	GLchar            infoLog[BUFFER_SIZE];
 	glGetShaderiv(shaderID, GL_COMPILE_STATUS, &status);
 
 	if (status == GL_FALSE)

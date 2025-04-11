@@ -7,19 +7,18 @@
 
 class Sm83JsonTest
 {
-public:
-	static bool runJsonTest(Sm83& cpu, const std::string& path);
+  public:
+	static bool runJsonTest(Sm83 &cpu, const std::string &path);
 	static bool runAllJsonTests(Sm83 &cpu);
 
-private:
-
+  private:
 	static void initState(Sm83 &cpu, nlohmann::json &item);
 
 	/**
 	 * @brief check state of cpu against expected json output
-	 * @param gameboy 
-	 * @param item 
-	 * @return 
+	 * @param gameboy
+	 * @param item
+	 * @return
 	 */
 	static bool checkState(Sm83 &cpu, nlohmann::json &item);
 

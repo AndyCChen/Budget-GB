@@ -6,7 +6,7 @@
 
 class Shader
 {
-public:
+  public:
 	Shader(std::string pathToVertexShader, const std::string &pathTofragmentShader);
 
 	~Shader()
@@ -19,8 +19,9 @@ public:
 		glUseProgram(m_shaderProgramID);
 	}
 
-private:
+  private:
 	GLuint m_shaderProgramID;
-	bool loadShaderFromFile(const std::string& shaderPath, std::string& shader);
-	bool compileShader(GLuint shaderID, const std::string& pathToShader);
+
+	bool loadShaderFromFile(const std::string &shaderPath, std::string &shader);
+	bool compileShader(GLuint shaderID, const std::string &pathToShader);
 };

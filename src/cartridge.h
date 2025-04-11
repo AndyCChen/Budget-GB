@@ -14,7 +14,7 @@ class Cartridge
 		m_externalRam.resize(0);
 	}
 
-	bool loadRomFromPath(const std::string &path);
+	bool    loadRomFromPath(const std::string &path);
 	uint8_t cartridgeRead(uint16_t position);
 
   private:

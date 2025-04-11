@@ -4,13 +4,13 @@
 Sm83::Sm83(Bus &bus, Disassembler &disassembler) : m_bus(bus), m_disassembler(disassembler)
 {
 	m_programCounter = 0x0100;
-	m_stackPointer = 0xFFFE;
+	m_stackPointer   = 0xFFFE;
 
 	m_registerAF.accumulator = 0x1;
-	m_registerAF.flags.Z = 1;
-	m_registerAF.flags.N = 0;
-	m_registerAF.flags.H = 0;
-	m_registerAF.flags.C = 0;
+	m_registerAF.flags.Z     = 1;
+	m_registerAF.flags.N     = 0;
+	m_registerAF.flags.H     = 0;
+	m_registerAF.flags.C     = 0;
 
 	m_registerBC.hi = 0x00;
 	m_registerBC.lo = 0x13;
@@ -2094,7 +2094,7 @@ void Sm83::decodeExecutePrefixedMode(uint8_t opcode)
 
 void Sm83::LDH_indirect_n8_A()
 {
-	uint8_t offset = cpuFetch();
+	uint8_t  offset  = cpuFetch();
 	uint16_t address = 0xFF00 + offset;
 	m_bus.cpuWrite(address, m_registerAF.accumulator);
 }
@@ -2107,14 +2107,14 @@ void Sm83::LDH_indirect_C_A()
 
 void Sm83::LDH_A_indirect_n8()
 {
-	uint8_t offset = cpuFetch();
-	uint16_t address = 0xFF00 + offset;
+	uint8_t  offset          = cpuFetch();
+	uint16_t address         = 0xFF00 + offset;
 	m_registerAF.accumulator = m_bus.cpuRead(address);
 }
 
 void Sm83::LDH_A_indirect_C()
 {
-	uint16_t address = 0xFF00 + m_registerBC.lo;
+	uint16_t address         = 0xFF00 + m_registerBC.lo;
 	m_registerAF.accumulator = m_bus.cpuRead(address);
 }
 
@@ -2126,8 +2126,8 @@ void Sm83::LD_SP_HL()
 
 void Sm83::LD_HL_SP_i8()
 {
-	uint8_t offset = cpuFetch();
-	uint16_t sum = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(offset));
+	uint8_t  offset = cpuFetch();
+	uint16_t sum    = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(offset));
 
 	m_registerAF.flags.Z = 0;
 	m_registerAF.flags.N = 0;
@@ -2157,8 +2157,8 @@ void Sm83::LD_r16_n16(Sm83Register &dest)
 
 void Sm83::LD_SP_n16()
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t lo     = cpuFetch();
+	uint8_t hi     = cpuFetch();
 	m_stackPointer = lo | (hi << 8);
 }
 void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
@@ -2169,29 +2169,29 @@ void Sm83::LD_indirect_r16_r8(Sm83Register &dest, uint8_t &src)
 
 void Sm83::LD_indirect_n16_A()
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t  lo      = cpuFetch();
+	uint8_t  hi      = cpuFetch();
 	uint16_t address = lo | (hi << 8);
 	m_bus.cpuWrite(address, m_registerAF.accumulator);
 }
 
 void Sm83::LD_A_indirect_n16()
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
-	uint16_t address = lo | (hi << 8);
+	uint8_t  lo              = cpuFetch();
+	uint8_t  hi              = cpuFetch();
+	uint16_t address         = lo | (hi << 8);
 	m_registerAF.accumulator = m_bus.cpuRead(address);
 }
 
 void Sm83::LD_A_indirect_r16(Sm83Register &src)
 {
-	uint16_t address = (src.hi << 8) | src.lo;
+	uint16_t address         = (src.hi << 8) | src.lo;
 	m_registerAF.accumulator = m_bus.cpuRead(address);
 }
 
 void Sm83::LD_indirect_HL_n8()
 {
-	uint8_t value = cpuFetch();
+	uint8_t  value   = cpuFetch();
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
 	m_bus.cpuWrite(address, value);
 }
@@ -2199,7 +2199,7 @@ void Sm83::LD_indirect_HL_n8()
 void Sm83::LD_r8_indirect_HL(uint8_t &dest)
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	dest = m_bus.cpuRead(address);
+	dest             = m_bus.cpuRead(address);
 }
 
 void Sm83::LD_indirect_HLI_A()
@@ -2222,7 +2222,7 @@ void Sm83::LD_indirect_HLD_A()
 
 void Sm83::LD_A_indirect_HLI()
 {
-	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint16_t address         = (m_registerHL.hi << 8) | m_registerHL.lo;
 	m_registerAF.accumulator = m_bus.cpuRead(address);
 	address += 1;
 	m_registerHL.hi = (address >> 8) & 0xFF;
@@ -2231,7 +2231,7 @@ void Sm83::LD_A_indirect_HLI()
 
 void Sm83::LD_A_indirect_HLD()
 {
-	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint16_t address         = (m_registerHL.hi << 8) | m_registerHL.lo;
 	m_registerAF.accumulator = m_bus.cpuRead(address);
 	address -= 1;
 	m_registerHL.hi = (address >> 8) & 0xFF;
@@ -2241,8 +2241,8 @@ void Sm83::LD_A_indirect_HLD()
 void Sm83::LD_indirect_n16_SP()
 {
 	// fetch lo byte then hi byte
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t  lo      = cpuFetch();
+	uint8_t  hi      = cpuFetch();
 	uint16_t address = lo | (hi << 8);
 
 	// store lo byte the hi byte at next address
@@ -2262,8 +2262,8 @@ void Sm83::INC_r8(uint8_t &dest)
 void Sm83::INC_r16(Sm83Register &dest)
 {
 	uint16_t value = ((dest.hi << 8) | dest.lo) + 1;
-	dest.lo = value & 0xFF;
-	dest.hi = (value >> 8) & 0xFF;
+	dest.lo        = value & 0xFF;
+	dest.hi        = (value >> 8) & 0xFF;
 }
 
 void Sm83::INC_SP()
@@ -2274,7 +2274,7 @@ void Sm83::INC_SP()
 void Sm83::INC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t value = m_bus.cpuRead(address);
+	uint8_t  value   = m_bus.cpuRead(address);
 	INC_r8(value);
 	m_bus.cpuWrite(address, value);
 }
@@ -2300,7 +2300,7 @@ void Sm83::DEC_r16(Sm83Register &dest)
 void Sm83::DEC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t value = m_bus.cpuRead(address);
+	uint8_t  value   = m_bus.cpuRead(address);
 	DEC_r8(value);
 	m_bus.cpuWrite(address, value);
 }
@@ -2343,7 +2343,7 @@ void Sm83::RLA()
 {
 	uint16_t shiftedVal = m_registerAF.accumulator << 1;
 	shiftedVal |= m_registerAF.flags.C;
-	m_registerAF.flags.C = (0x100 & shiftedVal) >> 8;
+	m_registerAF.flags.C     = (0x100 & shiftedVal) >> 8;
 	m_registerAF.accumulator = static_cast<uint8_t>(shiftedVal);
 
 	m_registerAF.flags.Z = 0;
@@ -2355,7 +2355,7 @@ void Sm83::RRA()
 {
 	uint16_t shiftedVal = m_registerAF.accumulator >> 1;
 	shiftedVal |= m_registerAF.flags.C << 7;
-	m_registerAF.flags.C = m_registerAF.accumulator & 0x1;
+	m_registerAF.flags.C     = m_registerAF.accumulator & 0x1;
 	m_registerAF.accumulator = static_cast<uint8_t>(shiftedVal);
 
 	m_registerAF.flags.Z = 0;
@@ -2366,7 +2366,7 @@ void Sm83::RRA()
 void Sm83::RLC_r8(uint8_t &dest)
 {
 	m_registerAF.flags.C = (dest & 0x80) >> 7;
-	dest = dest << 1;
+	dest                 = dest << 1;
 	dest |= m_registerAF.flags.C;
 
 	m_registerAF.flags.Z = dest == 0;
@@ -2377,7 +2377,7 @@ void Sm83::RLC_r8(uint8_t &dest)
 void Sm83::RLC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	RLC_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2385,7 +2385,7 @@ void Sm83::RLC_indirect_HL()
 void Sm83::RRC_r8(uint8_t &dest)
 {
 	m_registerAF.flags.C = dest & 0x1;
-	dest = dest >> 1;
+	dest                 = dest >> 1;
 	dest |= m_registerAF.flags.C << 7;
 
 	m_registerAF.flags.Z = dest == 0;
@@ -2396,7 +2396,7 @@ void Sm83::RRC_r8(uint8_t &dest)
 void Sm83::RRC_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	RRC_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2409,13 +2409,13 @@ void Sm83::RL_r8(uint8_t &dest)
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
 	m_registerAF.flags.Z = shiftedValue == 0;
-	dest = shiftedValue;
+	dest                 = shiftedValue;
 }
 
 void Sm83::RL_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	RL_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2428,13 +2428,13 @@ void Sm83::RR_r8(uint8_t &dest)
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
 	m_registerAF.flags.Z = shiftedValue == 0;
-	dest = shiftedValue;
+	dest                 = shiftedValue;
 }
 
 void Sm83::RR_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	RR_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2442,7 +2442,7 @@ void Sm83::RR_indirect_HL()
 void Sm83::SLA_r8(uint8_t &dest)
 {
 	m_registerAF.flags.C = dest >> 7;
-	dest = dest << 1;
+	dest                 = dest << 1;
 	m_registerAF.flags.Z = dest == 0;
 	m_registerAF.flags.H = 0;
 	m_registerAF.flags.N = 0;
@@ -2451,7 +2451,7 @@ void Sm83::SLA_r8(uint8_t &dest)
 void Sm83::SLA_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	SLA_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2459,7 +2459,7 @@ void Sm83::SLA_indirect_HL()
 void Sm83::SRA_r8(uint8_t &dest)
 {
 	m_registerAF.flags.C = dest & 0x1;
-	dest = (dest & 0x80) | (dest >> 1);
+	dest                 = (dest & 0x80) | (dest >> 1);
 	m_registerAF.flags.Z = dest == 0;
 	m_registerAF.flags.H = 0;
 	m_registerAF.flags.N = 0;
@@ -2468,7 +2468,7 @@ void Sm83::SRA_r8(uint8_t &dest)
 void Sm83::SRA_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	SRA_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2476,7 +2476,7 @@ void Sm83::SRA_indirect_HL()
 void Sm83::SRL_r8(uint8_t &dest)
 {
 	m_registerAF.flags.C = dest & 0x1;
-	dest = dest >> 1;
+	dest                 = dest >> 1;
 	m_registerAF.flags.Z = dest == 0;
 	m_registerAF.flags.H = 0;
 	m_registerAF.flags.N = 0;
@@ -2485,14 +2485,14 @@ void Sm83::SRL_r8(uint8_t &dest)
 void Sm83::SRL_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	SRL_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
 
 void Sm83::SWAP_r8(uint8_t &dest)
 {
-	dest = (dest >> 4) | (dest << 4);
+	dest                 = (dest >> 4) | (dest << 4);
 	m_registerAF.flags.Z = dest == 0;
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = 0;
@@ -2502,7 +2502,7 @@ void Sm83::SWAP_r8(uint8_t &dest)
 void Sm83::SWAP_indirect_HL()
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	SWAP_r8(dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2523,8 +2523,8 @@ void Sm83::ADD_SP_i8()
 
 void Sm83::ADD_HL_r16(Sm83Register &operand)
 {
-	uint16_t hl = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint16_t op = (operand.hi << 8) | operand.lo;
+	uint16_t hl  = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint16_t op  = (operand.hi << 8) | operand.lo;
 	uint32_t sum = hl + op;
 
 	// set half carry when lower 12 bit sum is greater than 0xFFF (aka overflowed)
@@ -2538,7 +2538,7 @@ void Sm83::ADD_HL_r16(Sm83Register &operand)
 
 void Sm83::ADD_HL_SP()
 {
-	uint16_t hl = (m_registerHL.hi << 8) | m_registerHL.lo;
+	uint16_t hl  = (m_registerHL.hi << 8) | m_registerHL.lo;
 	uint32_t sum = hl + m_stackPointer;
 
 	// set half carry when lower 12 bit sum is greater than 0xFFF (aka overflowed)
@@ -2678,8 +2678,8 @@ void Sm83::JR_CC_i8(bool condition)
 
 void Sm83::JP_CC_n16(bool condition)
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t  lo      = cpuFetch();
+	uint8_t  hi      = cpuFetch();
 	uint16_t address = lo | (hi << 8);
 
 	if (condition)
@@ -2691,8 +2691,8 @@ void Sm83::JP_CC_n16(bool condition)
 
 void Sm83::JP_n16()
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t  lo      = cpuFetch();
+	uint8_t  hi      = cpuFetch();
 	uint16_t address = lo | (hi << 8);
 
 	m_bus.cpuTickM();
@@ -2737,8 +2737,8 @@ void Sm83::DAA()
 void Sm83::CPL()
 {
 	m_registerAF.accumulator = ~m_registerAF.accumulator;
-	m_registerAF.flags.N = 1;
-	m_registerAF.flags.H = 1;
+	m_registerAF.flags.N     = 1;
+	m_registerAF.flags.H     = 1;
 }
 
 void Sm83::SCF()
@@ -2870,8 +2870,8 @@ void Sm83::POP_r16(Sm83Register &dest)
 {
 	uint8_t lo = m_bus.cpuRead(m_stackPointer++);
 	uint8_t hi = m_bus.cpuRead(m_stackPointer++);
-	dest.lo = lo;
-	dest.hi = hi;
+	dest.lo    = lo;
+	dest.hi    = hi;
 }
 
 void Sm83::POP_AF()
@@ -2899,8 +2899,8 @@ void Sm83::PUSH_AF()
 
 void Sm83::CALL_n16()
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t  lo          = cpuFetch();
+	uint8_t  hi          = cpuFetch();
 	uint16_t callAddress = lo | (hi << 8);
 
 	m_bus.cpuTickM();
@@ -2914,8 +2914,8 @@ void Sm83::CALL_n16()
 
 void Sm83::CALL_CC_n16(bool condition)
 {
-	uint8_t lo = cpuFetch();
-	uint8_t hi = cpuFetch();
+	uint8_t  lo          = cpuFetch();
+	uint8_t  hi          = cpuFetch();
 	uint16_t callAddress = lo | (hi << 8);
 
 	if (condition)
@@ -2949,7 +2949,7 @@ void Sm83::BIT_r8(BitSelect b, uint8_t dest)
 void Sm83::BIT_indirect_HL(BitSelect b)
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	BIT_r8(b, dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2962,7 +2962,7 @@ void Sm83::RES_r8(BitSelect b, uint8_t &dest)
 void Sm83::RES_indirect_HL(BitSelect b)
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	RES_r8(b, dest);
 	m_bus.cpuWrite(address, dest);
 }
@@ -2975,7 +2975,7 @@ void Sm83::SET_r8(BitSelect b, uint8_t &dest)
 void Sm83::SET_indirect_HL(BitSelect b)
 {
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
-	uint8_t dest = m_bus.cpuRead(address);
+	uint8_t  dest    = m_bus.cpuRead(address);
 	SET_r8(b, dest);
 	m_bus.cpuWrite(address, dest);
 }
