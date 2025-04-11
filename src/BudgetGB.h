@@ -12,8 +12,8 @@
 #include "sm83.h"
 
 namespace BudgetGBConstants {
-inline constexpr uint8_t LCD_WIDTH = 160;
-inline constexpr uint8_t LCD_HEIGHT = 144;
+inline constexpr std::size_t LCD_WIDTH = 160;
+inline constexpr std::size_t LCD_HEIGHT = 144;
 }
 
 class BudgetGB

@@ -20,6 +20,7 @@ struct GbMainViewport
 	Shader m_viewportShader;
 
 	GbMainViewport();
+	~GbMainViewport();
 	void draw();
 };
 
@@ -153,9 +154,6 @@ void RendererGB::endFrame(SDL_Window *window)
 {
 	ImGui::Render();
 	ImGuiIO &io = ImGui::GetIO();
-	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-	glClearColor(0.8784f, 0.9725f, 0.8156f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -181,6 +179,9 @@ void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
+
+namespace
+{
 
 GbMainViewport::GbMainViewport()
 	: m_viewportShader("resources/shaders/opengl/screen.vert", "resources/shaders/opengl/screen.frag")
@@ -211,7 +212,7 @@ GbMainViewport::GbMainViewport()
 	uint8_t *colorBuffer = new uint8_t[static_cast<std::size_t>(LCD_WIDTH * LCD_HEIGHT * 3)];
 	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
 
-	for (std::size_t i = 0; i < LCD_WIDTH * LCD_HEIGHT; i += 3)
+	for (std::size_t i = 0; i < LCD_WIDTH * LCD_HEIGHT * 3; i += 3)
 	{
 		unsigned char colorIdx = distrib(gen);
 		colorBuffer[i + 0] = colorPallete[colorIdx][0];
@@ -230,7 +231,7 @@ GbMainViewport::GbMainViewport()
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)3);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_viewportEBO);
@@ -249,19 +250,20 @@ GbMainViewport::GbMainViewport()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, LCD_WIDTH, LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, colorBuffer);
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
 
-	delete[] colorBuffer;
+GbMainViewport::~GbMainViewport()
+{
+	
 }
 
 void GbMainViewport::draw()
 {
+	glClear(GL_COLOR_BUFFER_BIT);
 	glBindVertexArray(m_viewportVAO);
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
-
-namespace
-{
 
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
 									 const GLchar *message, const void *userParam)
