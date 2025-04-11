@@ -7,7 +7,6 @@
 #include "renderer.h"
 #include "shader.h"
 
-#include <random>
 #include <string>
 
 namespace
@@ -28,7 +27,7 @@ struct GbMainViewport
 
 struct RendererGB::RenderContext
 {
-	SDL_GLContext glContext;
+	SDL_GLContext  glContext;
 	GbMainViewport mainViewport;
 
 	RenderContext()
@@ -46,12 +45,11 @@ struct RendererGB::RenderContext
 namespace
 {
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
-									 const GLchar *message, const void *userParam);
+                                     const GLchar *message, const void *userParam);
 } // namespace
 
 void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
 {
-
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 	{
 		SDL_LogError(0, "Failed to init SDL video! SDL error: %s", SDL_GetError());
@@ -133,7 +131,7 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 #endif
 
-	renderContext = new RenderContext;
+	renderContext            = new RenderContext;
 	renderContext->glContext = glContext;
 }
 
@@ -144,8 +142,12 @@ void RendererGB::newFrame()
 	ImGui::NewFrame();
 }
 
-void RendererGB::drawMainViewport(std::vector<uint8_t> &pixelBuffer, RenderContext *renderContext)
+void RendererGB::drawMainViewport(std::vector<Utils::vec3> &pixelBuffer, RenderContext *renderContext)
 {
+	glBindTexture(GL_TEXTURE_2D, renderContext->mainViewport.m_viewportTexture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGBconstants::LCD_WIDTH, BudgetGBconstants::LCD_HEIGHT, GL_RGB,
+	                GL_UNSIGNED_BYTE, pixelBuffer.data());
+
 	renderContext->mainViewport.m_viewportShader.useProgram();
 	renderContext->mainViewport.draw();
 }
@@ -158,7 +160,7 @@ void RendererGB::endFrame(SDL_Window *window)
 
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
-		SDL_Window *backupCurrentWindow = SDL_GL_GetCurrentWindow();
+		SDL_Window   *backupCurrentWindow  = SDL_GL_GetCurrentWindow();
 		SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
@@ -184,9 +186,9 @@ namespace
 {
 
 GbMainViewport::GbMainViewport()
-	: m_viewportShader("resources/shaders/opengl/screen.vert", "resources/shaders/opengl/screen.frag")
+	: m_viewportShader("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/viewport.frag")
 {
-	using namespace BudgetGBConstants;
+	using namespace BudgetGBconstants;
 
 	// clang-format off
 	// quad vertices with texure coordinates
@@ -204,21 +206,6 @@ GbMainViewport::GbMainViewport()
 		2, 3, 0,
 	};
 	// clang-format on
-
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> distrib(0, 4);
-
-	uint8_t *colorBuffer = new uint8_t[static_cast<std::size_t>(LCD_WIDTH * LCD_HEIGHT * 3)];
-	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
-
-	for (std::size_t i = 0; i < LCD_WIDTH * LCD_HEIGHT * 3; i += 3)
-	{
-		unsigned char colorIdx = distrib(gen);
-		colorBuffer[i + 0] = colorPallete[colorIdx][0];
-		colorBuffer[i + 1] = colorPallete[colorIdx][1];
-		colorBuffer[i + 2] = colorPallete[colorIdx][2];
-	}
 
 	// set up buffers for main viewport mesh
 	glGenVertexArrays(1, &m_viewportVAO);
@@ -241,20 +228,15 @@ GbMainViewport::GbMainViewport()
 	// set up texture that will be rendered onto main viewport mesh
 	glGenTextures(1, &m_viewportTexture);
 
-	float borderColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, LCD_WIDTH, LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, LCD_WIDTH, LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 GbMainViewport::~GbMainViewport()
 {
-	
 }
 
 void GbMainViewport::draw()
@@ -266,7 +248,7 @@ void GbMainViewport::draw()
 }
 
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
-									 const GLchar *message, const void *userParam)
+                                     const GLchar *message, const void *userParam)
 {
 	(void)userParam;
 	(void)length;
@@ -368,7 +350,7 @@ void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLen
 	}
 
 	SDL_LogError(0, "%d: %s of %s severity, raised from %s: %s", id, _type.c_str(), _severity.c_str(), _source.c_str(),
-				 message);
+	             message);
 }
 
 } // namespace

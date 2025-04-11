@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SDL3/SDL.h"
+#include "utils/vec.h"
+
 #include <cstdint>
 #include <vector>
 
@@ -13,20 +15,20 @@ typedef struct RenderContext RenderContext;
 /**
  * @brief Initializes the main window with sdl3 and sets up ImGui context.
  *
- * @param window 
- * @param renderContext 
+ * @param window
+ * @param renderContext
  */
 void initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 
 void newFrame();
-void drawMainViewport(std::vector<uint8_t> &pixelBuffer, RenderContext *renderContext);
+void drawMainViewport(std::vector<Utils::vec3> &pixelBuffer, RenderContext *renderContext);
 void endFrame(SDL_Window *window);
 
 /**
  * @brief Frees the main window and ImGui resources.
  *
- * @param window 
- * @param renderContext 
+ * @param window
+ * @param renderContext
  */
 void freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 } // namespace RendererGB

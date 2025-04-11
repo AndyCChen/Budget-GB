@@ -1,5 +1,5 @@
 BasedOnStyle: Microsoft
-AccessModifierOffset: -4
-UseTab: Always
-IndentWidth: 4
-TabWidth: 4
+UseTab: AlignWithSpaces
+IndentAccessModifiers: false
+AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: true

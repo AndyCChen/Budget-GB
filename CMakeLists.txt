@@ -69,6 +69,7 @@ set(SOURCE_FILES
 	src/disassembler.cpp
 	src/disassembler.h
 	src/renderers/include/renderer.h
+	src/utils/vec.h
 )
 
 list(APPEND SOURCE_FILES

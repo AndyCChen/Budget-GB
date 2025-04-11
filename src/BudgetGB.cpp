@@ -2,16 +2,20 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 
+#include <random>
+
+using namespace BudgetGBconstants;
+
 BudgetGB::BudgetGB() : m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
 {
-	m_lcdPixels.resize(BudgetGBConstants::LCD_WIDTH * BudgetGBConstants::LCD_HEIGHT * 3);
+	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 	RendererGB::initWindowWithRenderer(m_window, m_renderContext);
 }
 
 BudgetGB::BudgetGB(const std::string &romPath)
 	: m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
 {
-	m_lcdPixels.resize(BudgetGBConstants::LCD_WIDTH * BudgetGBConstants::LCD_HEIGHT * 3);
+	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 	RendererGB::initWindowWithRenderer(m_window, m_renderContext);
 	m_cartridge.loadRomFromPath(romPath);
 }
@@ -23,9 +27,24 @@ BudgetGB::~BudgetGB()
 
 void BudgetGB::run()
 {
+	std::random_device              rd;
+	std::mt19937                    gen(rd());
+	std::uniform_int_distribution<> distrib(0, 4);
+
+	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
+
+	for (std::size_t i = 0; i < LCD_WIDTH * LCD_HEIGHT; ++i)
+	{
+		unsigned char colorIdx = distrib(gen);
+		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
+		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
+		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
+	}
+
 	while (m_isRunning)
 	{
 		gbProcessEvent();
+		m_cpu.runInstruction();
 
 		RendererGB::newFrame();
 
@@ -35,12 +54,13 @@ void BudgetGB::run()
 
 		if (m_openMenu)
 		{
-			ImGui::OpenPopup("group1");
+			ImGui::OpenPopup("Main Menu");
 			m_openMenu = false;
 		}
 
-		if (ImGui::BeginPopup("group1", ImGuiWindowFlags_NoMove))
+		if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
 		{
+			ImGui::SeparatorText("Menu");
 			if (ImGui::Button("Close me"))
 			{
 				ImGui::CloseCurrentPopup();
@@ -48,9 +68,7 @@ void BudgetGB::run()
 			ImGui::EndPopup();
 		}
 
-		m_cpu.runInstruction();
-		RendererGB::drawMainViewport(m_lcdPixels, m_renderContext);
-
+		RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
 		RendererGB::endFrame(m_window);
 	}
 }
