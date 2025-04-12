@@ -4,18 +4,16 @@
 
 #include <random>
 
-BudgetGB::BudgetGB() : m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
-{
-	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
-	RendererGB::initWindowWithRenderer(m_window, m_renderContext);
-}
-
 BudgetGB::BudgetGB(const std::string &romPath)
 	: m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 	RendererGB::initWindowWithRenderer(m_window, m_renderContext);
-	m_cartridge.loadRomFromPath(romPath);
+	
+	if (romPath != "")
+	{
+		m_cartridge.loadRomFromPath(romPath);
+	}
 }
 
 BudgetGB::~BudgetGB()
@@ -27,18 +25,16 @@ void BudgetGB::run()
 {
 	std::random_device              rd;
 	std::mt19937                    gen(rd());
-	std::uniform_int_distribution<> distrib(0, 4);
+	std::uniform_int_distribution<> palleteRange(0, 4);
+	std::uniform_int_distribution<> pixelBufferRange(0, (LCD_WIDTH * LCD_HEIGHT) - 1);
 
 	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
 
-	for (std::size_t i = 0; i < LCD_WIDTH * LCD_HEIGHT; ++i)
-	{
-		unsigned char colorIdx = distrib(gen);
-		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
-		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
-		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
-	}
+	float currentTime = SDL_GetTicks() / 1000.0f;
+	float previousTime = 0;
+	float deltaTime = 0;
 
+	bool showImGuiDemo = false;
 	while (m_isRunning)
 	{
 		gbProcessEvent();
@@ -46,9 +42,8 @@ void BudgetGB::run()
 
 		RendererGB::newFrame();
 
-		static bool flag = true;
-		if (flag)
-			ImGui::ShowDemoWindow(&flag);
+		if (showImGuiDemo)
+			ImGui::ShowDemoWindow(&showImGuiDemo);
 
 		if (m_openMenu)
 		{
@@ -66,8 +61,26 @@ void BudgetGB::run()
 			ImGui::EndPopup();
 		}
 
+		if (deltaTime > 0.5f)
+		{
+			deltaTime -= 0.5f;
+			for (std::size_t i = 0; i < (LCD_WIDTH * LCD_HEIGHT) / 3; ++i)
+			{
+				unsigned char colorIdx = palleteRange(gen);
+				std::size_t bufferIdx = pixelBufferRange(gen);
+				m_lcdPixelBuffer[bufferIdx][0] = colorPallete[colorIdx][0];
+				m_lcdPixelBuffer[bufferIdx][1] = colorPallete[colorIdx][1];
+				m_lcdPixelBuffer[bufferIdx][2] = colorPallete[colorIdx][2];
+			}
+		}
+
+
 		RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
 		RendererGB::endFrame(m_window);
+
+		previousTime = currentTime;
+		currentTime  = SDL_GetTicks() / 1000.0f;
+		deltaTime += currentTime - previousTime;
 	}
 }
 

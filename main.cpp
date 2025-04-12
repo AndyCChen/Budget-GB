@@ -2,6 +2,6 @@
 
 int main()
 {
-	BudgetGB gameboy("testRoms/11-op a,(hl).gb");
+	BudgetGB gameboy;
 	gameboy.run();
 }

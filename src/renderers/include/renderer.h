@@ -1,6 +1,5 @@
 #pragma once
 
-#include "SDL3/SDL.h"
 #include "utils/vec.h"
 
 #include <cstdint>
@@ -9,7 +8,7 @@
 //  Handles specific rendering operations such as for openGL and (in the future maybe) metal api
 namespace RendererGB
 {
-// opaque pointer to rendering context
+// opaque handle to rendering context
 typedef struct RenderContext RenderContext;
 
 /**
@@ -21,7 +20,7 @@ typedef struct RenderContext RenderContext;
 void initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 
 void newFrame();
-void drawMainViewport(std::vector<Utils::vec3> &pixelBuffer, RenderContext *renderContext);
+void drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext);
 void endFrame(SDL_Window *window);
 
 /**
