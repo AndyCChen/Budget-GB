@@ -2,6 +2,8 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 
+#include "glad/glad.h"
+
 #include <random>
 
 BudgetGB::BudgetGB(const std::string &romPath)
@@ -14,6 +16,20 @@ BudgetGB::BudgetGB(const std::string &romPath)
 	{
 		m_cartridge.loadRomFromPath(romPath);
 	}
+
+	std::random_device              rd;
+	std::mt19937                    gen(rd());
+	std::uniform_int_distribution<> palleteRange(0, 4);
+
+	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
+
+	for (std::size_t i = 0; i < (LCD_WIDTH * LCD_HEIGHT); ++i)
+	{
+		unsigned char colorIdx = palleteRange(gen);
+		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
+		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
+		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
+	}
 }
 
 BudgetGB::~BudgetGB()
@@ -23,18 +39,6 @@ BudgetGB::~BudgetGB()
 
 void BudgetGB::run()
 {
-	std::random_device              rd;
-	std::mt19937                    gen(rd());
-	std::uniform_int_distribution<> palleteRange(0, 4);
-	std::uniform_int_distribution<> pixelBufferRange(0, (LCD_WIDTH * LCD_HEIGHT) - 1);
-
-	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
-
-	float currentTime  = SDL_GetTicks() / 1000.0f;
-	float previousTime = 0;
-	float deltaTime    = 0;
-
-	bool showImGuiDemo = true;
 	while (m_isRunning)
 	{
 		gbProcessEvent();
@@ -42,8 +46,8 @@ void BudgetGB::run()
 
 		RendererGB::newFrame();
 
-		if (showImGuiDemo)
-			ImGui::ShowDemoWindow(&showImGuiDemo);
+		if (m_showImGuiDemo)
+			ImGui::ShowDemoWindow(&m_showImGuiDemo);
 
 		if (m_options.openMenu)
 		{
@@ -57,33 +61,55 @@ void BudgetGB::run()
 			ImGui::Selectable("Load ROM...");
 
 			if (ImGui::MenuItem("Toggle clamp", "", &m_options.toggleClamp) && m_options.toggleClamp)
-				clampViewport();
+				resizeViewport();
 
 			ImGui::Separator();
 			ImGui::Selectable("Quit");
 			ImGui::EndPopup();
 		}
 
-		if (deltaTime > 1.0f)
-		{
-			deltaTime -= 1.0f;
-			for (std::size_t i = 0; i < (LCD_WIDTH * LCD_HEIGHT) / 3; ++i)
-			{
-				unsigned char colorIdx         = palleteRange(gen);
-				std::size_t   bufferIdx        = pixelBufferRange(gen);
-				m_lcdPixelBuffer[bufferIdx][0] = colorPallete[colorIdx][0];
-				m_lcdPixelBuffer[bufferIdx][1] = colorPallete[colorIdx][1];
-				m_lcdPixelBuffer[bufferIdx][2] = colorPallete[colorIdx][2];
-			}
-		}
-
 		RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
 		RendererGB::endFrame(m_window);
-
-		previousTime = currentTime;
-		currentTime  = SDL_GetTicks() / 1000.0f;
-		deltaTime += currentTime - previousTime;
 	}
+}
+
+void BudgetGB::onUpdate()
+{
+	m_cpu.runInstruction();
+	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
+
+	//if (!m_resizing)
+	{
+		RendererGB::newFrame();
+
+		if (m_showImGuiDemo)
+			ImGui::ShowDemoWindow(&m_showImGuiDemo);
+
+		if (m_options.openMenu)
+		{
+			ImGui::OpenPopup("Main Menu");
+			m_options.openMenu = false;
+		}
+
+		if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
+		{
+			ImGui::Selectable("Pause");
+			ImGui::Selectable("Load ROM...");
+
+			if (ImGui::MenuItem("Toggle clamp", "", &m_options.toggleClamp) && m_options.toggleClamp)
+				resizeViewport();
+
+			ImGui::Separator();
+			ImGui::Selectable("Quit");
+			ImGui::EndPopup();
+		}
+
+		RendererGB::endFrame(m_window);
+	}
+
+	
+
+	SDL_GL_SwapWindow(m_window);
 }
 
 void BudgetGB::gbProcessEvent()
@@ -98,11 +124,15 @@ void BudgetGB::gbProcessEvent()
 		if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(m_window))
 			m_isRunning = false;
 
-		if (m_options.toggleClamp && event.type == SDL_EVENT_WINDOW_RESIZED &&
-		    event.window.windowID == SDL_GetWindowID(m_window))
+		/*if (event.type == SDL_EVENT_WINDOW_EXPOSED && event.window.windowID == SDL_GetWindowID(m_window))
+		    fmt::println("exposed");*/
+
+		if (event.type == SDL_EVENT_WINDOW_RESIZED && event.window.windowID == SDL_GetWindowID(m_window))
 		{
-			clampViewport();
+			resizeViewport();
 		}
+
+		
 
 		if (!ImGui::GetIO().WantCaptureMouse && event.type == SDL_EVENT_MOUSE_BUTTON_UP)
 			if (event.button.button == 3) // right mouse button
@@ -110,24 +140,47 @@ void BudgetGB::gbProcessEvent()
 	}
 }
 
-void BudgetGB::clampViewport()
+void BudgetGB::resizeViewport()
 {
-	int width, height;
-	SDL_GetWindowSize(m_window, &width, &height);
+	int resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
+	SDL_GetWindowSize(m_window, &resizedWidth, &resizedHeight);
+
+	// aspect ratio of gameboy display is 10:9
+
+	float widthRatio  = (float)resizedWidth / 10.0f;
+	float heightRatio = (float)resizedHeight / 9.0f;
+
+	Utils::struct_Vec2<uint32_t> viewportSize;
+
+	if (widthRatio < heightRatio)
+	{
+		viewportSize.x = resizedWidth;
+		viewportSize.y = static_cast<uint32_t>(widthRatio * 9);
+	}
+	else
+	{
+		viewportSize.y = resizedHeight;
+		viewportSize.x = static_cast<uint32_t>(heightRatio * 10);
+	}
+
+	gl_viewportX = (resizedWidth - viewportSize.x) / 2;
+	gl_viewportY = (resizedHeight - viewportSize.y) / 2;
+
+	glViewport(gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
 
 	// clamp window size to perfectly fit the 10:9 aspect ratio if below threshold
-	float calcThreshold = SDL_fabsf((width / 10.0f) - (height / 9.0f));
-
-	if (calcThreshold < 2.5f)
+	if (false)
 	{
-		float widthRatio  = (float)width / 10.0f;
-		float heightRatio = (float)height / 9.0f;
+		float calcThreshold = SDL_fabsf((resizedWidth / 10.0f) - (resizedHeight / 9.0f));
 
-		if (widthRatio < heightRatio)
-			height = static_cast<uint32_t>(widthRatio * 9);
-		else
-			width = static_cast<uint32_t>(heightRatio * 10);
+		if (calcThreshold < 2.5f)
+		{
+			if (widthRatio < heightRatio)
+				resizedHeight = static_cast<uint32_t>(widthRatio * 9);
+			else
+				resizedWidth = static_cast<uint32_t>(heightRatio * 10);
 
-		SDL_SetWindowSize(m_window, width, height);
+			SDL_SetWindowSize(m_window, resizedWidth, resizedHeight);
+		}
 	}
 }

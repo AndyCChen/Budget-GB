@@ -18,7 +18,7 @@ typedef struct RenderContext RenderContext;
  * @param window
  * @param renderContext
  */
-void initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
+bool initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 
 void newFrame();
 void drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext);

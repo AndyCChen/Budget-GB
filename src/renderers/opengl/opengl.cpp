@@ -53,12 +53,12 @@ struct RendererGB::RenderContext
 	}
 };
 
-void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
+bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
 {
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 	{
 		SDL_LogError(0, "Failed to init SDL video! SDL error: %s", SDL_GetError());
-		std::exit(1);
+		return false;
 	}
 
 #ifdef USE_GL_VERSION_410
@@ -94,7 +94,7 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
-		std::exit(1);
+		return false;
 	}
 
 	SDL_SetWindowMinimumSize(window, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT);
@@ -104,7 +104,7 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	if (!glContext)
 	{
 		SDL_LogError(0, "Failed to create openGL context! SDL error: %s", SDL_GetError());
-		std::exit(1);
+		return false;
 	}
 
 	SDL_GL_MakeCurrent(window, glContext);
@@ -112,7 +112,7 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
 		SDL_LogError(0, "Failed to load initialize glad!");
-		std::exit(1);
+		return false;
 	}
 
 	SDL_GL_SetSwapInterval(1); // vsync
@@ -126,8 +126,10 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	io.ConfigViewportsNoDefaultParent = true;
-	io.Fonts->AddFontFromFileTTF("resources/fonts/MononokiNerdFont-Regular.ttf", 18.0);
+	io.ConfigViewportsNoAutoMerge = true;
+	//io.ConfigViewportsNoDefaultParent = true;
+
+	io.Fonts->AddFontFromFileTTF("resources/fonts/MononokiNerdFont-Regular.ttf", 16.0);
 	ImGui::StyleColorsLight();
 
 	ImGui_ImplSDL3_InitForOpenGL(window, glContext);
@@ -141,8 +143,10 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 
 	renderContext = new RenderContext; // create renderContext only after window and opengl context are setup
 	renderContext->m_glContext = glContext;
-	SDL_AddEventWatch(eventWatchCallback, (void *)renderContext);
+	// SDL_AddEventWatch(eventWatchCallback, (void *)renderContext);
 	SDL_ShowWindow(window);
+
+	return true;
 }
 
 void RendererGB::newFrame()
@@ -164,6 +168,7 @@ void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer,
 
 void RendererGB::endFrame(SDL_Window *window)
 {
+
 	ImGui::Render();
 	ImGuiIO &io = ImGui::GetIO();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -177,7 +182,7 @@ void RendererGB::endFrame(SDL_Window *window)
 		SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
 	}
 
-	SDL_GL_SwapWindow(window);
+	
 }
 
 void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
@@ -265,6 +270,32 @@ GbMainViewport::~GbMainViewport()
 
 void GbMainViewport::draw()
 {
+	// SDL_Window *window = SDL_GL_GetCurrentWindow();
+
+	// int resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
+	// SDL_GetWindowSize(window, &resizedWidth, &resizedHeight);
+
+	//// aspect ratio of gameboy display is 10:9
+
+	// float widthRatio  = (float)resizedWidth / 10.0f;
+	// float heightRatio = (float)resizedHeight / 9.0f;
+	// Utils::struct_Vec2<uint32_t> viewportSize;
+
+	// if (widthRatio < heightRatio)
+	//{
+	//	viewportSize.x = resizedWidth;
+	//	viewportSize.y = static_cast<uint32_t>(widthRatio * 9);
+	// }
+	// else
+	//{
+	//	viewportSize.y = resizedHeight;
+	//	viewportSize.x = static_cast<uint32_t>(heightRatio * 10);
+	// }
+
+	// gl_viewportX = (resizedWidth - viewportSize.x) / 2;
+	// gl_viewportY = (resizedHeight - viewportSize.y) / 2;
+
+	// glViewport(gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
 	glClearColor(0.3f, 0.6f, 0.7f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glBindVertexArray(m_viewportVAO);
@@ -381,6 +412,9 @@ void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLen
 bool eventWatchCallback(void *userdata, SDL_Event *event)
 {
 	SDL_Window *window = SDL_GL_GetCurrentWindow();
+
+	if (event->type == SDL_EVENT_WINDOW_EXPOSED && event->window.windowID == SDL_GetWindowID(window))
+		fmt::println("exposed");
 
 	if (event->type == SDL_EVENT_WINDOW_RESIZED && event->window.windowID == SDL_GetWindowID(window))
 	{
