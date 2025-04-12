@@ -19,6 +19,8 @@ struct GbMainViewport
 	GLuint m_viewportVAO, m_viewportVBO, m_viewportEBO, m_viewportTexture;
 	Shader m_viewportShader;
 
+	bool m_windowResizeStart;
+
 	Utils::struct_Vec2<uint32_t> m_viewportSize;
 
 	GbMainViewport();
@@ -137,7 +139,7 @@ void RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 #endif
 
-	renderContext              = new RenderContext; // create renderContext only after window and opengl context are setup
+	renderContext = new RenderContext; // create renderContext only after window and opengl context are setup
 	renderContext->m_glContext = glContext;
 	SDL_AddEventWatch(eventWatchCallback, (void *)renderContext);
 	SDL_ShowWindow(window);
@@ -197,6 +199,8 @@ GbMainViewport::GbMainViewport()
 	: m_viewportShader("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/viewport.frag")
 {
 	{
+		m_windowResizeStart = false;
+
 		SDL_Window *window = SDL_GL_GetCurrentWindow();
 
 		int width, height;
@@ -244,8 +248,6 @@ GbMainViewport::GbMainViewport()
 	glGenTextures(1, &m_viewportTexture);
 
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
@@ -382,26 +384,26 @@ bool eventWatchCallback(void *userdata, SDL_Event *event)
 
 	if (event->type == SDL_EVENT_WINDOW_RESIZED && event->window.windowID == SDL_GetWindowID(window))
 	{
-		
 		RendererGB::RenderContext *renderContext = (RendererGB::RenderContext *)userdata;
-		auto& viewportSize = renderContext->m_mainViewport.m_viewportSize;
 
-		int resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
+		auto &viewportSize = renderContext->m_mainViewport.m_viewportSize;
+		int   resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
 		SDL_GetWindowSize(window, &resizedWidth, &resizedHeight);
 
-		float widthRatio = resizedWidth / 10.0f;
-		float heightRatio = resizedHeight / 9.0f;
-		
-		// 10 : 9
+		// aspect ratio of gameboy display is 10:9
+
+		float widthRatio  = (float)resizedWidth / 10.0f;
+		float heightRatio = (float)resizedHeight / 9.0f;
+
 		if (widthRatio < heightRatio)
 		{
 			viewportSize.x = resizedWidth;
-			viewportSize.y = widthRatio * 9;
+			viewportSize.y = static_cast<uint32_t>(widthRatio * 9);
 		}
 		else
 		{
 			viewportSize.y = resizedHeight;
-			viewportSize.x = heightRatio * 10;
+			viewportSize.x = static_cast<uint32_t>(heightRatio * 10);
 		}
 
 		gl_viewportX = (resizedWidth - viewportSize.x) / 2;
