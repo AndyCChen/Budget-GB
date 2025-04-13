@@ -18,10 +18,11 @@ bool Cartridge::loadRomFromPath(const std::string &path)
 
 	m_cartridgeRom.resize(romSize);
 	romFile.read(reinterpret_cast<char *>(&m_cartridgeRom[0]), romSize);
+	romFile.close();
 
+	fmt::println("Rom loaded: {}", path);
 	fmt::println("Cartridge rom size: {:d} bytes", romSize);
 
-	romFile.close();
 	return true;
 }
 

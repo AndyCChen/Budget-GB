@@ -1,34 +1,29 @@
 #include "BudgetGB.h"
+#include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 
 #include "glad/glad.h"
 
-#include <random>
+#include <stdexcept>
+
+static unsigned char colorPallete[][3] = {
+	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
 
 BudgetGB::BudgetGB(const std::string &romPath)
-	: m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler)
+	: m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler), m_gen(m_rd()),
+	  m_palleteRange(0, 4)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
-	RendererGB::initWindowWithRenderer(m_window, m_renderContext);
+
+	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext))
+	{
+		throw std::runtime_error("Failed to initialize window with renderer!");
+	}
 
 	if (romPath != "")
 	{
 		m_cartridge.loadRomFromPath(romPath);
-	}
-
-	std::random_device              rd;
-	std::mt19937                    gen(rd());
-	std::uniform_int_distribution<> palleteRange(0, 4);
-
-	unsigned char colorPallete[][3] = {{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
-
-	for (std::size_t i = 0; i < (LCD_WIDTH * LCD_HEIGHT); ++i)
-	{
-		unsigned char colorIdx = palleteRange(gen);
-		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
-		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
-		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
 	}
 }
 
@@ -37,107 +32,69 @@ BudgetGB::~BudgetGB()
 	RendererGB::freeWindowWithRenderer(m_window, m_renderContext);
 }
 
-void BudgetGB::run()
+void BudgetGB::onUpdate(float deltaTime)
 {
-	while (m_isRunning)
+	m_accumulatedDeltaTime += deltaTime;
+
+	if (m_accumulatedDeltaTime > 1.0f)
 	{
-		gbProcessEvent();
-		m_cpu.runInstruction();
-
-		RendererGB::newFrame();
-
-		if (m_showImGuiDemo)
-			ImGui::ShowDemoWindow(&m_showImGuiDemo);
-
-		if (m_options.openMenu)
+		m_accumulatedDeltaTime -= 1.0f;
+		for (std::size_t i = 0; i < (LCD_WIDTH * LCD_HEIGHT); ++i)
 		{
-			ImGui::OpenPopup("Main Menu");
-			m_options.openMenu = false;
+			unsigned char colorIdx = m_palleteRange(m_gen);
+			m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
+			m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
+			m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
 		}
-
-		if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
-		{
-			ImGui::Selectable("Pause");
-			ImGui::Selectable("Load ROM...");
-
-			if (ImGui::MenuItem("Toggle clamp", "", &m_options.toggleClamp) && m_options.toggleClamp)
-				resizeViewport();
-
-			ImGui::Separator();
-			ImGui::Selectable("Quit");
-			ImGui::EndPopup();
-		}
-
-		RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
-		RendererGB::endFrame(m_window);
 	}
-}
 
-void BudgetGB::onUpdate()
-{
 	m_cpu.runInstruction();
+
+	RendererGB::newFrame();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
 
-	//if (!m_resizing)
+	if (m_showImGuiDemo)
+		ImGui::ShowDemoWindow(&m_showImGuiDemo);
+
+	if (m_options.openMenu)
 	{
-		RendererGB::newFrame();
-
-		if (m_showImGuiDemo)
-			ImGui::ShowDemoWindow(&m_showImGuiDemo);
-
-		if (m_options.openMenu)
-		{
-			ImGui::OpenPopup("Main Menu");
-			m_options.openMenu = false;
-		}
-
-		if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
-		{
-			ImGui::Selectable("Pause");
-			ImGui::Selectable("Load ROM...");
-
-			if (ImGui::MenuItem("Toggle clamp", "", &m_options.toggleClamp) && m_options.toggleClamp)
-				resizeViewport();
-
-			ImGui::Separator();
-			ImGui::Selectable("Quit");
-			ImGui::EndPopup();
-		}
-
-		RendererGB::endFrame(m_window);
+		ImGui::OpenPopup("Main Menu");
+		m_options.openMenu = false;
 	}
 
-	
+	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
+	{
+		ImGui::Selectable("Pause");
+		ImGui::Selectable("Load ROM...");
 
-	SDL_GL_SwapWindow(m_window);
+		if (ImGui::MenuItem("Toggle clamp", "", &m_options.toggleClamp) && m_options.toggleClamp)
+			resizeViewport();
+
+		ImGui::Separator();
+		ImGui::Selectable("Quit");
+		ImGui::EndPopup();
+	}
+
+	RendererGB::endFrame(m_window);
 }
 
-void BudgetGB::gbProcessEvent()
+SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 {
-	SDL_Event event;
-	while (SDL_PollEvent(&event))
-	{
-		ImGui_ImplSDL3_ProcessEvent(&event);
+	ImGui_ImplSDL3_ProcessEvent(event);
 
-		if (event.type == SDL_EVENT_QUIT)
-			m_isRunning = false;
-		if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(m_window))
-			m_isRunning = false;
+	if (event->type == SDL_EVENT_QUIT)
+		return SDL_APP_SUCCESS;
+	if (event->window.windowID == SDL_GetWindowID(m_window) && event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+		return SDL_APP_SUCCESS;
 
-		/*if (event.type == SDL_EVENT_WINDOW_EXPOSED && event.window.windowID == SDL_GetWindowID(m_window))
-		    fmt::println("exposed");*/
+	if (event->window.windowID == SDL_GetWindowID(m_window) && event->type == SDL_EVENT_WINDOW_RESIZED)
+		resizeViewport();
 
-		if (event.type == SDL_EVENT_WINDOW_RESIZED && event.window.windowID == SDL_GetWindowID(m_window))
-		{
-			resizeViewport();
-		}
+	if (!ImGui::GetIO().WantCaptureMouse && event->type == SDL_EVENT_MOUSE_BUTTON_UP)
+		if (event->button.button == 3) // right mouse button
+			m_options.openMenu = true;
 
-		
-
-		if (!ImGui::GetIO().WantCaptureMouse && event.type == SDL_EVENT_MOUSE_BUTTON_UP)
-			if (event.button.button == 3) // right mouse button
-				m_options.openMenu = true;
-	}
+	return SDL_APP_CONTINUE;
 }
 
 void BudgetGB::resizeViewport()

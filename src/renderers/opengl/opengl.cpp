@@ -19,8 +19,6 @@ struct GbMainViewport
 	GLuint m_viewportVAO, m_viewportVBO, m_viewportEBO, m_viewportTexture;
 	Shader m_viewportShader;
 
-	bool m_windowResizeStart;
-
 	Utils::struct_Vec2<uint32_t> m_viewportSize;
 
 	GbMainViewport();
@@ -30,8 +28,6 @@ struct GbMainViewport
 
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                                      const GLchar *message, const void *userParam);
-
-bool eventWatchCallback(void *userdata, SDL_Event *event);
 
 } // namespace
 
@@ -107,14 +103,13 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 		return false;
 	}
 
-	SDL_GL_MakeCurrent(window, glContext);
-
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
 		SDL_LogError(0, "Failed to load initialize glad!");
 		return false;
 	}
 
+	SDL_GL_MakeCurrent(window, glContext);
 	SDL_GL_SetSwapInterval(1); // vsync
 	SDL_Log("OpenGl Version: %s", (char *)glGetString(GL_VERSION));
 
@@ -127,7 +122,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	io.ConfigViewportsNoAutoMerge = true;
-	//io.ConfigViewportsNoDefaultParent = true;
+	// io.ConfigViewportsNoDefaultParent = true;
 
 	io.Fonts->AddFontFromFileTTF("resources/fonts/MononokiNerdFont-Regular.ttf", 16.0);
 	ImGui::StyleColorsLight();
@@ -168,21 +163,20 @@ void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer,
 
 void RendererGB::endFrame(SDL_Window *window)
 {
-
 	ImGui::Render();
-	ImGuiIO &io = ImGui::GetIO();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+	ImGuiIO &io = ImGui::GetIO();
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
-		SDL_Window   *backupCurrentWindow  = SDL_GL_GetCurrentWindow();
+		// SDL_Window   *backupCurrentWindow  = SDL_GL_GetCurrentWindow();
 		SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
-		SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
+		SDL_GL_MakeCurrent(window, backupCurrentContext);
 	}
 
-	
+	SDL_GL_SwapWindow(window);
 }
 
 void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
@@ -204,8 +198,6 @@ GbMainViewport::GbMainViewport()
 	: m_viewportShader("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/viewport.frag")
 {
 	{
-		m_windowResizeStart = false;
-
 		SDL_Window *window = SDL_GL_GetCurrentWindow();
 
 		int width, height;
@@ -270,32 +262,6 @@ GbMainViewport::~GbMainViewport()
 
 void GbMainViewport::draw()
 {
-	// SDL_Window *window = SDL_GL_GetCurrentWindow();
-
-	// int resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
-	// SDL_GetWindowSize(window, &resizedWidth, &resizedHeight);
-
-	//// aspect ratio of gameboy display is 10:9
-
-	// float widthRatio  = (float)resizedWidth / 10.0f;
-	// float heightRatio = (float)resizedHeight / 9.0f;
-	// Utils::struct_Vec2<uint32_t> viewportSize;
-
-	// if (widthRatio < heightRatio)
-	//{
-	//	viewportSize.x = resizedWidth;
-	//	viewportSize.y = static_cast<uint32_t>(widthRatio * 9);
-	// }
-	// else
-	//{
-	//	viewportSize.y = resizedHeight;
-	//	viewportSize.x = static_cast<uint32_t>(heightRatio * 10);
-	// }
-
-	// gl_viewportX = (resizedWidth - viewportSize.x) / 2;
-	// gl_viewportY = (resizedHeight - viewportSize.y) / 2;
-
-	// glViewport(gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
 	glClearColor(0.3f, 0.6f, 0.7f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glBindVertexArray(m_viewportVAO);
@@ -408,48 +374,4 @@ void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLen
 	SDL_LogError(0, "%d: %s of %s severity, raised from %s: %s", id, _type.c_str(), _severity.c_str(), _source.c_str(),
 	             message);
 }
-
-bool eventWatchCallback(void *userdata, SDL_Event *event)
-{
-	SDL_Window *window = SDL_GL_GetCurrentWindow();
-
-	if (event->type == SDL_EVENT_WINDOW_EXPOSED && event->window.windowID == SDL_GetWindowID(window))
-		fmt::println("exposed");
-
-	if (event->type == SDL_EVENT_WINDOW_RESIZED && event->window.windowID == SDL_GetWindowID(window))
-	{
-		RendererGB::RenderContext *renderContext = (RendererGB::RenderContext *)userdata;
-
-		auto &viewportSize = renderContext->m_mainViewport.m_viewportSize;
-		int   resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
-		SDL_GetWindowSize(window, &resizedWidth, &resizedHeight);
-
-		// aspect ratio of gameboy display is 10:9
-
-		float widthRatio  = (float)resizedWidth / 10.0f;
-		float heightRatio = (float)resizedHeight / 9.0f;
-
-		if (widthRatio < heightRatio)
-		{
-			viewportSize.x = resizedWidth;
-			viewportSize.y = static_cast<uint32_t>(widthRatio * 9);
-		}
-		else
-		{
-			viewportSize.y = resizedHeight;
-			viewportSize.x = static_cast<uint32_t>(heightRatio * 10);
-		}
-
-		gl_viewportX = (resizedWidth - viewportSize.x) / 2;
-		gl_viewportY = (resizedHeight - viewportSize.y) / 2;
-
-		glViewport(gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
-		renderContext->m_mainViewport.m_viewportShader.useProgram();
-		renderContext->m_mainViewport.draw();
-		SDL_GL_SwapWindow(window);
-	}
-
-	return true;
-}
-
 } // namespace

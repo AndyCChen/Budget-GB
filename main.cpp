@@ -4,53 +4,72 @@
 
 #include "BudgetGB.h"
 #include "fmt/base.h"
-#include "imgui.h"
-#include "imgui_impl_sdl3.h"
 
- SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
+#include <stdexcept>
+#include <string>
+
+struct AppWithTimer
 {
-	BudgetGB *gameboy = new BudgetGB();
-	*appstate         = gameboy;
+	BudgetGB gameboy;
 
-	return SDL_APP_CONTINUE;
- }
+	float currentTime  = 0.0f;
+	float previousTime = 0.0f;
+	float deltaTime    = 0.0f;
 
- SDL_AppResult SDL_AppIterate(void *appstate)
-{
-	BudgetGB *gameboy = (BudgetGB *)appstate;
-
-	gameboy->onUpdate();
-
-	return SDL_APP_CONTINUE;
- }
-
- SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
-{
-	ImGui_ImplSDL3_ProcessEvent(event);
-	BudgetGB   *gameboy = (BudgetGB *)appstate;
-	SDL_Window *window  = SDL_GL_GetCurrentWindow();
-
-	if (event->type == SDL_EVENT_QUIT)
-		return SDL_APP_SUCCESS;
-	if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event->window.windowID == SDL_GetWindowID(window))
-		return SDL_APP_SUCCESS;
-	
-
-	if (event->type == SDL_EVENT_WINDOW_RESIZED && event->window.windowID == SDL_GetWindowID(window))
+	AppWithTimer(const std::string &romPath = "") : gameboy(romPath)
 	{
-		gameboy->m_resizing = true;
-		gameboy->resizeViewport();
+	}
+};
+
+// initialization
+SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
+{
+	try
+	{
+		if (argc < 2)
+			*appstate = new AppWithTimer();
+		else if (argc == 2)
+			*appstate = new AppWithTimer(std::string(argv[1]));
+		else
+		{
+			fmt::println(stderr,
+			             "Invalid number of arguments, please provide only one path to rom file or none at all!");
+			return SDL_APP_FAILURE;
+		}
+	}
+	catch (const std::runtime_error &error)
+	{
+		fmt::println(stderr, "{}", error.what());
+		return SDL_APP_FAILURE;
 	}
 
-	if (!ImGui::GetIO().WantCaptureMouse && event->type == SDL_EVENT_MOUSE_BUTTON_UP)
-		if (event->button.button == 3) // right mouse button
-			gameboy->m_options.openMenu = true;
+	return SDL_APP_CONTINUE;
+}
+
+// runs around once per frame
+SDL_AppResult SDL_AppIterate(void *appstate)
+{
+	AppWithTimer *app     = (AppWithTimer *)appstate;
+	BudgetGB     &gameboy = app->gameboy;
+
+	gameboy.onUpdate(app->currentTime - app->previousTime);
+
+	app->previousTime = app->currentTime;
+	app->currentTime  = SDL_GetTicks() / 1000.0f;
 
 	return SDL_APP_CONTINUE;
- }
+}
 
- void SDL_AppQuit(void *appstate, SDL_AppResult result)
+// runs when SDL event occurs
+SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
-	BudgetGB *gameboy = (BudgetGB *)appstate;
-	delete gameboy;
- }
+	BudgetGB &gameboy = ((AppWithTimer *)appstate)->gameboy;
+	return gameboy.processEvent(event);
+}
+
+// clean up on exit
+void SDL_AppQuit(void *appstate, SDL_AppResult result)
+{
+	AppWithTimer *app = (AppWithTimer *)appstate;
+	delete app;
+}
