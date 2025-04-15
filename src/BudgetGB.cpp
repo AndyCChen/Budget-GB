@@ -16,7 +16,7 @@ BudgetGB::BudgetGB(const std::string &romPath)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 
-	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext))
+	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, INITIAL_WINDOW_SCALE))
 	{
 		throw std::runtime_error("Failed to initialize window with renderer!");
 	}
@@ -51,29 +51,9 @@ void BudgetGB::onUpdate(float deltaTime)
 	m_cpu.runInstruction();
 
 	RendererGB::newFrame();
+
+	drawGui();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
-
-	if (m_showImGuiDemo)
-		ImGui::ShowDemoWindow(&m_showImGuiDemo);
-
-	if (m_options.openMenu)
-	{
-		ImGui::OpenPopup("Main Menu");
-		m_options.openMenu = false;
-	}
-
-	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
-	{
-		ImGui::Selectable("Pause");
-		ImGui::Selectable("Load ROM...");
-
-		if (ImGui::MenuItem("Toggle clamp", "", &m_options.toggleClamp) && m_options.toggleClamp)
-			resizeViewport();
-
-		ImGui::Separator();
-		ImGui::Selectable("Quit");
-		ImGui::EndPopup();
-	}
 
 	RendererGB::endFrame(m_window);
 }
@@ -84,15 +64,19 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 	if (event->type == SDL_EVENT_QUIT)
 		return SDL_APP_SUCCESS;
-	if (event->window.windowID == SDL_GetWindowID(m_window) && event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
-		return SDL_APP_SUCCESS;
 
-	if (event->window.windowID == SDL_GetWindowID(m_window) && event->type == SDL_EVENT_WINDOW_RESIZED)
-		resizeViewport();
+	if (event->window.windowID == SDL_GetWindowID(m_window))
+	{
+		if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+			return SDL_APP_SUCCESS;
+
+		else if (event->type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || event->type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
+			resizeViewport();
+	}
 
 	if (!ImGui::GetIO().WantCaptureMouse && event->type == SDL_EVENT_MOUSE_BUTTON_UP)
-		if (event->button.button == 3) // right mouse button
-			m_options.openMenu = true;
+		if (event->button.button == 3) // right mouse button brings up main menu
+			m_guiContext.flags |= GuiContextFlags_SHOW_MAIN_MENU;
 
 	return SDL_APP_CONTINUE;
 }
@@ -126,18 +110,99 @@ void BudgetGB::resizeViewport()
 	glViewport(gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
 
 	// clamp window size to perfectly fit the 10:9 aspect ratio if below threshold
-	if (false)
+	/*if (false)
 	{
-		float calcThreshold = SDL_fabsf((resizedWidth / 10.0f) - (resizedHeight / 9.0f));
+	    float calcThreshold = SDL_fabsf((resizedWidth / 10.0f) - (resizedHeight / 9.0f));
 
-		if (calcThreshold < 2.5f)
+	    if (calcThreshold < 2.5f)
+	    {
+	        if (widthRatio < heightRatio)
+	            resizedHeight = static_cast<uint32_t>(widthRatio * 9);
+	        else
+	            resizedWidth = static_cast<uint32_t>(heightRatio * 10);
+
+	        SDL_SetWindowSize(m_window, resizedWidth, resizedHeight);
+	    }
+	}*/
+}
+
+void BudgetGB::resizeViewportFixed(WindowScale scale)
+{
+	m_guiContext.flags &= ~GuiContextFlags_FULLSCREEN;
+	m_guiContext.windowSizeSelector = 0;
+	m_guiContext.windowSizeSelector |= 1 << static_cast<uint32_t>(scale);
+
+	SDL_SetWindowFullscreen(m_window, false);
+	SDL_SetWindowSize(m_window, static_cast<int>(scale) * BudgetGB::LCD_WIDTH,
+	                  static_cast<int>(scale) * BudgetGB::LCD_HEIGHT);
+
+	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	SDL_SyncWindow(m_window);
+
+	int newWidth, newHeight;
+	SDL_GetWindowSize(m_window, &newWidth, &newHeight);
+	glViewport(0, 0, newWidth, newHeight);
+}
+
+void BudgetGB::drawGui()
+{
+	// imgui demo window
+	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
+	{
+		bool toggle = true;
+		ImGui::ShowDemoWindow(&toggle);
+		if (!toggle)
+			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
+	}
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_MAIN_MENU)
+	{
+		ImGui::OpenPopup("Main Menu");
+		m_guiContext.flags ^= GuiContextFlags_SHOW_MAIN_MENU;
+	}
+
+	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
+	{
+		if (ImGui::MenuItem("Pause", "", m_guiContext.flags & GuiContextFlags_PAUSE))
+			m_guiContext.flags ^= GuiContextFlags_PAUSE;
+
+		ImGui::MenuItem("Load ROM...");
+
+		if (ImGui::BeginMenu("Window Sizes"))
 		{
-			if (widthRatio < heightRatio)
-				resizedHeight = static_cast<uint32_t>(widthRatio * 9);
-			else
-				resizedWidth = static_cast<uint32_t>(heightRatio * 10);
 
-			SDL_SetWindowSize(m_window, resizedWidth, resizedHeight);
+			if (ImGui::MenuItem("1x1", "", m_guiContext.windowSizeSelector & 0x2))
+				resizeViewportFixed(WindowScale::WindowScale_1x1);
+			if (ImGui::MenuItem("1x2", "", m_guiContext.windowSizeSelector & 0x4))
+				resizeViewportFixed(WindowScale::WindowScale_1x2);
+			if (ImGui::MenuItem("1x3", "", m_guiContext.windowSizeSelector & 0x8))
+				resizeViewportFixed(WindowScale::WindowScale_1x3);
+			if (ImGui::MenuItem("1x4", "", m_guiContext.windowSizeSelector & 0x10))
+				resizeViewportFixed(WindowScale::WindowScale_1x4);
+			if (ImGui::MenuItem("1x5", "", m_guiContext.windowSizeSelector & 0x20))
+				resizeViewportFixed(WindowScale::WindowScale_1x5);
+			if (ImGui::MenuItem("1x6", "", m_guiContext.windowSizeSelector & 0x40))
+				resizeViewportFixed(WindowScale::WindowScale_1x6);
+
+			if (ImGui::MenuItem("Fullscreen", "", m_guiContext.flags & GuiContextFlags_FULLSCREEN))
+			{
+				m_guiContext.flags ^= GuiContextFlags_FULLSCREEN;
+				SDL_SetWindowFullscreen(m_window, m_guiContext.flags & GuiContextFlags_FULLSCREEN);
+			}
+
+			ImGui::EndMenu();
 		}
+
+		if (ImGui::MenuItem("Toggle Imgui Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO))
+			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
+
+		ImGui::Separator();
+		if (ImGui::MenuItem("Quit"))
+		{
+			SDL_Event event{};
+			event.type = SDL_EVENT_QUIT;
+			SDL_PushEvent(&event);
+		}
+		ImGui::EndPopup();
 	}
 }

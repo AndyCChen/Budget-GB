@@ -40,16 +40,10 @@ struct RendererGB::RenderContext
 	RenderContext()
 	{
 		m_glContext = NULL;
-		SDL_Log("Constructing glContext");
-	}
-
-	~RenderContext()
-	{
-		SDL_Log("Deconstructing glContext");
 	}
 };
 
-bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
+bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale)
 {
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 	{
@@ -84,9 +78,9 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 #endif
 
-	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * BudgetGB::INITIAL_WINDOW_SCALE,
-	                          BudgetGB::LCD_HEIGHT * BudgetGB::INITIAL_WINDOW_SCALE,
-	                          SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+	window =
+		SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * BudgetGB::INITIAL_WINDOW_SCALE,
+	                     BudgetGB::LCD_HEIGHT * windowScale, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
 	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
@@ -121,8 +115,8 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	io.ConfigViewportsNoAutoMerge = true;
-	// io.ConfigViewportsNoDefaultParent = true;
+	// io.ConfigViewportsNoAutoMerge = true;
+	io.ConfigViewportsNoDefaultParent = true;
 
 	io.Fonts->AddFontFromFileTTF("resources/fonts/MononokiNerdFont-Regular.ttf", 16.0);
 	ImGui::StyleColorsLight();

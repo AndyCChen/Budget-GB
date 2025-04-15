@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -13,6 +12,7 @@
 #include "sm83.h"
 #include "utils/vec.h"
 
+#include <cstdint>
 #include <random>
 
 class BudgetGB
@@ -20,7 +20,7 @@ class BudgetGB
   public:
 	static constexpr uint32_t LCD_WIDTH            = 160;
 	static constexpr uint32_t LCD_HEIGHT           = 144;
-	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4;
+	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4; // value should be 1-6 only!
 
 	BudgetGB(const std::string &romPath = "");
 	~BudgetGB();
@@ -31,10 +31,34 @@ class BudgetGB
 	SDL_AppResult processEvent(SDL_Event *event);
 
   private:
-	struct MenuOptions
+	enum class WindowScale
 	{
-		bool openMenu    = false;
-		bool toggleClamp = true;
+		WindowScale_1x1 = 1,
+		WindowScale_1x2,
+		WindowScale_1x3,
+		WindowScale_1x4,
+		WindowScale_1x5,
+		WindowScale_1x6,
+	};
+
+	enum GuiContextFlags
+	{
+		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
+		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
+		GuiContextFlags_PAUSE           = 1 << 2,
+		GuiContextFlags_FULLSCREEN      = 1 << 3,
+	};
+
+	struct GuiContext
+	{
+		GuiContext()
+		{
+			flags              = GuiContextFlags_SHOW_IMGUI_DEMO;
+			windowSizeSelector = 1 << BudgetGB::INITIAL_WINDOW_SCALE;
+		}
+
+		uint32_t flags = 0;
+		uint32_t windowSizeSelector;
 	};
 
 	Cartridge    m_cartridge;
@@ -42,8 +66,7 @@ class BudgetGB
 	Disassembler m_disassembler;
 	Sm83         m_cpu;
 
-	MenuOptions m_options;
-	bool        m_showImGuiDemo = true;
+	GuiContext m_guiContext;
 
 	float m_accumulatedDeltaTime = 0.0f;
 
@@ -56,7 +79,15 @@ class BudgetGB
 	std::uniform_int_distribution<> m_palleteRange;
 
 	/**
-	 * @brief Resize and attempt to clamp viewport to perfectly fit the 10:9 apect ratio of the gameboy.
+	 * @brief Resize viewport to fit any arbitary window size while still respecting the 10:9 aspect
+	 * ratio of gameboy display.
 	 */
 	void resizeViewport();
+
+	/**
+	 * @brief Resize window with prefined fixed scales.
+	 */
+	void resizeViewportFixed(WindowScale scale);
+
+	void drawGui();
 };

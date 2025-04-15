@@ -70,6 +70,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 // clean up on exit
 void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
+	(void) result;
 	AppWithTimer *app = (AppWithTimer *)appstate;
 	delete app;
 }
