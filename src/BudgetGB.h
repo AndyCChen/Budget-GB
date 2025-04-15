@@ -43,10 +43,11 @@ class BudgetGB
 
 	enum GuiContextFlags
 	{
-		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
-		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
-		GuiContextFlags_PAUSE           = 1 << 2,
-		GuiContextFlags_FULLSCREEN      = 1 << 3,
+		GuiContextFlags_SHOW_IMGUI_DEMO          = 1 << 0,
+		GuiContextFlags_SHOW_MAIN_MENU           = 1 << 1,
+		GuiContextFlags_PAUSE                    = 1 << 2,
+		GuiContextFlags_FULLSCREEN               = 1 << 3,
+		GuiContextFlags_REENABLE_MULTI_VIEWPORTS = 1 << 4,
 	};
 
 	struct GuiContext

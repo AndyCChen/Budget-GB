@@ -35,7 +35,6 @@ BudgetGB::~BudgetGB()
 void BudgetGB::onUpdate(float deltaTime)
 {
 	m_accumulatedDeltaTime += deltaTime;
-
 	if (m_accumulatedDeltaTime > 1.0f)
 	{
 		m_accumulatedDeltaTime -= 1.0f;
@@ -70,8 +69,17 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 		if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
 			return SDL_APP_SUCCESS;
 
-		else if (event->type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || event->type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
+		else if (event->type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN)
+		{
+			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
 			resizeViewport();
+		}
+
+		else if (event->type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
+		{
+			m_guiContext.flags |= GuiContextFlags_REENABLE_MULTI_VIEWPORTS;
+			resizeViewport();
+		}
 	}
 
 	if (!ImGui::GetIO().WantCaptureMouse && event->type == SDL_EVENT_MOUSE_BUTTON_UP)
@@ -146,6 +154,12 @@ void BudgetGB::resizeViewportFixed(WindowScale scale)
 
 void BudgetGB::drawGui()
 {
+	if (m_guiContext.flags & GuiContextFlags_REENABLE_MULTI_VIEWPORTS)
+	{
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		m_guiContext.flags &= ~GuiContextFlags_REENABLE_MULTI_VIEWPORTS;
+	}
+
 	// imgui demo window
 	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
 	{
