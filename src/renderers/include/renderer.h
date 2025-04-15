@@ -1,7 +1,8 @@
 #pragma once
 
-#include <SDL3/SDL.h>
 #include "utils/vec.h"
+#include "glad/glad.h"
+#include <SDL3/SDL.h>
 
 #include <cstdint>
 #include <vector>
@@ -21,6 +22,7 @@ typedef struct RenderContext RenderContext;
 bool initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale);
 
 void newFrame();
+void setMainViewportSize(RenderContext *renderContext, GLint x, GLint y, GLsizei width, GLsizei height);
 void drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext);
 void endFrame(SDL_Window *window);
 

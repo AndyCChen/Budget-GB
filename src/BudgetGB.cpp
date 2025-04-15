@@ -1,6 +1,5 @@
 #include "BudgetGB.h"
 #include "fmt/base.h"
-#include "imgui.h"
 #include "imgui_impl_sdl3.h"
 
 #include "glad/glad.h"
@@ -50,6 +49,7 @@ void BudgetGB::onUpdate(float deltaTime)
 	m_cpu.runInstruction();
 
 	RendererGB::newFrame();
+	handleEvents();
 
 	drawGui();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
@@ -86,6 +86,29 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 		if (event->button.button == 3) // right mouse button brings up main menu
 			m_guiContext.flags |= GuiContextFlags_SHOW_MAIN_MENU;
 
+	if (event->type == SDL_EVENT_KEY_DOWN)
+	{
+		const bool *keystate = SDL_GetKeyboardState(nullptr);
+		if (keystate[SDL_SCANCODE_LCTRL] && keystate[SDL_SCANCODE_P])
+			m_guiContext.flags ^= GuiContextFlags_PAUSE;
+	}
+
+	if (event->type == SDL_EVENT_KEY_UP)
+	{
+		switch (event->key.scancode)
+		{
+		
+		case SDL_SCANCODE_F11:
+			m_guiContext.flags ^= GuiContextFlags_FULLSCREEN;
+			SDL_SetWindowFullscreen(m_window, m_guiContext.flags & GuiContextFlags_FULLSCREEN);
+			SDL_SyncWindow(m_window);
+			resizeViewport();
+			break;
+		default:
+			break;
+		}
+	}
+
 	return SDL_APP_CONTINUE;
 }
 
@@ -115,7 +138,7 @@ void BudgetGB::resizeViewport()
 	gl_viewportX = (resizedWidth - viewportSize.x) / 2;
 	gl_viewportY = (resizedHeight - viewportSize.y) / 2;
 
-	glViewport(gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
+	RendererGB::setMainViewportSize(m_renderContext, gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
 
 	// clamp window size to perfectly fit the 10:9 aspect ratio if below threshold
 	/*if (false)
@@ -136,30 +159,37 @@ void BudgetGB::resizeViewport()
 
 void BudgetGB::resizeViewportFixed(WindowScale scale)
 {
-	m_guiContext.flags &= ~GuiContextFlags_FULLSCREEN;
+	if (m_guiContext.flags & GuiContextFlags_FULLSCREEN)
+	{
+		m_guiContext.flags &= ~GuiContextFlags_FULLSCREEN;
+		SDL_SetWindowFullscreen(m_window, false);
+		SDL_SyncWindow(m_window);
+	}
+
 	m_guiContext.windowSizeSelector = 0;
 	m_guiContext.windowSizeSelector |= 1 << static_cast<uint32_t>(scale);
 
-	SDL_SetWindowFullscreen(m_window, false);
 	SDL_SetWindowSize(m_window, static_cast<int>(scale) * BudgetGB::LCD_WIDTH,
 	                  static_cast<int>(scale) * BudgetGB::LCD_HEIGHT);
 
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-	SDL_SyncWindow(m_window);
 
 	int newWidth, newHeight;
 	SDL_GetWindowSize(m_window, &newWidth, &newHeight);
-	glViewport(0, 0, newWidth, newHeight);
+	RendererGB::setMainViewportSize(m_renderContext, 0, 0, newWidth, newHeight);
 }
 
-void BudgetGB::drawGui()
+void BudgetGB::handleEvents()
 {
 	if (m_guiContext.flags & GuiContextFlags_REENABLE_MULTI_VIEWPORTS)
 	{
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		m_guiContext.flags &= ~GuiContextFlags_REENABLE_MULTI_VIEWPORTS;
 	}
+}
 
+void BudgetGB::drawGui()
+{
 	// imgui demo window
 	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
 	{
@@ -177,7 +207,7 @@ void BudgetGB::drawGui()
 
 	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
 	{
-		if (ImGui::MenuItem("Pause", "", m_guiContext.flags & GuiContextFlags_PAUSE))
+		if (ImGui::MenuItem("Pause", "Ctrl+P", m_guiContext.flags & GuiContextFlags_PAUSE))
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
 
 		ImGui::MenuItem("Load ROM...");
@@ -198,10 +228,11 @@ void BudgetGB::drawGui()
 			if (ImGui::MenuItem("1x6", "", m_guiContext.windowSizeSelector & 0x40))
 				resizeViewportFixed(WindowScale::WindowScale_1x6);
 
-			if (ImGui::MenuItem("Fullscreen", "", m_guiContext.flags & GuiContextFlags_FULLSCREEN))
+			if (ImGui::MenuItem("Fullscreen", "F11", m_guiContext.flags & GuiContextFlags_FULLSCREEN))
 			{
 				m_guiContext.flags ^= GuiContextFlags_FULLSCREEN;
 				SDL_SetWindowFullscreen(m_window, m_guiContext.flags & GuiContextFlags_FULLSCREEN);
+				SDL_SyncWindow(m_window);
 			}
 
 			ImGui::EndMenu();

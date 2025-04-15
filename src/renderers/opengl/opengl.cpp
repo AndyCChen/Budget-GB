@@ -20,6 +20,7 @@ struct GbMainViewport
 	Shader m_viewportShader;
 
 	Utils::struct_Vec2<uint32_t> m_viewportSize;
+	Utils::struct_Vec2<uint32_t> m_viewportXY;
 
 	GbMainViewport();
 	~GbMainViewport();
@@ -78,9 +79,8 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 #endif
 
-	window =
-		SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * BudgetGB::INITIAL_WINDOW_SCALE,
-	                     BudgetGB::LCD_HEIGHT * windowScale, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * BudgetGB::INITIAL_WINDOW_SCALE,
+	                          BudgetGB::LCD_HEIGHT * windowScale, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
 	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
@@ -145,6 +145,14 @@ void RendererGB::newFrame()
 	ImGui::NewFrame();
 }
 
+void RendererGB::setMainViewportSize(RenderContext *renderContext, GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	renderContext->m_mainViewport.m_viewportXY.x = x;
+	renderContext->m_mainViewport.m_viewportXY.y = y;
+	renderContext->m_mainViewport.m_viewportSize.x = width;
+	renderContext->m_mainViewport.m_viewportSize.y = height;
+}
+
 void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext)
 {
 	glBindTexture(GL_TEXTURE_2D, renderContext->m_mainViewport.m_viewportTexture);
@@ -198,6 +206,8 @@ GbMainViewport::GbMainViewport()
 		SDL_GetWindowSize(window, &width, &height);
 		m_viewportSize.x = width;
 		m_viewportSize.y = height;
+		m_viewportXY.x   = 0;
+		m_viewportXY.y   = 0;
 	}
 
 	// clang-format off
@@ -258,6 +268,7 @@ void GbMainViewport::draw()
 {
 	glClearColor(0.3f, 0.6f, 0.7f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+	glViewport(m_viewportXY.x, m_viewportXY.y, m_viewportSize.x, m_viewportSize.y);
 	glBindVertexArray(m_viewportVAO);
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
