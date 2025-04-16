@@ -43,7 +43,7 @@ set(IMGUI_SOURCE_FILES
 	vendor/imgui/backends/imgui_impl_sdl3.cpp
 )
 
-if (WIN32 AND USE_DX11_ON_WINDOW)
+if (WIN32 AND USE_DX11_ON_WINDOWS)
 	# directX11 renderer backend for imgui
 	list(APPEND IMGUI_SOURCE_FILES
 		vendor/imgui/backends/imgui_impl_dx11.cpp
@@ -125,7 +125,7 @@ target_link_libraries(BudgetGB PRIVATE
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)
-	target_link_libraries(BudgetGB PRIVATE d3d11.lib)
+	target_link_libraries(BudgetGB PRIVATE d3d11.lib d3dcompiler.lib)
 else()
 	target_link_libraries(BudgetGB PRIVATE GLAD)
 endif()

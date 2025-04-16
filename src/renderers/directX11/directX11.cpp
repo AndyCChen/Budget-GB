@@ -9,16 +9,11 @@
 
 struct RendererGB::RenderContext
 {
-	ID3D11Device        *m_device        = nullptr;
-	IDXGISwapChain      *m_swapChain     = nullptr;
-	ID3D11DeviceContext *m_deviceContext = nullptr;
+	ID3D11Device           *m_device           = nullptr;
+	IDXGISwapChain         *m_swapChain        = nullptr;
+	ID3D11DeviceContext    *m_deviceContext    = nullptr;
+	ID3D11RenderTargetView *m_renderTargetView = nullptr;
 
-	RenderContext(const RenderContext &)           = delete;
-	RenderContext &operator=(const RenderContext&) = delete;
-
-	RenderContext()
-	{
-	}
 	~RenderContext()
 	{
 		if (m_device != nullptr)
@@ -29,6 +24,9 @@ struct RendererGB::RenderContext
 
 		if (m_deviceContext != nullptr)
 			m_deviceContext->Release();
+
+		if (m_renderTargetView != nullptr)
+			m_renderTargetView->Release();
 	}
 };
 
@@ -43,7 +41,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	}
 
 	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * BudgetGB::INITIAL_WINDOW_SCALE,
-	                          BudgetGB::LCD_HEIGHT * windowScale, SDL_WINDOW_HIDDEN);
+	                          BudgetGB::LCD_HEIGHT * windowScale, 0);
 
 	if (!window)
 	{
@@ -77,7 +75,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 
 	// clang-format off
-	D3D11CreateDeviceAndSwapChain(
+	HRESULT result = D3D11CreateDeviceAndSwapChain(
 		nullptr, 
 		D3D_DRIVER_TYPE_HARDWARE, 
 		nullptr, 
@@ -85,18 +83,49 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 		nullptr, 
 		0,
 		D3D11_SDK_VERSION, 
-		&sd, &renderContext->m_swapChain, 
+		&sd, 
+		&renderContext->m_swapChain, 
 		&renderContext->m_device,
 		nullptr, 
 		&renderContext->m_deviceContext
 	);
 	// clang-format on
 
+	if (result != S_OK)
+	{
+		SDL_LogError(0, "Failed to create D3D11 device and swap chain. Error code: 0x%08X", (unsigned int)result);
+		return false;
+	}
+
+	ID3D11Resource *backBuffer = nullptr;
+	renderContext->m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+	renderContext->m_device->CreateRenderTargetView(backBuffer, nullptr, &renderContext->m_renderTargetView);
+	backBuffer->Release();
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO &io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	// io.ConfigViewportsNoAutoMerge = true;
+	io.ConfigViewportsNoDefaultParent = true;
+
+	io.Fonts->AddFontFromFileTTF("resources/fonts/MononokiNerdFont-Regular.ttf", 16.0);
+	ImGui::StyleColorsLight();
+
+	ImGui_ImplSDL3_InitForD3D(window);
+	ImGui_ImplDX11_Init(renderContext->m_device, renderContext->m_deviceContext);
+
 	return true;
 }
 
 void RendererGB::newFrame()
 {
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
 }
 void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
 {
@@ -104,10 +133,31 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext)
 {
 }
-void RendererGB::endFrame(SDL_Window *window)
+void RendererGB::endFrame(SDL_Window *window, RenderContext *renderContext)
 {
+	(void)window;
+	ImGui::Render();
+
+	const float colors[] = {0.3f, 0.6f, 0.7f, 1.0f};
+	renderContext->m_deviceContext->OMSetRenderTargets(1, &renderContext->m_renderTargetView, nullptr);
+	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_renderTargetView, colors);
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
+
+	renderContext->m_swapChain->Present(1, 0);
 }
 void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext)
 {
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
+
 	delete renderContext;
+	SDL_DestroyWindow(window);
+	SDL_Quit();
 }

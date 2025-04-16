@@ -44,14 +44,13 @@ void BudgetGB::onUpdate(float deltaTime)
 	}
 
 	m_cpu.runInstruction();
-
 	RendererGB::newFrame();
 	handleEvents();
 
 	drawGui();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
 
-	RendererGB::endFrame(m_window);
+	RendererGB::endFrame(m_window, m_renderContext);
 }
 
 SDL_AppResult BudgetGB::processEvent(SDL_Event *event)

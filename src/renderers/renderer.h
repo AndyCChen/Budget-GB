@@ -23,7 +23,7 @@ bool initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, 
 void newFrame();
 void setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height);
 void drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext);
-void endFrame(SDL_Window *window);
+void endFrame(SDL_Window *window, RenderContext *renderContext);
 
 /**
  * @brief Frees the main window and ImGui resources.
