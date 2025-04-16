@@ -44,13 +44,12 @@ void BudgetGB::onUpdate(float deltaTime)
 	}
 
 	m_cpu.runInstruction();
-	RendererGB::newFrame();
-	handleEvents();
 
 	drawGui();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
 
 	RendererGB::endFrame(m_window, m_renderContext);
+	RendererGB::newFrame(); // begin new frame at end of this game loop
 }
 
 SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
@@ -65,17 +64,8 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 		if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
 			return SDL_APP_SUCCESS;
 
-		else if (event->type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN)
-		{
-			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+		else if (event->type == SDL_EVENT_WINDOW_RESIZED)
 			resizeViewport();
-		}
-
-		else if (event->type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
-		{
-			m_guiContext.flags |= GuiContextFlags_REENABLE_MULTI_VIEWPORTS;
-			resizeViewport();
-		}
 	}
 
 	if (!ImGui::GetIO().WantCaptureMouse && event->type == SDL_EVENT_MOUSE_BUTTON_UP)
@@ -93,12 +83,17 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 	{
 		switch (event->key.scancode)
 		{
-		
+
 		case SDL_SCANCODE_F11:
 			m_guiContext.flags ^= GuiContextFlags_FULLSCREEN;
 			SDL_SetWindowFullscreen(m_window, m_guiContext.flags & GuiContextFlags_FULLSCREEN);
 			SDL_SyncWindow(m_window);
-			resizeViewport();
+
+			if (m_guiContext.flags & GuiContextFlags_FULLSCREEN)
+				ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+			else
+				ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
 			break;
 		default:
 			break;
@@ -153,13 +148,14 @@ void BudgetGB::resizeViewport()
 	}*/
 }
 
-void BudgetGB::resizeViewportFixed(WindowScale scale)
+void BudgetGB::resizeWindowFixed(WindowScale scale)
 {
 	if (m_guiContext.flags & GuiContextFlags_FULLSCREEN)
 	{
 		m_guiContext.flags &= ~GuiContextFlags_FULLSCREEN;
 		SDL_SetWindowFullscreen(m_window, false);
 		SDL_SyncWindow(m_window);
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // re-enable viewports when exiting fullscreen
 	}
 
 	m_guiContext.windowSizeSelector = 0;
@@ -170,18 +166,9 @@ void BudgetGB::resizeViewportFixed(WindowScale scale)
 
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
-	int newWidth, newHeight;
+	/*int newWidth, newHeight;
 	SDL_GetWindowSize(m_window, &newWidth, &newHeight);
-	RendererGB::setMainViewportSize(m_renderContext, 0, 0, newWidth, newHeight);
-}
-
-void BudgetGB::handleEvents()
-{
-	if (m_guiContext.flags & GuiContextFlags_REENABLE_MULTI_VIEWPORTS)
-	{
-		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		m_guiContext.flags &= ~GuiContextFlags_REENABLE_MULTI_VIEWPORTS;
-	}
+	RendererGB::setMainViewportSize(m_renderContext, 0, 0, newWidth, newHeight);*/
 }
 
 void BudgetGB::drawGui()
@@ -212,23 +199,28 @@ void BudgetGB::drawGui()
 		{
 
 			if (ImGui::MenuItem("1x1", "", m_guiContext.windowSizeSelector & 0x2))
-				resizeViewportFixed(WindowScale::WindowScale_1x1);
+				resizeWindowFixed(WindowScale::WindowScale_1x1);
 			if (ImGui::MenuItem("1x2", "", m_guiContext.windowSizeSelector & 0x4))
-				resizeViewportFixed(WindowScale::WindowScale_1x2);
+				resizeWindowFixed(WindowScale::WindowScale_1x2);
 			if (ImGui::MenuItem("1x3", "", m_guiContext.windowSizeSelector & 0x8))
-				resizeViewportFixed(WindowScale::WindowScale_1x3);
+				resizeWindowFixed(WindowScale::WindowScale_1x3);
 			if (ImGui::MenuItem("1x4", "", m_guiContext.windowSizeSelector & 0x10))
-				resizeViewportFixed(WindowScale::WindowScale_1x4);
+				resizeWindowFixed(WindowScale::WindowScale_1x4);
 			if (ImGui::MenuItem("1x5", "", m_guiContext.windowSizeSelector & 0x20))
-				resizeViewportFixed(WindowScale::WindowScale_1x5);
+				resizeWindowFixed(WindowScale::WindowScale_1x5);
 			if (ImGui::MenuItem("1x6", "", m_guiContext.windowSizeSelector & 0x40))
-				resizeViewportFixed(WindowScale::WindowScale_1x6);
+				resizeWindowFixed(WindowScale::WindowScale_1x6);
 
 			if (ImGui::MenuItem("Fullscreen", "F11", m_guiContext.flags & GuiContextFlags_FULLSCREEN))
 			{
 				m_guiContext.flags ^= GuiContextFlags_FULLSCREEN;
 				SDL_SetWindowFullscreen(m_window, m_guiContext.flags & GuiContextFlags_FULLSCREEN);
 				SDL_SyncWindow(m_window);
+
+				if (m_guiContext.flags & GuiContextFlags_FULLSCREEN)
+					ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+				else
+					ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 			}
 
 			ImGui::EndMenu();

@@ -89,14 +89,7 @@ class BudgetGB
 	/**
 	 * @brief Resize window with prefined fixed scales.
 	 */
-	void resizeViewportFixed(WindowScale scale);
-
-	/**
-	 * @brief Handles any trigger events that need to be processed in the after start frame but before end frame.
-	 *  The processEvent() is called by the sdl APP_EVENT callback which has no guarrentee which thread it is being
-	 * called from. This function handles events that must be handled mid-frame.
-	 */
-	void handleEvents();
+	void resizeWindowFixed(WindowScale scale);
 
 	void drawGui();
 };

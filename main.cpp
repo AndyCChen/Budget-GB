@@ -3,6 +3,7 @@
 #include <SDL3/SDL_main.h>
 
 #include "BudgetGB.h"
+#include "renderer.h"
 #include "fmt/base.h"
 
 #include <stdexcept>
@@ -43,6 +44,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 		return SDL_APP_FAILURE;
 	}
 
+	RendererGB::newFrame(); // begin initial new frame before entering gameloop
 	return SDL_APP_CONTINUE;
 }
 
