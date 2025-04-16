@@ -163,8 +163,9 @@ void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer,
 	renderContext->m_mainViewport.draw();
 }
 
-void RendererGB::endFrame(SDL_Window *window)
+void RendererGB::endFrame(SDL_Window *window, RenderContext *renderContext)
 {
+	(void) renderContext;
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
