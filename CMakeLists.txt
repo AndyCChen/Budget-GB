@@ -4,6 +4,14 @@ project(Budget_Gameboy_Emulator)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 
+option(USE_DX11_ON_WINDOWS "Use directX11 graphics api on windows" OFF)
+
+if (WIN32 AND USE_DX11_ON_WINDOWS)
+	message(STATUS "BudgetGB Graphics API: DirectX11")
+else()
+	message(STATUS "BudgetGB Graphics API: OpenGL")
+endif()
+
 # nlhomannJson parsing library
 add_library(NlohmannJson INTERFACE)
 target_include_directories(NlohmannJson INTERFACE 
@@ -25,20 +33,27 @@ target_include_directories(Glad PRIVATE
 	vendor/glad/include/
 )
 
-# imgui library
+# imgui library using sdl3 as platform backend
 set(IMGUI_SOURCE_FILES
 	vendor/imgui/imgui.cpp
 	vendor/imgui/imgui_demo.cpp
 	vendor/imgui/imgui_draw.cpp
 	vendor/imgui/imgui_tables.cpp
 	vendor/imgui/imgui_widgets.cpp
+	vendor/imgui/backends/imgui_impl_sdl3.cpp
 )
 
-# sdl3 + opengl3 backends for imgui
-list(APPEND IMGUI_SOURCE_FILES
-	vendor/imgui/backends/imgui_impl_sdl3.cpp
-	vendor/imgui/backends/imgui_impl_opengl3.cpp
-)
+if (WIN32 AND USE_DX11_ON_WINDOW)
+	# directX11 renderer backend for imgui
+	list(APPEND IMGUI_SOURCE_FILES
+		vendor/imgui/backends/imgui_impl_dx11.cpp
+	)
+else()
+	# opengl3 renderer backend for imgui
+	list(APPEND IMGUI_SOURCE_FILES
+		vendor/imgui/backends/imgui_impl_opengl3.cpp
+	)
+endif()
 
 add_library(Imgui STATIC
 	${IMGUI_SOURCE_FILES}
@@ -68,15 +83,21 @@ set(SOURCE_FILES
 	src/cartridge.h
 	src/disassembler.cpp
 	src/disassembler.h
-	src/renderers/include/renderer.h
+	src/renderers/renderer.h
 	src/utils/vec.h
 )
 
-list(APPEND SOURCE_FILES
-	src/renderers/opengl/opengl.cpp
-	src/renderers/opengl/shader.cpp
-	src/renderers/opengl/shader.h
-)
+if (WIN32 AND USE_DX11_ON_WINDOWS)
+	list(APPEND SOURCE_FILES
+		src/renderers/directX11/directX11.cpp
+	)
+else()
+	list(APPEND SOURCE_FILES
+		src/renderers/opengl/opengl.cpp
+		src/renderers/opengl/shader.cpp
+		src/renderers/opengl/shader.h
+	)
+endif()
 
 add_executable(BudgetGB ${SOURCE_FILES})
 target_compile_features(BudgetGB PRIVATE cxx_std_17)
@@ -87,7 +108,6 @@ endif(APPLE)
 
 target_include_directories(BudgetGB PRIVATE
 	src/
-	src/renderers/include/
 	src/renderers/
 
 	vendor/fmt/include/
@@ -100,12 +120,19 @@ target_include_directories(BudgetGB PRIVATE
 target_link_libraries(BudgetGB PRIVATE 
 	Imgui
 	SDL3::SDL3 
-	Glad 
 	NlohmannJson 
 	fmt::fmt
 )
 
+if (WIN32 AND USE_DX11_ON_WINDOWS)
+	target_link_libraries(BudgetGB PRIVATE d3d11.lib)
+else()
+	target_link_libraries(BudgetGB PRIVATE GLAD)
+endif()
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	# statically link against msvc c runtime
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 	target_compile_options(BudgetGB PRIVATE /W4)
 	message(STATUS "MSVC COMPILER")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")

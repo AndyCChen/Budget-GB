@@ -1,9 +1,6 @@
 #include "BudgetGB.h"
 #include "fmt/base.h"
 #include "imgui_impl_sdl3.h"
-
-#include "glad/glad.h"
-
 #include <stdexcept>
 
 static unsigned char colorPallete[][3] = {

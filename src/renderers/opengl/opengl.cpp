@@ -145,7 +145,7 @@ void RendererGB::newFrame()
 	ImGui::NewFrame();
 }
 
-void RendererGB::setMainViewportSize(RenderContext *renderContext, GLint x, GLint y, GLsizei width, GLsizei height)
+void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
 {
 	renderContext->m_mainViewport.m_viewportXY.x = x;
 	renderContext->m_mainViewport.m_viewportXY.y = y;
