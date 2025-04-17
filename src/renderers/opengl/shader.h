@@ -22,6 +22,5 @@ class Shader
   private:
 	GLuint m_shaderProgramID;
 
-	bool loadShaderFromFile(const std::string &shaderPath, std::string &shader);
 	bool compileShader(GLuint shaderID, const std::string &pathToShader);
 };

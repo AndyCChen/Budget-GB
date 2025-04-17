@@ -3,6 +3,7 @@
 
 #include "fmt/base.h"
 #include "shader.h"
+#include "utils/file.h"
 
 Shader::Shader(std::string pathToVertexShader, const std::string &pathTofragmentShader)
 {
@@ -38,23 +39,6 @@ Shader::Shader(std::string pathToVertexShader, const std::string &pathTofragment
 	}
 }
 
-bool Shader::loadShaderFromFile(const std::string &shaderPath, std::string &shader)
-{
-	std::ifstream file(shaderPath);
-	if (!file.is_open())
-	{
-		fmt::println(stderr, "Failed to open shader: {}", shaderPath);
-		return false;
-	}
-
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-	file.close();
-
-	shader = buffer.str();
-	return true;
-}
-
 bool Shader::compileShader(GLuint shaderID, const std::string &pathToShader)
 {
 #ifdef USE_GL_VERSION_410
@@ -65,7 +49,7 @@ bool Shader::compileShader(GLuint shaderID, const std::string &pathToShader)
 
 	std::string shaderSource;
 
-	if (!loadShaderFromFile(pathToShader, shaderSource))
+	if (!Utils::loadShaderFromFile(pathToShader, shaderSource))
 		return false;
 
 	const GLchar *sources[] = {shaderVersion.c_str(), shaderSource.c_str()};

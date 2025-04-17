@@ -84,6 +84,8 @@ set(SOURCE_FILES
 	src/disassembler.cpp
 	src/disassembler.h
 	src/renderers/renderer.h
+	src/utils/file.cpp
+	src/utils/file.h
 	src/utils/vec.h
 )
 

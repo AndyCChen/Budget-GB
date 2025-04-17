@@ -153,7 +153,7 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 	renderContext->m_mainViewport.m_viewportSize.y = height;
 }
 
-void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext)
+void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
 {
 	glBindTexture(GL_TEXTURE_2D, renderContext->m_mainViewport.m_viewportTexture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE,

@@ -46,7 +46,7 @@ void BudgetGB::onUpdate(float deltaTime)
 	m_cpu.runInstruction();
 
 	drawGui();
-	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext);
+	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext, m_window);
 
 	RendererGB::endFrame(m_window, m_renderContext);
 	RendererGB::newFrame(); // begin new frame at end of this game loop

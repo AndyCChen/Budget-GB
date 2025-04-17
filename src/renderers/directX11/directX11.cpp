@@ -5,29 +5,40 @@
 #include "BudgetGB.h"
 #include "renderer.h"
 
+#include <cassert>
+#include <cstdlib>
 #include <d3d11.h>
+#include <d3dcompiler.h>
+#include <wrl.h>
+
+namespace mwrl = Microsoft::WRL;
+
+#define CHECK_HR(hr)           \
+	{                          \
+		assert(SUCCEEDED(hr)); \
+	}
+
+namespace
+{
+
+struct GbMainViewport
+{
+	int i = 0;
+};
+
+} // namespace
 
 struct RendererGB::RenderContext
 {
-	ID3D11Device           *m_device           = nullptr;
-	IDXGISwapChain         *m_swapChain        = nullptr;
-	ID3D11DeviceContext    *m_deviceContext    = nullptr;
-	ID3D11RenderTargetView *m_renderTargetView = nullptr;
+	mwrl::ComPtr<ID3D11Device>           m_device;
+	mwrl::ComPtr<IDXGISwapChain>         m_swapChain;
+	mwrl::ComPtr<ID3D11DeviceContext>    m_deviceContext;
+	mwrl::ComPtr<ID3D11RenderTargetView> m_renderTargetView;
 
-	~RenderContext()
-	{
-		if (m_device != nullptr)
-			m_device->Release();
-
-		if (m_swapChain != nullptr)
-			m_swapChain->Release();
-
-		if (m_deviceContext != nullptr)
-			m_deviceContext->Release();
-
-		if (m_renderTargetView != nullptr)
-			m_renderTargetView->Release();
-	}
+	mwrl::ComPtr<ID3D11Buffer>       m_vertexBuffer;
+	mwrl::ComPtr<ID3D11VertexShader> m_vertexShader;
+	mwrl::ComPtr<ID3D11PixelShader>  m_pixelShader;
+	mwrl::ComPtr<ID3D11InputLayout>  m_inputLayout;
 };
 
 bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale)
@@ -40,7 +51,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 		return false;
 	}
 
-	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * BudgetGB::INITIAL_WINDOW_SCALE,
+	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * windowScale,
 	                          BudgetGB::LCD_HEIGHT * windowScale, 0);
 
 	if (!window)
@@ -49,8 +60,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 		return false;
 	}
 
-	HWND hwnd =
-		(HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+	HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
 
 	// setup swap chain
 	DXGI_SWAP_CHAIN_DESC sd;
@@ -89,18 +99,16 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 		nullptr, 
 		&renderContext->m_deviceContext
 	);
+	CHECK_HR(result);
 	// clang-format on
 
-	if (result != S_OK)
-	{
-		SDL_LogError(0, "Failed to create D3D11 device and swap chain. Error code: 0x%08X", (unsigned int)result);
-		return false;
-	}
+	mwrl::ComPtr<ID3D11Resource> backBuffer;
 
-	ID3D11Resource *backBuffer = nullptr;
-	renderContext->m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
-	renderContext->m_device->CreateRenderTargetView(backBuffer, nullptr, &renderContext->m_renderTargetView);
-	backBuffer->Release();
+	result = renderContext->m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), &backBuffer);
+	CHECK_HR(result);
+
+	result = renderContext->m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, &renderContext->m_renderTargetView);
+	CHECK_HR(result);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -116,7 +124,105 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	ImGui::StyleColorsLight();
 
 	ImGui_ImplSDL3_InitForD3D(window);
-	ImGui_ImplDX11_Init(renderContext->m_device, renderContext->m_deviceContext);
+	ImGui_ImplDX11_Init(renderContext->m_device.Get(), renderContext->m_deviceContext.Get());
+
+	// SET UP VERTEX BUFFER
+
+	// clang-format off
+	float vertices[] = 
+	{
+		-0.5f, -0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		 0.0f,  0.5f, 0.0f,
+	};
+	// clang-format on
+
+	D3D11_BUFFER_DESC vertexBufferDesc{};
+	vertexBufferDesc.ByteWidth           = sizeof(vertices);
+	vertexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.StructureByteStride = 3 * sizeof(vertices[0]);
+
+	D3D11_SUBRESOURCE_DATA subResourceData{};
+	subResourceData.pSysMem = vertices;
+
+	result = renderContext->m_device->CreateBuffer(&vertexBufferDesc, &subResourceData, &renderContext->m_vertexBuffer);
+	CHECK_HR(result);
+
+	mwrl::ComPtr<ID3DBlob> vertexBlob;
+	mwrl::ComPtr<ID3DBlob> pixelBlob;
+	mwrl::ComPtr<ID3DBlob> errorBlob;
+
+	// clang-format off
+	result = D3DCompileFromFile(
+		L"resources/shaders/directX11/viewport.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"vs_main",
+		"vs_5_0",
+		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
+		0,
+		&vertexBlob,
+		&errorBlob
+	);
+	// clang-format on
+
+	if (FAILED(result))
+	{
+		if (errorBlob.Get())
+		{
+			OutputDebugStringA((LPCSTR)errorBlob->GetBufferPointer());
+		}
+		CHECK_HR(result);
+	}
+
+	// clang-format off
+	result = D3DCompileFromFile(
+		L"resources/shaders/directX11/viewport.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"ps_main",
+		"ps_5_0",
+		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
+		0,
+		&pixelBlob,
+		&errorBlob
+	);
+	// clang-format on
+
+	if (FAILED(result))
+	{
+		if (errorBlob.Get())
+		{
+			OutputDebugStringA((LPCSTR)errorBlob->GetBufferPointer());
+		}
+		CHECK_HR(result);
+	}
+
+	result = renderContext->m_device->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &renderContext->m_vertexShader);
+	CHECK_HR(result);
+
+	result = renderContext->m_device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, &renderContext->m_pixelShader);
+	CHECK_HR(result);
+
+	// input layout
+	D3D11_INPUT_ELEMENT_DESC inputElemDesc[] = {
+		{"Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+	};
+
+	result = renderContext->m_device->CreateInputLayout(inputElemDesc, 1, vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), &renderContext->m_inputLayout);
+	CHECK_HR(result);
+
+	mwrl::ComPtr<ID3D11RasterizerState> rs;
+
+	D3D11_RASTERIZER_DESC rsDesc{};
+	rsDesc.FrontCounterClockwise = TRUE;
+	rsDesc.DepthClipEnable       = TRUE;
+	rsDesc.FillMode              = D3D11_FILL_SOLID;
+	rsDesc.CullMode              = D3D11_CULL_BACK;
+
+	renderContext->m_device->CreateRasterizerState(&rsDesc, &rs);
+	renderContext->m_deviceContext->RSSetState(rs.Get());
 
 	return true;
 }
@@ -127,20 +233,59 @@ void RendererGB::newFrame()
 	ImGui_ImplSDL3_NewFrame();
 	ImGui::NewFrame();
 }
+
 void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
 {
+	renderContext->m_deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	renderContext->m_renderTargetView->Release();
+
+	HRESULT result = renderContext->m_swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+	CHECK_HR(result);
+
+	mwrl::ComPtr<ID3D11Resource> backBuffer;
+
+	result = renderContext->m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), &backBuffer);
+	CHECK_HR(result);
+
+	result = renderContext->m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, renderContext->m_renderTargetView.GetAddressOf());
+	CHECK_HR(result);
 }
-void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext)
+
+void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
 {
+	const float colors[] = {136 / 255.0f, 192 / 255.0f, 112 / 255.0f, 1.0f};
+	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_renderTargetView.Get(), colors);
+
+	int width, height;
+	SDL_GetWindowSize(window, &width, &height);
+
+	D3D11_VIEWPORT vp{};
+	vp.Width    = (FLOAT)width;
+	vp.Height   = (FLOAT)height;
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	vp.TopLeftX = 0.0f;
+	vp.TopLeftY = 0.0f;
+	renderContext->m_deviceContext->RSSetViewports(1, &vp);
+
+	UINT vertexOffset = 0;
+	UINT vertexStride = 3 * sizeof(float);
+	renderContext->m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	renderContext->m_deviceContext->IASetInputLayout(renderContext->m_inputLayout.Get());
+	renderContext->m_deviceContext->IASetVertexBuffers(0, 1, renderContext->m_vertexBuffer.GetAddressOf(), &vertexStride, &vertexOffset);
+
+	renderContext->m_deviceContext->VSSetShader(renderContext->m_vertexShader.Get(), nullptr, 0);
+	renderContext->m_deviceContext->PSSetShader(renderContext->m_pixelShader.Get(), nullptr, 0);
+
+	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_renderTargetView.GetAddressOf(), nullptr);
+	renderContext->m_deviceContext->Draw(3, 0);
 }
 void RendererGB::endFrame(SDL_Window *window, RenderContext *renderContext)
 {
 	(void)window;
 	ImGui::Render();
 
-	const float colors[] = {0.3f, 0.6f, 0.7f, 1.0f};
-	renderContext->m_deviceContext->OMSetRenderTargets(1, &renderContext->m_renderTargetView, nullptr);
-	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_renderTargetView, colors);
+	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_renderTargetView.GetAddressOf(), nullptr);
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

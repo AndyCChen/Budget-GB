@@ -3,3 +3,4 @@ UseTab: AlignWithSpaces
 IndentAccessModifiers: false
 AlignConsecutiveDeclarations: true
 AlignConsecutiveAssignments: true
+ColumnLimit: 0
