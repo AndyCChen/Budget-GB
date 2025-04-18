@@ -74,7 +74,7 @@ class BudgetGB
 
 	SDL_Window                      *m_window;
 	RendererGB::RenderContext       *m_renderContext;
-	std::vector<Utils::array_u8Vec3> m_lcdPixelBuffer;
+	std::vector<Utils::array_u8Vec4> m_lcdPixelBuffer;
 
 	std::random_device              m_rd;
 	std::mt19937                    m_gen;

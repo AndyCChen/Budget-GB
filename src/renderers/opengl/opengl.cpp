@@ -11,6 +11,10 @@
 #include <cstdint>
 #include <string>
 
+#ifndef USE_GL_VERSION_410
+#define ENABLE_GL_DEBUG_CALLBACK // debug callback only available on opengl version 4.3 and onwards which means no mac
+#endif
+
 namespace
 {
 
@@ -27,8 +31,10 @@ struct GbMainViewport
 	void draw();
 };
 
+#ifdef ENABLE_GL_DEBUG_CALLBACK
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                                      const GLchar *message, const void *userParam);
+#endif
 
 } // namespace
 
@@ -64,9 +70,6 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 #else
-// debug callback only available on opengl version 4.3 and onwards which means no mac
-#define ENABLE_GL_DEBUG_CALLBACK
-
 	// opengl 4.3 with glsl 4.30
 	const char *glsl_version = "#version 430";
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
@@ -130,7 +133,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 #endif
 
-	renderContext = new RenderContext; // create renderContext only after window and opengl context are setup
+	renderContext              = new RenderContext; // create renderContext only after window and opengl context are setup
 	renderContext->m_glContext = glContext;
 	// SDL_AddEventWatch(eventWatchCallback, (void *)renderContext);
 	SDL_ShowWindow(window);
@@ -147,16 +150,16 @@ void RendererGB::newFrame()
 
 void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
 {
-	renderContext->m_mainViewport.m_viewportXY.x = x;
-	renderContext->m_mainViewport.m_viewportXY.y = y;
+	renderContext->m_mainViewport.m_viewportXY.x   = x;
+	renderContext->m_mainViewport.m_viewportXY.y   = y;
 	renderContext->m_mainViewport.m_viewportSize.x = width;
 	renderContext->m_mainViewport.m_viewportSize.y = height;
 }
 
-void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
+void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec4> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
 {
 	glBindTexture(GL_TEXTURE_2D, renderContext->m_mainViewport.m_viewportTexture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE,
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE,
 	                pixelBuffer.data());
 
 	renderContext->m_mainViewport.m_viewportShader.useProgram();
@@ -165,7 +168,7 @@ void RendererGB::drawMainViewport(std::vector<Utils::array_u8Vec3> &pixelBuffer,
 
 void RendererGB::endFrame(SDL_Window *window, RenderContext *renderContext)
 {
-	(void) renderContext;
+	(void)renderContext;
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -252,7 +255,7 @@ GbMainViewport::GbMainViewport()
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE,
 	             NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -275,6 +278,7 @@ void GbMainViewport::draw()
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
+#ifdef ENABLE_GL_DEBUG_CALLBACK
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                                      const GLchar *message, const void *userParam)
 {
@@ -380,4 +384,5 @@ void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLen
 	SDL_LogError(0, "%d: %s of %s severity, raised from %s: %s", id, _type.c_str(), _severity.c_str(), _source.c_str(),
 	             message);
 }
+#endif
 } // namespace

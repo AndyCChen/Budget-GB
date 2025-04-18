@@ -40,6 +40,7 @@ void BudgetGB::onUpdate(float deltaTime)
 			m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
 			m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
 			m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
+			m_lcdPixelBuffer[i][3] = 255;
 		}
 	}
 
