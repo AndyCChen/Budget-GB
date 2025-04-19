@@ -3,4 +3,5 @@ UseTab: AlignWithSpaces
 IndentAccessModifiers: false
 AlignConsecutiveDeclarations: true
 AlignConsecutiveAssignments: true
+AlignAfterOpenBracket: BlockIndent
 ColumnLimit: 0

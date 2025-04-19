@@ -31,10 +31,11 @@ BudgetGB::~BudgetGB()
 void BudgetGB::onUpdate(float deltaTime)
 {
 	m_accumulatedDeltaTime += deltaTime;
-	if (m_accumulatedDeltaTime > 1.0f)
+	float time = 0.01f;
+	if (m_accumulatedDeltaTime > time)
 	{
-		m_accumulatedDeltaTime -= 1.0f;
-		for (std::size_t i = 0; i < (LCD_WIDTH * LCD_HEIGHT); ++i)
+		m_accumulatedDeltaTime -= time;
+		for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
 		{
 			unsigned char colorIdx = m_palleteRange(m_gen);
 			m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
