@@ -8,10 +8,10 @@
 #include "bus.h"
 #include "cartridge.h"
 #include "disassembler.h"
+#include "imgui.h"
 #include "renderer.h"
 #include "sm83.h"
 #include "utils/vec.h"
-#include "imgui.h"
 
 #include <cstdint>
 #include <random>
@@ -22,6 +22,7 @@ class BudgetGB
 	static constexpr uint32_t LCD_WIDTH            = 160;
 	static constexpr uint32_t LCD_HEIGHT           = 144;
 	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4; // value should be 1-6 only!
+	static constexpr uint32_t CLOCK_RATE_T         = 4194304; // sm83 clock rate for the gameboy in T-cycles
 
 	BudgetGB(const std::string &romPath = "");
 	~BudgetGB();
@@ -44,11 +45,10 @@ class BudgetGB
 
 	enum GuiContextFlags
 	{
-		GuiContextFlags_SHOW_IMGUI_DEMO          = 1 << 0,
-		GuiContextFlags_SHOW_MAIN_MENU           = 1 << 1,
-		GuiContextFlags_PAUSE                    = 1 << 2,
-		GuiContextFlags_FULLSCREEN               = 1 << 3,
-		GuiContextFlags_REENABLE_MULTI_VIEWPORTS = 1 << 4,
+		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
+		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
+		GuiContextFlags_PAUSE           = 1 << 2,
+		GuiContextFlags_FULLSCREEN      = 1 << 3,
 	};
 
 	struct GuiContext

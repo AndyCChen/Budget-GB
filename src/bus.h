@@ -6,6 +6,7 @@
 
 #include "cartridge.h"
 
+class Sm83; // forward declare Sm83
 class Bus
 {
 	friend class Sm83JsonTest;
@@ -35,7 +36,7 @@ class Bus
 		SM83_TEST, // set up bus with 64kb of unmapped wram
 	};
 
-	Bus(Cartridge &cartridge, BusMode mode = BusMode::NONE);
+	Bus(Cartridge &cartridge, Sm83 &cpu, BusMode mode = BusMode::NONE);
 
 	void clearWram();
 
@@ -61,14 +62,10 @@ class Bus
 	 */
 	void cpuWrite(uint16_t position, uint8_t data);
 
-	/**
-	 * @brief Clock cpu for one machine cycle.
-	 */
-	void cpuTickM();
-
   private:
 	BusMode    m_mode;
 	Cartridge &m_cartridge;
+	Sm83      &m_cpu;
 
 	// memory components
 

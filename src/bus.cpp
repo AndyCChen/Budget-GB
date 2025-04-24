@@ -1,7 +1,9 @@
 #include "bus.h"
+#include "sm83.h"
 #include "fmt/base.h"
 
-Bus::Bus(Cartridge &cartridge, BusMode mode) : m_cartridge(cartridge)
+Bus::Bus(Cartridge &cartridge, Sm83 &cpu, BusMode mode)
+	: m_cartridge(cartridge), m_cpu(cpu)
 {
 	m_mode = mode;
 	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
@@ -71,7 +73,7 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 
 uint8_t Bus::cpuRead(uint16_t position)
 {
-	cpuTickM();
+	m_cpu.cpuTickM();
 
 	if (m_mode == BusMode::NONE)
 	{
@@ -117,7 +119,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 
 void Bus::cpuWrite(uint16_t position, uint8_t data)
 {
-	cpuTickM();
+	m_cpu.cpuTickM();
 
 	if (m_mode == BusMode::NONE)
 	{
@@ -158,8 +160,4 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	{
 		m_wram[position] = data;
 	}
-}
-
-void Bus::cpuTickM()
-{
 }

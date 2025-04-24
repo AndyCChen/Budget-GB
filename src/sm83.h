@@ -65,6 +65,7 @@ class Sm83
 	bool           m_ime; // interupt master enable
 
 	bool m_logEnable;
+	std::size_t m_tCycleTicks; // T-Cycle: 4,194,304 hz
 
 	Sm83(Bus &bus, Disassembler &disassembler);
 
@@ -72,6 +73,14 @@ class Sm83
 	 * @brief Emulate cpu for a single instruction.
 	 */
 	void runInstruction();
+
+	/**
+	 * @brief Clock cpu for one machine cycle. 1 M-cycle is 4 T-cycles.
+	 */
+	void cpuTickM()
+	{
+		m_tCycleTicks += 4;
+	}
 
   private:
 	Bus          &m_bus;

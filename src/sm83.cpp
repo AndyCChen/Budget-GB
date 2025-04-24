@@ -3,6 +3,8 @@
 
 Sm83::Sm83(Bus &bus, Disassembler &disassembler) : m_bus(bus), m_disassembler(disassembler)
 {
+	m_tCycleTicks = 0;
+
 	m_programCounter = 0x0100;
 	m_stackPointer   = 0xFFFE;
 
@@ -22,7 +24,7 @@ Sm83::Sm83(Bus &bus, Disassembler &disassembler) : m_bus(bus), m_disassembler(di
 	m_registerHL.lo = 0x4D;
 
 	m_ime = false;
-
+	
 	m_logEnable = false;
 }
 
@@ -2120,7 +2122,7 @@ void Sm83::LDH_A_indirect_C()
 
 void Sm83::LD_SP_HL()
 {
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_stackPointer = (m_registerHL.hi << 8) | m_registerHL.lo;
 }
 
@@ -2134,7 +2136,7 @@ void Sm83::LD_HL_SP_i8()
 	m_registerAF.flags.H = ((m_stackPointer & 0xF) + (offset & 0xF)) >> 4;
 	m_registerAF.flags.C = ((m_stackPointer & 0xFF) + offset) >> 8;
 
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_registerHL.hi = sum >> 8;
 	m_registerHL.lo = sum & 0xFF;
 }
@@ -2511,13 +2513,13 @@ void Sm83::ADD_SP_i8()
 {
 	uint8_t operand = cpuFetch();
 
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_registerAF.flags.Z = 0;
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = ((m_stackPointer & 0xF) + (operand & 0xF)) >> 4;
 	m_registerAF.flags.C = ((m_stackPointer & 0xFF) + (operand)) >> 8;
 
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_stackPointer = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(operand));
 }
 
@@ -2659,7 +2661,7 @@ void Sm83::SBC_A_indirect_HL()
 void Sm83::JR_i8()
 {
 	int8_t offset = static_cast<int8_t>(cpuFetch());
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_programCounter += offset;
 }
 
@@ -2671,7 +2673,7 @@ void Sm83::JR_CC_i8(bool condition)
 	// 1 m-cycle == 4 t-cycles
 	if (condition)
 	{
-		m_bus.cpuTickM();
+		cpuTickM();
 		m_programCounter += offset;
 	}
 }
@@ -2684,7 +2686,7 @@ void Sm83::JP_CC_n16(bool condition)
 
 	if (condition)
 	{
-		m_bus.cpuTickM();
+		cpuTickM();
 		m_programCounter = address;
 	}
 }
@@ -2695,7 +2697,7 @@ void Sm83::JP_n16()
 	uint8_t  hi      = cpuFetch();
 	uint16_t address = lo | (hi << 8);
 
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_programCounter = address;
 }
 
@@ -2849,13 +2851,13 @@ void Sm83::RET()
 	uint8_t lo = m_bus.cpuRead(m_stackPointer++);
 	uint8_t hi = m_bus.cpuRead(m_stackPointer++);
 
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_programCounter = (hi << 8) | lo;
 }
 
 void Sm83::RET_CC(bool condition)
 {
-	m_bus.cpuTickM();
+	cpuTickM();
 	if (condition)
 		RET();
 }
@@ -2885,14 +2887,14 @@ void Sm83::POP_AF()
 
 void Sm83::PUSH_r16(Sm83Register &dest)
 {
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_bus.cpuWrite(--m_stackPointer, dest.hi);
 	m_bus.cpuWrite(--m_stackPointer, dest.lo);
 }
 
 void Sm83::PUSH_AF()
 {
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_bus.cpuWrite(--m_stackPointer, m_registerAF.accumulator);
 	m_bus.cpuWrite(--m_stackPointer, m_registerAF.flags.getFlagsU8());
 }
@@ -2903,7 +2905,7 @@ void Sm83::CALL_n16()
 	uint8_t  hi          = cpuFetch();
 	uint16_t callAddress = lo | (hi << 8);
 
-	m_bus.cpuTickM();
+	cpuTickM();
 
 	// save hi byte of pc to stack followed by the lo byte
 	m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
@@ -2920,7 +2922,7 @@ void Sm83::CALL_CC_n16(bool condition)
 
 	if (condition)
 	{
-		m_bus.cpuTickM();
+		cpuTickM();
 
 		// save hi byte of pc to stack followed by the lo byte
 		m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
@@ -2932,7 +2934,7 @@ void Sm83::CALL_CC_n16(bool condition)
 
 void Sm83::RST(RstVector vec)
 {
-	m_bus.cpuTickM();
+	cpuTickM();
 	m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
 	m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
 

@@ -4,10 +4,11 @@
 #include <stdexcept>
 
 static unsigned char colorPallete[][3] = {
-	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}};
+	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}
+};
 
 BudgetGB::BudgetGB(const std::string &romPath)
-	: m_cartridge(), m_bus(m_cartridge), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler), m_gen(m_rd()),
+	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler), m_gen(m_rd()),
 	  m_palleteRange(0, 4)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
@@ -21,6 +22,15 @@ BudgetGB::BudgetGB(const std::string &romPath)
 	{
 		m_cartridge.loadRomFromPath(romPath);
 	}
+
+	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
+	{
+		unsigned char colorIdx = m_palleteRange(m_gen);
+		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
+		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
+		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
+		m_lcdPixelBuffer[i][3] = 255;
+	}
 }
 
 BudgetGB::~BudgetGB()
@@ -31,21 +41,19 @@ BudgetGB::~BudgetGB()
 void BudgetGB::onUpdate(float deltaTime)
 {
 	m_accumulatedDeltaTime += deltaTime;
-	float time = 0.01f;
+
+	constexpr float time = 1 / 60.0f;
 	if (m_accumulatedDeltaTime > time)
 	{
-		m_accumulatedDeltaTime -= time;
-		for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
+		constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
+		while (m_cpu.m_tCycleTicks < ticksPerFrame)
 		{
-			unsigned char colorIdx = m_palleteRange(m_gen);
-			m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
-			m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
-			m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
-			m_lcdPixelBuffer[i][3] = 255;
+			m_cpu.runInstruction();
 		}
-	}
 
-	m_cpu.runInstruction();
+		m_cpu.m_tCycleTicks -= ticksPerFrame;
+		m_accumulatedDeltaTime -= time;
+	}
 
 	drawGui();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext, m_window);
@@ -163,14 +171,31 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 	m_guiContext.windowSizeSelector = 0;
 	m_guiContext.windowSizeSelector |= 1 << static_cast<uint32_t>(scale);
 
-	SDL_SetWindowSize(m_window, static_cast<int>(scale) * BudgetGB::LCD_WIDTH,
-	                  static_cast<int>(scale) * BudgetGB::LCD_HEIGHT);
+	SDL_SetWindowSize(m_window, static_cast<int>(scale) * BudgetGB::LCD_WIDTH, static_cast<int>(scale) * BudgetGB::LCD_HEIGHT);
 
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
 	/*int newWidth, newHeight;
 	SDL_GetWindowSize(m_window, &newWidth, &newHeight);
 	RendererGB::setMainViewportSize(m_renderContext, 0, 0, newWidth, newHeight);*/
+}
+
+static SDL_DialogFileFilter filters[] = {
+	{"*.gb", "gb;gb"},
+};
+
+static void SDLCALL fileDialogCallback(void *userdata, const char *const *filelist, int filter)
+{
+	if (!filelist)
+	{
+		SDL_LogError(0, "Failed to open file! %s", SDL_GetError());
+		return;
+	}
+	// canceled file dialog, no file selected
+	else if (!*filelist)
+		return;
+
+	fmt::println("{}", *filelist);
 }
 
 void BudgetGB::drawGui()
@@ -195,7 +220,11 @@ void BudgetGB::drawGui()
 		if (ImGui::MenuItem("Pause", "Ctrl+P", m_guiContext.flags & GuiContextFlags_PAUSE))
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
 
-		ImGui::MenuItem("Load ROM...");
+		if (ImGui::MenuItem("Load ROM..."))
+		{
+
+			SDL_ShowOpenFileDialog(fileDialogCallback, nullptr, m_window, filters, 1, nullptr, false);
+		}
 
 		if (ImGui::BeginMenu("Window Sizes"))
 		{
