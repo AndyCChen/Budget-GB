@@ -6,3 +6,5 @@ CMakeSettings.json
 dmg_boot.bin
 testRoms/
 imgui.ini
+.vscode
+.DS_Store

@@ -129,7 +129,7 @@ target_link_libraries(BudgetGB PRIVATE
 if (WIN32 AND USE_DX11_ON_WINDOWS)
 	target_link_libraries(BudgetGB PRIVATE d3d11.lib d3dcompiler.lib)
 else()
-	target_link_libraries(BudgetGB PRIVATE GLAD)
+	target_link_libraries(BudgetGB PRIVATE Glad)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
