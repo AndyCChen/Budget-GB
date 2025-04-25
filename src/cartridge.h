@@ -9,15 +9,18 @@ class Cartridge
   public:
 	Cartridge()
 	{
-		// minimum 32kb of cartridge
-		m_cartridgeRom.resize(1024 * 32);
-		m_externalRam.resize(0);
+		m_cartridgeLoaded = false;
 	}
 
-	bool    loadRomFromPath(const std::string &path);
+	bool    loadCartridgeFromPath(const std::string &path);
 	uint8_t cartridgeRead(uint16_t position);
+	bool    isLoaded() const
+	{
+		return m_cartridgeLoaded;
+	}
 
   private:
 	std::vector<uint8_t> m_cartridgeRom;
 	std::vector<uint8_t> m_externalRam;
+	bool                 m_cartridgeLoaded;
 };

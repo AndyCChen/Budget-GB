@@ -21,16 +21,28 @@ class BudgetGB
   public:
 	static constexpr uint32_t LCD_WIDTH            = 160;
 	static constexpr uint32_t LCD_HEIGHT           = 144;
-	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4; // value should be 1-6 only!
+	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4;       // value should be 1-6 only!
 	static constexpr uint32_t CLOCK_RATE_T         = 4194304; // sm83 clock rate for the gameboy in T-cycles
 
-	BudgetGB(const std::string &romPath = "");
+	/**
+	 * @brief Initialize gameboy instance with a optional path to a cartridge.
+	 * @param cartridgePath
+	 */
+	BudgetGB(const std::string &cartridgePath = "");
 	~BudgetGB();
 
 	// Called once per frame at refresh rate
 	void onUpdate(float deltaTime);
 
 	SDL_AppResult processEvent(SDL_Event *event);
+
+	/**
+	 * @brief Resets bus and cpu before loading a cartridge from the provided path. Used for loading new cartridges after the gameboy instance
+	 * has been created.
+	 * @param cartridgePath
+	 * @return True on success, false otherwise.
+	 */
+	bool loadCartridge(const std::string &cartridgePath);
 
   private:
 	enum class WindowScale

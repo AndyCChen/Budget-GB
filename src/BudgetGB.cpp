@@ -7,7 +7,7 @@ static unsigned char colorPallete[][3] = {
 	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}
 };
 
-BudgetGB::BudgetGB(const std::string &romPath)
+BudgetGB::BudgetGB(const std::string &cartridgePath)
 	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler), m_gen(m_rd()),
 	  m_palleteRange(0, 4)
 {
@@ -18,9 +18,9 @@ BudgetGB::BudgetGB(const std::string &romPath)
 		throw std::runtime_error("Failed to initialize window with renderer!");
 	}
 
-	if (romPath != "")
+	if (cartridgePath != "")
 	{
-		m_cartridge.loadRomFromPath(romPath);
+		m_cartridge.loadCartridgeFromPath(cartridgePath);
 	}
 
 	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
@@ -45,13 +45,16 @@ void BudgetGB::onUpdate(float deltaTime)
 	constexpr float time = 1 / 60.0f;
 	if (m_accumulatedDeltaTime > time)
 	{
-		constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
-		while (m_cpu.m_tCycleTicks < ticksPerFrame)
+		if (m_cartridge.isLoaded())
 		{
-			m_cpu.runInstruction();
-		}
+			constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
+			while (m_cpu.m_tCycleTicks < ticksPerFrame)
+			{
+				m_cpu.runInstruction();
+			}
 
-		m_cpu.m_tCycleTicks -= ticksPerFrame;
+			m_cpu.m_tCycleTicks -= ticksPerFrame;
+		}
 		m_accumulatedDeltaTime -= time;
 	}
 
@@ -82,13 +85,6 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 		if (event->button.button == 3) // right mouse button brings up main menu
 			m_guiContext.flags |= GuiContextFlags_SHOW_MAIN_MENU;
 
-	if (event->type == SDL_EVENT_KEY_DOWN)
-	{
-		const bool *keystate = SDL_GetKeyboardState(nullptr);
-		if (keystate[SDL_SCANCODE_LCTRL] && keystate[SDL_SCANCODE_P])
-			m_guiContext.flags ^= GuiContextFlags_PAUSE;
-	}
-
 	if (event->type == SDL_EVENT_KEY_UP)
 	{
 		switch (event->key.scancode)
@@ -105,6 +101,11 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 				ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 			break;
+
+		case SDL_SCANCODE_P:
+			m_guiContext.flags ^= GuiContextFlags_PAUSE;
+			break;
+
 		default:
 			break;
 		}
@@ -180,22 +181,20 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 	RendererGB::setMainViewportSize(m_renderContext, 0, 0, newWidth, newHeight);*/
 }
 
-static SDL_DialogFileFilter filters[] = {
-	{"*.gb", "gb;gb"},
-};
-
 static void SDLCALL fileDialogCallback(void *userdata, const char *const *filelist, int filter)
 {
+	BudgetGB *gameboy = (BudgetGB *)userdata;
+
 	if (!filelist)
 	{
-		SDL_LogError(0, "Failed to open file! %s", SDL_GetError());
+		SDL_LogError(0, "Failed to select file! %s", SDL_GetError());
 		return;
 	}
 	// canceled file dialog, no file selected
 	else if (!*filelist)
 		return;
 
-	fmt::println("{}", *filelist);
+	gameboy->loadCartridge(std::string(*filelist));
 }
 
 void BudgetGB::drawGui()
@@ -217,13 +216,15 @@ void BudgetGB::drawGui()
 
 	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
 	{
-		if (ImGui::MenuItem("Pause", "Ctrl+P", m_guiContext.flags & GuiContextFlags_PAUSE))
+		if (ImGui::MenuItem("Pause", "P", m_guiContext.flags & GuiContextFlags_PAUSE))
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
 
 		if (ImGui::MenuItem("Load ROM..."))
 		{
-
-			SDL_ShowOpenFileDialog(fileDialogCallback, nullptr, m_window, filters, 1, nullptr, false);
+			SDL_DialogFileFilter filters[] = {
+				{"*.gb", "gb;gb"},
+			};
+			SDL_ShowOpenFileDialog(fileDialogCallback, this, m_window, filters, 1, nullptr, false);
 		}
 
 		if (ImGui::BeginMenu("Window Sizes"))
@@ -269,4 +270,11 @@ void BudgetGB::drawGui()
 		}
 		ImGui::EndPopup();
 	}
+}
+
+bool BudgetGB::loadCartridge(const std::string &cartridgePath)
+{
+	m_bus.clearBus();
+	m_cpu.cpuReset();
+	return m_cartridge.loadCartridgeFromPath(cartridgePath);
 }

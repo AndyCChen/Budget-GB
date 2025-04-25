@@ -13,11 +13,11 @@ Bus::Bus(Cartridge &cartridge, Sm83 &cpu, BusMode mode)
 	{
 
 	case Bus::BusMode::NONE:
-		m_wram.resize(DEFAULT_WRAM_SIZE);
+		m_wram.resize(DEFAULT_WRAM_SIZE, 0);
 		break;
 
 	case Bus::BusMode::SM83_TEST:
-		m_wram.resize(TEST_MODE_WRAM_SIZE);
+		m_wram.resize(TEST_MODE_WRAM_SIZE, 0);
 		break;
 	}
 }

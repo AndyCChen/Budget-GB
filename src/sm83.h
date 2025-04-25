@@ -64,10 +64,17 @@ class Sm83
 	Sm83Register   m_registerHL;
 	bool           m_ime; // interupt master enable
 
-	bool m_logEnable;
+	bool        m_logEnable;
 	std::size_t m_tCycleTicks; // T-Cycle: 4,194,304 hz
 
 	Sm83(Bus &bus, Disassembler &disassembler);
+
+	void cpuReset()
+	{
+		m_tCycleTicks = 0;
+		initDMG();
+		m_ime = false;
+	}
 
 	/**
 	 * @brief Emulate cpu for a single instruction.
@@ -85,6 +92,30 @@ class Sm83
   private:
 	Bus          &m_bus;
 	Disassembler &m_disassembler;
+
+	/**
+	 * @brief Cpu state after the DMG boot is finished executing.
+	 */
+	void initDMG()
+	{
+		m_programCounter = 0x0100;
+		m_stackPointer   = 0xFFFE;
+
+		m_registerAF.accumulator = 0x1;
+		m_registerAF.flags.Z     = 1;
+		m_registerAF.flags.N     = 0;
+		m_registerAF.flags.H     = 0;
+		m_registerAF.flags.C     = 0;
+
+		m_registerBC.hi = 0x00;
+		m_registerBC.lo = 0x13;
+
+		m_registerDE.hi = 0x00;
+		m_registerDE.lo = 0xD8;
+
+		m_registerHL.hi = 0x01;
+		m_registerHL.lo = 0x4D;
+	}
 
 	/**
 	 * @brief Read from memory currently pointed to by program counter

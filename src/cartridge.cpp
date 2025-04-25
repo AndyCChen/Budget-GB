@@ -3,12 +3,13 @@
 
 #include "cartridge.h"
 
-bool Cartridge::loadRomFromPath(const std::string &path)
+bool Cartridge::loadCartridgeFromPath(const std::string &path)
 {
 	std::ifstream romFile(path, std::ios::binary);
 	if (!romFile.is_open())
 	{
 		fmt::println(stderr, "Failed to open rom at: {}", path);
+		m_cartridgeLoaded = false;
 		return false;
 	}
 
@@ -23,6 +24,7 @@ bool Cartridge::loadRomFromPath(const std::string &path)
 	fmt::println("Rom loaded: {}", path);
 	fmt::println("Cartridge rom size: {:d} bytes", romSize);
 
+	m_cartridgeLoaded = true;
 	return true;
 }
 
