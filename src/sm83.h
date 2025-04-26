@@ -3,10 +3,24 @@
 #include <cstdint>
 #include <iterator>
 #include <string>
+#include <vector>
 
 #include "bus.h"
 #include "disassembler.h"
 #include "fmt/base.h"
+
+struct Sm83Instruction
+{
+	std::string m_opcodeAddress = "";
+	std::string m_opcodeBytes   = "";
+	std::string m_opcodeString  = "";
+
+	void clear()
+	{
+		m_opcodeBytes.clear();
+		m_opcodeString.clear();
+	}
+};
 
 class Sm83
 {
@@ -53,6 +67,12 @@ class Sm83
 	{
 		uint8_t hi;
 		uint8_t lo;
+
+		void set_u16(uint16_t value)
+		{
+			lo = value & 0xFF;
+			hi = (value & 0xFF00) >> 8;
+		}
 	};
 
   public:
@@ -63,6 +83,8 @@ class Sm83
 	Sm83Register   m_registerDE;
 	Sm83Register   m_registerHL;
 	bool           m_ime; // interupt master enable
+
+	std::vector<Sm83Instruction> m_instructionBuffer;
 
 	bool        m_logEnable;
 	std::size_t m_tCycleTicks; // T-Cycle: 4,194,304 hz
@@ -77,11 +99,6 @@ class Sm83
 	}
 
 	/**
-	 * @brief Emulate cpu for a single instruction.
-	 */
-	void runInstruction();
-
-	/**
 	 * @brief Clock cpu for one machine cycle. 1 M-cycle is 4 T-cycles.
 	 */
 	void cpuTickM()
@@ -89,9 +106,41 @@ class Sm83
 		m_tCycleTicks += 4;
 	}
 
+	std::size_t getInstructionBufferPosition() const
+	{
+		return m_instructionBufferPosition;
+	}
+
+	std::size_t getInstructionBufferSize() const
+	{
+		return m_instructionBuffer.size();
+	}
+
+	/**
+	 * @brief Emulate cpu for a single instruction.
+	 */
+	void runInstruction();
+
   private:
 	Bus          &m_bus;
 	Disassembler &m_disassembler;
+
+	uint16_t opcodeOperand = 0; // stores the 1 or 2 byte long operand of cpu instructions
+	uint16_t jumpAddress   = 0;
+
+	std::size_t m_instructionBufferPosition = 0;
+
+	template <typename... T>
+	void formatToOpcodeBytes(fmt::format_string<T...> format, T &&...args)
+	{
+		fmt::format_to(std::back_inserter(m_instructionBuffer[m_instructionBufferPosition].m_opcodeBytes), format, std::forward<T>(args)...);
+	}
+
+	template <typename... T>
+	void formatToOpcodeString(fmt::format_string<T...> format, T &&...args)
+	{
+		fmt::format_to(std::back_inserter(m_instructionBuffer[m_instructionBufferPosition].m_opcodeString), format, std::forward<T>(args)...);
+	}
 
 	/**
 	 * @brief Cpu state after the DMG boot is finished executing.
@@ -118,13 +167,30 @@ class Sm83
 	}
 
 	/**
-	 * @brief Read from memory currently pointed to by program counter
+	 * @brief Read single byte from memory currently pointed to by program counter
 	 * and increment program counter
-	 * @return 8bit data that is read.
+	 * @return
 	 */
-	uint8_t cpuFetch()
+	uint8_t cpuFetch_u8()
 	{
-		return m_bus.cpuRead(m_programCounter++);
+		uint8_t value = m_bus.cpuRead(m_programCounter++);
+		formatToOpcodeBytes("{:02X} ", value);
+		opcodeOperand = value;
+		return value;
+	}
+
+	/**
+	 * @brief Read two bytes from memory pointed to by program counter, takes into account little endian storage.
+	 * @return
+	 */
+	uint16_t cpuFetch_u16()
+	{
+		uint8_t lo = m_bus.cpuRead(m_programCounter++);
+		uint8_t hi = m_bus.cpuRead(m_programCounter++);
+		formatToOpcodeBytes("{:02X} {:02X}", lo, hi);
+		uint16_t value = static_cast<uint16_t>((hi << 8) | lo);
+		opcodeOperand  = value;
+		return value;
 	}
 
 	/**
