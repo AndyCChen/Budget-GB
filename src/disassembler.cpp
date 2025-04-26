@@ -6,8 +6,9 @@ void Disassembler::instructionStep()
 	m_bufferPosition = (m_bufferPosition + 1) % m_buffer.size();
 	m_buffer[m_bufferPosition].clear();
 
-	m_buffer[m_bufferPosition].m_opcodeAddress = m_programCounter;
-	uint8_t opcode                             = fetch_n8();
+	m_buffer[m_bufferPosition].m_opcodeAddress = fmt::format("{:04X}", m_programCounter);
+
+	uint8_t opcode = fetch_n8();
 	disassembleOpcode(opcode);
 }
 
@@ -2084,5 +2085,5 @@ void Disassembler::disassemblePrefixedOpcode(uint8_t opcode)
 void Disassembler::logToConsole()
 {
 	DisassembledInstruction &current = m_buffer[m_bufferPosition];
-	fmt::println("{:04X} {:20s}{:s}", current.m_opcodeAddress, current.m_opcodeBytes, current.m_opcodeString);
+	fmt::println("{:s} {:20s}{:s}", current.m_opcodeAddress, current.m_opcodeBytes, current.m_opcodeString);
 }

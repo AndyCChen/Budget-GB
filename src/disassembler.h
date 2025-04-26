@@ -11,9 +11,9 @@
 
 struct DisassembledInstruction
 {
-	uint16_t    m_opcodeAddress;
-	std::string m_opcodeBytes;
-	std::string m_opcodeString;
+	std::string m_opcodeAddress = "";
+	std::string m_opcodeBytes   = "";
+	std::string m_opcodeString  = "";
 
 	void clear()
 	{
@@ -25,11 +25,12 @@ struct DisassembledInstruction
 class Disassembler
 {
   public:
-	Disassembler(Bus &bus) : m_bus(bus)
+	Disassembler(Bus &bus)
+		: m_bus(bus)
 	{
 		m_programCounter = 0;
 		m_bufferPosition = 0;
-		m_buffer.resize(10);
+		m_buffer.resize(100);
 	}
 
 	/**
@@ -40,6 +41,22 @@ class Disassembler
 	void setProgramCounter(uint16_t pc)
 	{
 		m_programCounter = pc;
+	}
+
+	// returns size of buffer that stores disassembled cpu instructions
+	std::size_t bufferSize()
+	{
+		return m_buffer.size();
+	}
+
+	std::size_t getBufferPosition()
+	{
+		return m_bufferPosition;
+	}
+
+	DisassembledInstruction getDisassemblyAt(std::size_t index)
+	{
+		return m_buffer[index];
 	}
 
 	void logToConsole();
@@ -94,12 +111,14 @@ class Disassembler
 	 */
 	void disassemblePrefixedOpcode(uint8_t opcode);
 
-	template <typename... T> void formatToOpcodeBytes(fmt::format_string<T...> format, T &&...args)
+	template <typename... T>
+	void formatToOpcodeBytes(fmt::format_string<T...> format, T &&...args)
 	{
 		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeBytes), format, std::forward<T>(args)...);
 	}
 
-	template <typename... T> void formatToOpcodeString(fmt::format_string<T...> format, T &&...args)
+	template <typename... T>
+	void formatToOpcodeString(fmt::format_string<T...> format, T &&...args)
 	{
 		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeString), format, std::forward<T>(args)...);
 	}

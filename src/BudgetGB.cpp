@@ -25,7 +25,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
 	{
-		unsigned char colorIdx = m_palleteRange(m_gen);
+		unsigned char colorIdx = (unsigned char)m_palleteRange(m_gen);
 		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
 		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
 		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
@@ -40,25 +40,32 @@ BudgetGB::~BudgetGB()
 
 void BudgetGB::onUpdate(float deltaTime)
 {
-	m_accumulatedDeltaTime += deltaTime;
-
-	constexpr float time = 1 / 60.0f;
-	if (m_accumulatedDeltaTime > time)
+	if (!(m_guiContext.flags & GuiContextFlags_PAUSE))
 	{
-		if (m_cartridge.isLoaded())
+		m_accumulatedDeltaTime += deltaTime;
+		constexpr float time = 1.0f / 60.0f;
+		if (m_accumulatedDeltaTime > time)
 		{
-			constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
-			while (m_cpu.m_tCycleTicks < ticksPerFrame)
+			if (m_cartridge.isLoaded())
 			{
-				m_cpu.runInstruction();
-			}
+				constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
+				while (m_cpu.m_tCycleTicks < ticksPerFrame)
+				{
+					m_cpu.runInstruction();
+				}
 
-			m_cpu.m_tCycleTicks -= ticksPerFrame;
+				m_cpu.m_tCycleTicks -= ticksPerFrame;
+			}
+			m_accumulatedDeltaTime -= time;
 		}
-		m_accumulatedDeltaTime -= time;
+	}
+	else if (m_guiContext.flags & GuiContextFlags_INSTRUCTION_STEP)
+	{
+		m_guiContext.flags &= ~GuiContextFlags_INSTRUCTION_STEP;
+		m_cpu.runInstruction();
 	}
 
-	drawGui();
+	guiMain();
 	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext, m_window);
 
 	RendererGB::endFrame(m_window, m_renderContext);
@@ -112,6 +119,13 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 	}
 
 	return SDL_APP_CONTINUE;
+}
+
+bool BudgetGB::loadCartridge(const std::string &cartridgePath)
+{
+	m_bus.clearBus();
+	m_cpu.cpuReset();
+	return m_cartridge.loadCartridgeFromPath(cartridgePath);
 }
 
 void BudgetGB::resizeViewport()
@@ -183,6 +197,7 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 
 static void SDLCALL fileDialogCallback(void *userdata, const char *const *filelist, int filter)
 {
+	(void)filter;
 	BudgetGB *gameboy = (BudgetGB *)userdata;
 
 	if (!filelist)
@@ -197,7 +212,7 @@ static void SDLCALL fileDialogCallback(void *userdata, const char *const *fileli
 	gameboy->loadCartridge(std::string(*filelist));
 }
 
-void BudgetGB::drawGui()
+void BudgetGB::guiMain()
 {
 	// imgui demo window
 	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
@@ -206,6 +221,15 @@ void BudgetGB::drawGui()
 		ImGui::ShowDemoWindow(&toggle);
 		if (!toggle)
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
+	}
+
+	// cpu viewer window
+	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
+	{
+		bool toggle = true;
+		guiCpuViewer(&toggle);
+		if (!toggle)
+			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;
 	}
 
 	if (m_guiContext.flags & GuiContextFlags_SHOW_MAIN_MENU)
@@ -261,6 +285,9 @@ void BudgetGB::drawGui()
 		if (ImGui::MenuItem("Toggle Imgui Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 
+		if (ImGui::MenuItem("CPU Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER))
+			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;
+
 		ImGui::Separator();
 		if (ImGui::MenuItem("Quit"))
 		{
@@ -272,9 +299,52 @@ void BudgetGB::drawGui()
 	}
 }
 
-bool BudgetGB::loadCartridge(const std::string &cartridgePath)
+void BudgetGB::guiCpuViewer(bool *toggle)
 {
-	m_bus.clearBus();
-	m_cpu.cpuReset();
-	return m_cartridge.loadCartridgeFromPath(cartridgePath);
+	if (ImGui::Begin("CPU Viewer", toggle))
+	{
+		if (ImGui::BeginTable("CPU Viewer Table", 2, ImGuiTableFlags_BordersInnerV))
+		{
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(0);
+			if (ImGui::BeginTable("CPU Instruction Log", 1, ImGuiTableFlags_ScrollY))
+			{
+				ImGui::TableSetupScrollFreeze(0, 1);
+				ImGui::TableSetupColumn("CPU Instructions");
+				ImGui::TableHeadersRow();
+
+				std::size_t position   = m_disassembler.getBufferPosition();
+				std::size_t bufferSize = m_disassembler.bufferSize();
+
+				ImGuiListClipper clipper;
+				clipper.Begin(bufferSize);
+				while (clipper.Step())
+				{
+					for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						auto disassembly = m_disassembler.getDisassemblyAt((position + row + 1) % bufferSize);
+						ImGui::Text("%s %10s %s", disassembly.m_opcodeAddress.c_str(), disassembly.m_opcodeBytes.c_str(), disassembly.m_opcodeString.c_str());
+					}
+				}
+
+				ImGui::EndTable();
+			}
+
+			ImGui::TableSetColumnIndex(1);
+
+			ImGui::BeginDisabled(!m_cartridge.isLoaded() || !(m_guiContext.flags & GuiContextFlags_PAUSE));
+
+			if (ImGui::Button("Instruction Step"))
+				m_guiContext.flags |= GuiContextFlags_INSTRUCTION_STEP;
+
+			ImGui::EndDisabled();
+
+			ImGui::EndTable();
+		}
+
+		ImGui::End();
+	}
 }

@@ -9,7 +9,7 @@ Sm83::Sm83(Bus &bus, Disassembler &disassembler) : m_bus(bus), m_disassembler(di
 
 	m_ime = false;
 	
-	m_logEnable = false;
+	m_logEnable = true;
 }
 
 void Sm83::runInstruction()
@@ -18,14 +18,11 @@ void Sm83::runInstruction()
 	{
 		m_disassembler.setProgramCounter(m_programCounter);
 		m_disassembler.instructionStep();
-		m_disassembler.logToConsole();
+		//m_disassembler.logToConsole();
 	}
 
 	uint8_t opcode = cpuFetch();
 	decodeExecute(opcode);
-
-	/*if (m_logEnable)*/
-	/*	fmt::print("{}\n", m_instructionString);*/
 }
 
 void Sm83::decodeExecute(uint8_t opcode)

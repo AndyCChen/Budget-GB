@@ -6,12 +6,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 
 option(USE_DX11_ON_WINDOWS "Use directX11 graphics api on windows" OFF)
 
-if (WIN32 AND USE_DX11_ON_WINDOWS)
-	message(STATUS "BudgetGB Graphics API: DirectX11")
-else()
-	message(STATUS "BudgetGB Graphics API: OpenGL")
-endif()
-
 # nlhomannJson parsing library
 add_library(NlohmannJson INTERFACE)
 target_include_directories(NlohmannJson INTERFACE 
@@ -119,7 +113,7 @@ target_include_directories(BudgetGB PRIVATE
 	vendor/imgui/backends/
 )
 
-target_link_libraries(BudgetGB PRIVATE 
+set(BUDGET_GB_LIBS 
 	Imgui
 	SDL3::SDL3 
 	NlohmannJson 
@@ -127,10 +121,14 @@ target_link_libraries(BudgetGB PRIVATE
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)
-	target_link_libraries(BudgetGB PRIVATE d3d11.lib d3dcompiler.lib)
+	message(STATUS "BudgetGB Graphics API: DirectX11")
+	list(APPEND BUDGET_GB_LIBS d3d11.lib d3dcompiler.lib)
 else()
-	target_link_libraries(BudgetGB PRIVATE Glad)
+	message(STATUS "BudgetGB Graphics API: OpenGL")
+	list(APPEND BUDGET_GB_LIBS Glad)
 endif()
+
+target_link_libraries(BudgetGB PRIVATE ${BUDGET_GB_LIBS})
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	# statically link against msvc c runtime

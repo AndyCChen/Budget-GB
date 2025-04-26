@@ -57,17 +57,19 @@ class BudgetGB
 
 	enum GuiContextFlags
 	{
-		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
-		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
-		GuiContextFlags_PAUSE           = 1 << 2,
-		GuiContextFlags_FULLSCREEN      = 1 << 3,
+		GuiContextFlags_SHOW_IMGUI_DEMO  = 1 << 0,
+		GuiContextFlags_SHOW_MAIN_MENU   = 1 << 1,
+		GuiContextFlags_PAUSE            = 1 << 2,
+		GuiContextFlags_FULLSCREEN       = 1 << 3,
+		GuiContextFlags_SHOW_CPU_VIEWER  = 1 << 4,
+		GuiContextFlags_INSTRUCTION_STEP = 1 << 5,
 	};
 
 	struct GuiContext
 	{
 		GuiContext()
 		{
-			flags              = GuiContextFlags_SHOW_IMGUI_DEMO;
+			flags              = GuiContextFlags_SHOW_IMGUI_DEMO | GuiContextFlags_PAUSE;
 			windowSizeSelector = 1 << BudgetGB::INITIAL_WINDOW_SCALE;
 		}
 
@@ -103,5 +105,11 @@ class BudgetGB
 	 */
 	void resizeWindowFixed(WindowScale scale);
 
-	void drawGui();
+	// gui draw functions
+
+	/**
+	 * @brief Top level entry point for gui.
+	 */
+	void guiMain();
+	void guiCpuViewer(bool *toggle);
 };
