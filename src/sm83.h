@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "bus.h"
-#include "disassembler.h"
 #include "fmt/base.h"
 
 struct Sm83Instruction
@@ -89,7 +88,7 @@ class Sm83
 	bool        m_logEnable;
 	std::size_t m_tCycleTicks; // T-Cycle: 4,194,304 hz
 
-	Sm83(Bus &bus, Disassembler &disassembler);
+	Sm83(Bus &bus);
 
 	void cpuReset()
 	{
@@ -116,6 +115,11 @@ class Sm83
 		return m_instructionBuffer.size();
 	}
 
+	Sm83Instruction getInstructionAt(std::size_t index)
+	{
+		return m_instructionBuffer[index];
+	}
+
 	/**
 	 * @brief Emulate cpu for a single instruction.
 	 */
@@ -123,10 +127,9 @@ class Sm83
 
   private:
 	Bus          &m_bus;
-	Disassembler &m_disassembler;
 
-	uint16_t opcodeOperand = 0; // stores the 1 or 2 byte long operand of cpu instructions
-	uint16_t jumpAddress   = 0;
+	uint16_t opcodeOperand       = 0; // stores the 1 or 2 byte long operand of cpu instructions
+	uint16_t computedJumpAddress = 0;
 
 	std::size_t m_instructionBufferPosition = 0;
 
@@ -187,7 +190,7 @@ class Sm83
 	{
 		uint8_t lo = m_bus.cpuRead(m_programCounter++);
 		uint8_t hi = m_bus.cpuRead(m_programCounter++);
-		formatToOpcodeBytes("{:02X} {:02X}", lo, hi);
+		formatToOpcodeBytes("{:02X} {:02X} ", lo, hi);
 		uint16_t value = static_cast<uint16_t>((hi << 8) | lo);
 		opcodeOperand  = value;
 		return value;

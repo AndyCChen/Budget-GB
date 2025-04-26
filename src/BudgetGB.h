@@ -7,7 +7,6 @@
 #include "SDL3/SDL.h"
 #include "bus.h"
 #include "cartridge.h"
-#include "disassembler.h"
 #include "imgui.h"
 #include "renderer.h"
 #include "sm83.h"
@@ -79,7 +78,6 @@ class BudgetGB
 
 	Cartridge    m_cartridge;
 	Bus          m_bus;
-	Disassembler m_disassembler;
 	Sm83         m_cpu;
 
 	GuiContext m_guiContext;

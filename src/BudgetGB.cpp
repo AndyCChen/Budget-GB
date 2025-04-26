@@ -1,5 +1,6 @@
 #include "BudgetGB.h"
 #include "fmt/base.h"
+#include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include <stdexcept>
 
@@ -8,7 +9,7 @@ static unsigned char colorPallete[][3] = {
 };
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_disassembler(m_bus), m_cpu(m_bus, m_disassembler), m_gen(m_rd()),
+	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_cpu(m_bus), m_gen(m_rd()),
 	  m_palleteRange(0, 4)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
@@ -314,8 +315,8 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 				ImGui::TableSetupColumn("CPU Instructions");
 				ImGui::TableHeadersRow();
 
-				std::size_t position   = m_disassembler.getBufferPosition();
-				std::size_t bufferSize = m_disassembler.bufferSize();
+				std::size_t position   = m_cpu.getInstructionBufferPosition();
+				std::size_t bufferSize = m_cpu.getInstructionBufferSize();
 
 				ImGuiListClipper clipper;
 				clipper.Begin(bufferSize);
@@ -325,7 +326,7 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 					{
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						auto disassembly = m_disassembler.getDisassemblyAt((position + row + 1) % bufferSize);
+						auto disassembly = m_cpu.getInstructionAt((position + row + 1) % bufferSize);
 						ImGui::Text("%s %10s %s", disassembly.m_opcodeAddress.c_str(), disassembly.m_opcodeBytes.c_str(), disassembly.m_opcodeString.c_str());
 					}
 				}

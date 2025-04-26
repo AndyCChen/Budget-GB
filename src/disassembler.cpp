@@ -567,8 +567,8 @@ void Disassembler::disassembleOpcode(uint8_t opcode)
 	case 0x89:
 		formatToOpcodeString("ADC A, C");
 		break;
-	case 0x8A:
 
+	case 0x8A:
 		formatToOpcodeString("ADC A, D");
 		break;
 
@@ -1075,8 +1075,8 @@ void Disassembler::disassemblePrefixedOpcode(uint8_t opcode)
 	case 0x04:
 		formatToOpcodeString("RLC H");
 		break;
-	case 0x05:
 
+	case 0x05:
 		formatToOpcodeString("RLC L");
 		break;
 
@@ -1135,12 +1135,12 @@ void Disassembler::disassemblePrefixedOpcode(uint8_t opcode)
 	case 0x13:
 		formatToOpcodeString("RL E");
 		break;
-	case 0x14:
 
+	case 0x14:
 		formatToOpcodeString("RL H");
 		break;
-	case 0x15:
 
+	case 0x15:
 		formatToOpcodeString("RL L");
 		break;
 
