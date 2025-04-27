@@ -56,12 +56,13 @@ class BudgetGB
 
 	enum GuiContextFlags
 	{
-		GuiContextFlags_SHOW_IMGUI_DEMO  = 1 << 0,
-		GuiContextFlags_SHOW_MAIN_MENU   = 1 << 1,
-		GuiContextFlags_PAUSE            = 1 << 2,
-		GuiContextFlags_FULLSCREEN       = 1 << 3,
-		GuiContextFlags_SHOW_CPU_VIEWER  = 1 << 4,
-		GuiContextFlags_INSTRUCTION_STEP = 1 << 5,
+		GuiContextFlags_SHOW_IMGUI_DEMO        = 1 << 0,
+		GuiContextFlags_SHOW_MAIN_MENU         = 1 << 1,
+		GuiContextFlags_PAUSE                  = 1 << 2,
+		GuiContextFlags_FULLSCREEN             = 1 << 3,
+		GuiContextFlags_SHOW_CPU_VIEWER        = 1 << 4,
+		GuiContextFlags_INSTRUCTION_STEP       = 1 << 5,
+		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
 	};
 
 	struct GuiContext
@@ -76,9 +77,9 @@ class BudgetGB
 		uint32_t windowSizeSelector;
 	};
 
-	Cartridge    m_cartridge;
-	Bus          m_bus;
-	Sm83         m_cpu;
+	Cartridge m_cartridge;
+	Bus       m_bus;
+	Sm83      m_cpu;
 
 	GuiContext m_guiContext;
 

@@ -1,32 +1,63 @@
 #include "sm83.h"
 #include "fmt/format.h"
 #include <cstdint>
+#include <iterator>
 
 Sm83::Sm83(Bus &bus)
-	: m_bus(bus)
+	: m_bus(bus), m_opcodeLogger(255)
 {
-	m_tCycleTicks = 0;
 	initDMG();
-	m_ime       = false;
-	m_logEnable = true;
-	m_instructionBuffer.resize(256);
+
+	m_tCycleTicks = 0;
+	m_ime         = false;
+	m_logEnable   = true;
 }
 
 void Sm83::runInstruction()
 {
-	m_instructionBufferPosition = (m_instructionBufferPosition + 1) % m_instructionBuffer.size();
-	m_instructionBuffer[m_instructionBufferPosition].clear();
-	m_instructionBuffer[m_instructionBufferPosition].m_opcodeAddress = fmt::format("{:04X}", m_programCounter);
-
-	/*if (m_logEnable)
+	if (m_logEnable)
 	{
-	    m_disassembler.setProgramCounter(m_programCounter);
-	    m_disassembler.instructionStep();
-	    m_disassembler.logToConsole();
-	}*/
+		m_opcodeLogger.begin(m_programCounter);
+	}
 
 	uint8_t opcode = cpuFetch_u8();
 	decodeExecute(opcode);
+}
+
+uint8_t Sm83::cpuFetch_u8()
+{
+	uint8_t value = m_bus.cpuRead(m_programCounter++);
+	m_opcodeLogger.appendOpcodeByte(value);
+	opcodeOperand = value;
+	return value;
+}
+
+uint16_t Sm83::cpuFetch_u16()
+{
+	uint8_t lo = m_bus.cpuRead(m_programCounter++);
+	uint8_t hi = m_bus.cpuRead(m_programCounter++);
+	m_opcodeLogger.appendOpcodeByte(lo);
+	m_opcodeLogger.appendOpcodeByte(hi);
+	uint16_t value = static_cast<uint16_t>((hi << 8) | lo);
+	opcodeOperand  = value;
+	return value;
+}
+
+void Sm83::formatToOpcodeString(const std::string &format, uint16_t arg)
+{
+	if (!m_logEnable)
+		return;
+
+	m_opcodeLogger.setOpcodeFormat(format, arg);
+	// fmt::format_to(std::back_inserter(m_instructionBuffer[m_instructionBufferPosition].m_opcodeFormat), format, std::forward<T>(args)...);
+}
+
+void Sm83::formatToOpcodeString(const std::string &format)
+{
+	if (!m_logEnable)
+		return;
+
+	m_opcodeLogger.setOpcodeFormat(format);
 }
 
 void Sm83::decodeExecute(uint8_t opcode)
@@ -1267,7 +1298,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 
 	case 0xF8: {
 		LD_HL_SP_i8();
-		uint8_t value = opcodeOperand;
+		uint8_t value = static_cast<uint8_t>(opcodeOperand);
 		if (value & 0x80)
 			formatToOpcodeString("LD HL, SP - {:02X}", static_cast<uint8_t>(~value + 1));
 		else

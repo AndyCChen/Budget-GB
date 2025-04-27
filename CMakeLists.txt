@@ -81,6 +81,8 @@ set(SOURCE_FILES
 	src/utils/file.cpp
 	src/utils/file.h
 	src/utils/vec.h
+	src/opcodeLogger.cpp
+	src/opcodeLogger.h
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)

@@ -304,7 +304,7 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 {
 	if (ImGui::Begin("CPU Viewer", toggle))
 	{
-		if (ImGui::BeginTable("CPU Viewer Table", 2, ImGuiTableFlags_BordersInnerV))
+		if (ImGui::BeginTable("CPU Viewer Table", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable))
 		{
 			ImGui::TableNextRow();
 
@@ -315,19 +315,18 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 				ImGui::TableSetupColumn("CPU Instructions");
 				ImGui::TableHeadersRow();
 
-				std::size_t position   = m_cpu.getInstructionBufferPosition();
-				std::size_t bufferSize = m_cpu.getInstructionBufferSize();
-
+				std::size_t position   = m_cpu.m_opcodeLogger.bufferPosition();
+				std::size_t bufferSize = m_cpu.m_opcodeLogger.bufferSize();
+				
 				ImGuiListClipper clipper;
-				clipper.Begin(bufferSize);
+				clipper.Begin((int)bufferSize);
 				while (clipper.Step())
 				{
 					for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
 					{
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						auto disassembly = m_cpu.getInstructionAt((position + row + 1) % bufferSize);
-						ImGui::Text("%s %10s %s", disassembly.m_opcodeAddress.c_str(), disassembly.m_opcodeBytes.c_str(), disassembly.m_opcodeString.c_str());
+						ImGui::Text("%s", m_cpu.m_opcodeLogger.getLogAt((position + row + 1) % bufferSize));
 					}
 				}
 
@@ -336,11 +335,30 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 			ImGui::TableSetColumnIndex(1);
 
-			ImGui::BeginDisabled(!m_cartridge.isLoaded() || !(m_guiContext.flags & GuiContextFlags_PAUSE));
+			if (ImGui::BeginTable("CPU Registers", 2))
+			{
+				ImGui::TableNextRow();
 
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("PC: %04X", m_cpu.m_programCounter);
+				ImGui::Text("SP: %04X", m_cpu.m_stackPointer);
+				ImGui::Text("AF: %04X", m_cpu.m_registerAF.get_u16());
+				ImGui::Text("BC: %04X", m_cpu.m_registerBC.get_u16());
+				ImGui::Text("DE: %04X", m_cpu.m_registerDE.get_u16());
+				ImGui::Text("HL: %04X", m_cpu.m_registerHL.get_u16());
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("Z: %u", m_cpu.m_registerAF.flags.Z);
+				ImGui::Text("N: %u", m_cpu.m_registerAF.flags.N);
+				ImGui::Text("H: %u", m_cpu.m_registerAF.flags.H);
+				ImGui::Text("C: %u", m_cpu.m_registerAF.flags.C);
+
+				ImGui::EndTable();
+			}
+
+			ImGui::BeginDisabled(!m_cartridge.isLoaded() || !(m_guiContext.flags & GuiContextFlags_PAUSE));
 			if (ImGui::Button("Instruction Step"))
 				m_guiContext.flags |= GuiContextFlags_INSTRUCTION_STEP;
-
 			ImGui::EndDisabled();
 
 			ImGui::EndTable();
