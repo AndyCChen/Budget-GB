@@ -118,7 +118,7 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 		case SDL_SCANCODE_P:
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
-			if (m_guiContext.flags & GuiContextFlags_PAUSE)
+			if (m_guiContext.flags & GuiContextFlags_PAUSE && m_cartridge.isLoaded())
 			{
 				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 				m_disassembler.step();
@@ -262,7 +262,7 @@ void BudgetGB::guiMain()
 		if (ImGui::MenuItem("Pause", "P", m_guiContext.flags & GuiContextFlags_PAUSE))
 		{
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
-			if (m_guiContext.flags & GuiContextFlags_PAUSE)
+			if (m_guiContext.flags & GuiContextFlags_PAUSE && m_cartridge.isLoaded())
 			{
 				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 				m_disassembler.step();
@@ -397,6 +397,7 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColor);
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColor);
 
+			// unpause
 			if (m_guiContext.flags & GuiContextFlags_PAUSE)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
@@ -404,10 +405,14 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 					m_guiContext.flags &= ~GuiContextFlags_PAUSE;
 				ImGui::PopStyleColor(1);
 			}
+			// pause
 			else if (ImGui::Button("Pause"))
 			{
-				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
-				m_disassembler.step();
+				if (m_cartridge.isLoaded())
+				{
+					m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+					m_disassembler.step();
+				}
 				m_guiContext.flags |= GuiContextFlags_PAUSE;
 			}
 
