@@ -419,7 +419,6 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 			ImGui::EndTable();
 		}
-
-		ImGui::End();
 	}
+	ImGui::End();
 }
