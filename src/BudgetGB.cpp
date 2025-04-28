@@ -378,6 +378,11 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 				m_guiContext.flags |= GuiContextFlags_INSTRUCTION_STEP;
 			ImGui::EndDisabled();
 
+			ImGui::BeginDisabled(!m_cartridge.isLoaded());
+			if (ImGui::Button("Reset"))
+				m_cpu.cpuReset();
+			ImGui::EndDisabled();
+
 			ImGui::Text("Lines to Log");
 			auto &selectedIndex = m_cpu.m_opcodeLogger.m_selectedOptionIdx;
 			ImGui::BeginDisabled(m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG);
