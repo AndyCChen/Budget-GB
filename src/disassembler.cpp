@@ -1,15 +1,26 @@
 #include "disassembler.h"
 #include <cstdint>
 
-void Disassembler::instructionStep()
+void Disassembler::step()
 {
-	m_bufferPosition = (m_bufferPosition + 1) % m_buffer.size();
-	m_buffer[m_bufferPosition].clear();
+	for (uint8_t i = 0; i < m_buffer.size(); ++i)
+	{
+		m_bufferPosition = i;
+		m_buffer[i].m_opcodeAddress = m_programCounter;
 
-	m_buffer[m_bufferPosition].m_opcodeAddress = fmt::format("{:04X}", m_programCounter);
+		uint8_t opcode = fetch_n8();
+		disassembleOpcode(opcode);
+	}
+}
 
-	uint8_t opcode = fetch_n8();
-	disassembleOpcode(opcode);
+const char *Disassembler::getDisassemblyAt(std::size_t index)
+{
+	NextInstruction &intr = m_buffer[index];
+
+	std::memset(intr.m_buffer, 0, sizeof(intr.m_buffer));
+
+	fmt::format_to_n(intr.m_buffer, sizeof(intr.m_buffer), "{:04X}   {:s}", intr.m_opcodeAddress, intr.m_opcodeString);
+	return intr.m_buffer;
 }
 
 void Disassembler::disassembleOpcode(uint8_t opcode)
@@ -2080,10 +2091,4 @@ void Disassembler::disassemblePrefixedOpcode(uint8_t opcode)
 		formatToOpcodeString("SET 7, A");
 		break;
 	}
-}
-
-void Disassembler::logToConsole()
-{
-	DisassembledInstruction &current = m_buffer[m_bufferPosition];
-	fmt::println("{:s} {:20s}{:s}", current.m_opcodeAddress, current.m_opcodeBytes, current.m_opcodeString);
 }

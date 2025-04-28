@@ -142,6 +142,7 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 
 void RendererGB::drawMainViewport(const std::vector<Utils::array_u8Vec4> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
 {
+	(void) window;
 	GbMainViewport &mainViewport = renderContext->m_mainViewport;
 
 	/*renderContext->m_deviceContext->UpdateSubresource(

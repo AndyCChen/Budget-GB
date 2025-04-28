@@ -62,7 +62,7 @@ const char *OpcodeLogger::getLogAt(std::size_t index)
 	char opcodeBuffer[32]{};
 	char registerBuffer[64]{};
 
-	fmt::format_to_n(addressBuffer, sizeof(addressBuffer), "{:04X}\0", item.m_opcodeAddress);
+	fmt::format_to_n(addressBuffer, sizeof(addressBuffer), "{:04X}", item.m_opcodeAddress);
 
 	if (item.m_opcodeLength == 1)
 		fmt::format_to_n(opcodeBytesBuffer, sizeof(opcodeBytesBuffer), "{:02X}", item.m_opcodeBytes[0]);

@@ -1,24 +1,25 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <iterator>
 #include <string>
-#include <vector>
+#include <cstring>
 
 #include "bus.h"
 #include "fmt/base.h"
 #include "fmt/format.h"
 
-struct DisassembledInstruction
+struct NextInstruction
 {
-	std::string m_opcodeAddress = "";
-	std::string m_opcodeBytes   = "";
-	std::string m_opcodeString  = "";
+	uint16_t m_opcodeAddress = 0;
+	char     m_opcodeString[32];
+	char     m_buffer[64];
 
-	void clear()
+	NextInstruction()
 	{
-		m_opcodeBytes.clear();
-		m_opcodeString.clear();
+		std::memset(m_opcodeString, 0, sizeof(m_opcodeString));
+		std::memset(m_buffer, 0, sizeof(m_buffer));
 	}
 };
 
@@ -30,49 +31,30 @@ class Disassembler
 	{
 		m_programCounter = 0;
 		m_bufferPosition = 0;
-		m_buffer.resize(100);
 	}
 
 	/**
-	 * @brief Disassemble the next instruction.
+	 * @brief Disassemble the several future opcodes.
 	 */
-	void instructionStep();
+	void step();
 
 	void setProgramCounter(uint16_t pc)
 	{
 		m_programCounter = pc;
 	}
 
-	// returns size of buffer that stores disassembled cpu instructions
-	std::size_t bufferSize()
-	{
-		return m_buffer.size();
-	}
-
-	std::size_t getBufferPosition()
-	{
-		return m_bufferPosition;
-	}
-
-	DisassembledInstruction getDisassemblyAt(std::size_t index)
-	{
-		return m_buffer[index];
-	}
-
-	void logToConsole();
+	const char *getDisassemblyAt(std::size_t index);
 
   private:
 	Bus     &m_bus;
 	uint16_t m_programCounter;
 
-	std::size_t                          m_bufferPosition;
-	std::vector<DisassembledInstruction> m_buffer;
+	uint32_t                       m_bufferPosition;
+	std::array<NextInstruction, 6> m_buffer;
 
 	uint8_t fetch_n8()
 	{
-		uint8_t value = m_bus.cpuReadNoTick(m_programCounter++);
-		formatToOpcodeBytes("{:02X} ", value);
-		return value;
+		return m_bus.cpuReadNoTick(m_programCounter++);
 	}
 
 	/**
@@ -112,14 +94,10 @@ class Disassembler
 	void disassemblePrefixedOpcode(uint8_t opcode);
 
 	template <typename... T>
-	void formatToOpcodeBytes(fmt::format_string<T...> format, T &&...args)
-	{
-		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeBytes), format, std::forward<T>(args)...);
-	}
-
-	template <typename... T>
 	void formatToOpcodeString(fmt::format_string<T...> format, T &&...args)
 	{
-		fmt::format_to(std::back_inserter(m_buffer[m_bufferPosition].m_opcodeString), format, std::forward<T>(args)...);
+		NextInstruction &intr = m_buffer[m_bufferPosition];
+		std::memset(intr.m_opcodeString, 0, sizeof(intr.m_opcodeString));
+		fmt::format_to_n(intr.m_opcodeString, sizeof(intr.m_opcodeString), format, std::forward<T>(args)...);
 	}
 };

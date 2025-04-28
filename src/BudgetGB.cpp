@@ -9,7 +9,7 @@ static unsigned char colorPallete[][3] = {
 };
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_cpu(m_bus), m_gen(m_rd()),
+	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_cpu(m_bus), m_disassembler(m_bus), m_gen(m_rd()),
 	  m_palleteRange(0, 4)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
@@ -21,7 +21,11 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 	if (cartridgePath != "")
 	{
-		m_cartridge.loadCartridgeFromPath(cartridgePath);
+		if (m_cartridge.loadCartridgeFromPath(cartridgePath))
+		{
+			m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+			m_disassembler.step();
+		}
 	}
 
 	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
@@ -64,6 +68,8 @@ void BudgetGB::onUpdate(float deltaTime)
 	{
 		m_guiContext.flags &= ~GuiContextFlags_INSTRUCTION_STEP;
 		m_cpu.runInstruction();
+		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+		m_disassembler.step();
 	}
 
 	guiMain();
@@ -112,6 +118,11 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 		case SDL_SCANCODE_P:
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
+			if (m_guiContext.flags & GuiContextFlags_PAUSE)
+			{
+				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+				m_disassembler.step();
+			}
 			break;
 
 		default:
@@ -124,9 +135,16 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 {
+	bool status = false;
 	m_bus.clearBus();
 	m_cpu.cpuReset();
-	return m_cartridge.loadCartridgeFromPath(cartridgePath);
+	if (m_cartridge.loadCartridgeFromPath(cartridgePath))
+	{
+		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+		m_disassembler.step();
+		status = true;
+	}
+	return status;
 }
 
 void BudgetGB::resizeViewport()
@@ -242,7 +260,14 @@ void BudgetGB::guiMain()
 	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
 	{
 		if (ImGui::MenuItem("Pause", "P", m_guiContext.flags & GuiContextFlags_PAUSE))
+		{
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
+			if (m_guiContext.flags & GuiContextFlags_PAUSE)
+			{
+				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+				m_disassembler.step();
+			}
+		}
 
 		if (ImGui::MenuItem("Load ROM..."))
 		{
@@ -302,21 +327,30 @@ void BudgetGB::guiMain()
 
 void BudgetGB::guiCpuViewer(bool *toggle)
 {
+	static bool snapInstructionScrollY = false;
+
 	if (ImGui::Begin("CPU Viewer", toggle))
 	{
 		if (ImGui::BeginTable("CPU Viewer Table", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable))
 		{
 			ImGui::TableNextRow();
 
+			ImVec2 tableSize = {0.0f, ImGui::GetWindowHeight() - ImGui::GetFrameHeightWithSpacing() - ImGui::GetTextLineHeightWithSpacing()};
 			ImGui::TableSetColumnIndex(0);
-			if (ImGui::BeginTable("CPU Instruction Log", 1, ImGuiTableFlags_ScrollY))
+			if (ImGui::BeginTable("CPU Instruction Log", 1, ImGuiTableFlags_ScrollY, tableSize))
 			{
+				std::size_t position   = m_cpu.m_opcodeLogger.bufferPosition();
+				std::size_t bufferSize = m_cpu.m_opcodeLogger.bufferSize();
+				
+				if (snapInstructionScrollY)
+				{
+					ImGui::SetScrollFromPosY(ImGui::GetTextLineHeightWithSpacing() * bufferSize);
+					snapInstructionScrollY = false;
+				}
+
 				ImGui::TableSetupScrollFreeze(0, 1);
 				ImGui::TableSetupColumn("CPU Instructions");
 				ImGui::TableHeadersRow();
-
-				std::size_t position   = m_cpu.m_opcodeLogger.bufferPosition();
-				std::size_t bufferSize = m_cpu.m_opcodeLogger.bufferSize();
 
 				ImGuiListClipper clipper;
 				clipper.Begin((int)bufferSize);
@@ -371,7 +405,11 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 				ImGui::PopStyleColor(1);
 			}
 			else if (ImGui::Button("Pause"))
+			{
+				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+				m_disassembler.step();
 				m_guiContext.flags |= GuiContextFlags_PAUSE;
+			}
 
 			ImGui::BeginDisabled(!m_cartridge.isLoaded() || !(m_guiContext.flags & GuiContextFlags_PAUSE));
 			if (ImGui::Button("Instruction Step"))
@@ -380,8 +418,14 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 			ImGui::BeginDisabled(!m_cartridge.isLoaded());
 			if (ImGui::Button("Reset"))
+			{
 				m_cpu.cpuReset();
+				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+				m_disassembler.step();
+			}
 			ImGui::EndDisabled();
+
+			ImGui::NewLine();
 
 			ImGui::Text("Lines to Log");
 			auto &selectedIndex = m_cpu.m_opcodeLogger.m_selectedOptionIdx;
@@ -415,12 +459,34 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 			}
 			else if (ImGui::Button("Start Logging"))
 			{
+				snapInstructionScrollY = true;
 				m_guiContext.flags |= GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
 				m_cpu.m_opcodeLogger.startLog();
 				m_cpu.m_logEnable = m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
 			}
 
 			ImGui::PopStyleColor(2);
+			ImGui::NewLine();
+
+			if (ImGui::BeginTable("Next Instructions", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_NoHostExtendX))
+			{
+				ImGui::TableSetupColumn("Next Instructions");
+				ImGui::TableHeadersRow();
+
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+
+				ImVec4 red = {0.9686f, 0.1843f, 0.1843f, 1.0f};
+
+				ImGui::TextColored(red, "%s", m_disassembler.getDisassemblyAt(0));
+				ImGui::Text("%s", m_disassembler.getDisassemblyAt(1));
+				ImGui::Text("%s", m_disassembler.getDisassemblyAt(2));
+				ImGui::Text("%s", m_disassembler.getDisassemblyAt(3));
+				ImGui::Text("%s", m_disassembler.getDisassemblyAt(4));
+				ImGui::Text("%s", m_disassembler.getDisassemblyAt(5));
+
+				ImGui::EndTable();
+			}
 
 			ImGui::EndTable();
 		}
