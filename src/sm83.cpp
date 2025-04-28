@@ -4,21 +4,18 @@
 #include <iterator>
 
 Sm83::Sm83(Bus &bus)
-	: m_bus(bus), m_opcodeLogger(255)
+	: m_bus(bus)
 {
 	initDMG();
 
 	m_tCycleTicks = 0;
 	m_ime         = false;
-	m_logEnable   = true;
 }
 
 void Sm83::runInstruction()
 {
 	if (m_logEnable)
-	{
-		m_opcodeLogger.begin(m_programCounter);
-	}
+		m_opcodeLogger.next(m_programCounter, m_stackPointer, m_registerAF.get_u16(), m_registerBC.get_u16(), m_registerDE.get_u16(), m_registerHL.get_u16());
 
 	uint8_t opcode = cpuFetch_u8();
 	decodeExecute(opcode);
@@ -27,19 +24,23 @@ void Sm83::runInstruction()
 uint8_t Sm83::cpuFetch_u8()
 {
 	uint8_t value = m_bus.cpuRead(m_programCounter++);
-	m_opcodeLogger.appendOpcodeByte(value);
 	opcodeOperand = value;
+	if (m_logEnable)
+		m_opcodeLogger.appendOpcodeByte(value);
 	return value;
 }
 
 uint16_t Sm83::cpuFetch_u16()
 {
-	uint8_t lo = m_bus.cpuRead(m_programCounter++);
-	uint8_t hi = m_bus.cpuRead(m_programCounter++);
-	m_opcodeLogger.appendOpcodeByte(lo);
-	m_opcodeLogger.appendOpcodeByte(hi);
+	uint8_t  lo    = m_bus.cpuRead(m_programCounter++);
+	uint8_t  hi    = m_bus.cpuRead(m_programCounter++);
 	uint16_t value = static_cast<uint16_t>((hi << 8) | lo);
 	opcodeOperand  = value;
+	if (m_logEnable)
+	{
+		m_opcodeLogger.appendOpcodeByte(lo);
+		m_opcodeLogger.appendOpcodeByte(hi);
+	}
 	return value;
 }
 
@@ -49,7 +50,6 @@ void Sm83::formatToOpcodeString(const std::string &format, uint16_t arg)
 		return;
 
 	m_opcodeLogger.setOpcodeFormat(format, arg);
-	// fmt::format_to(std::back_inserter(m_instructionBuffer[m_instructionBufferPosition].m_opcodeFormat), format, std::forward<T>(args)...);
 }
 
 void Sm83::formatToOpcodeString(const std::string &format)

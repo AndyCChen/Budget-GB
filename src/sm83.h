@@ -81,7 +81,7 @@ class Sm83
 	Sm83Register   m_registerHL;
 	bool           m_ime; // interupt master enable
 
-	bool        m_logEnable;
+	bool        m_logEnable = false;
 	std::size_t m_tCycleTicks; // T-Cycle: 4,194,304 hz
 
 	OpcodeLogger m_opcodeLogger;

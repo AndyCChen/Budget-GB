@@ -317,7 +317,7 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 				std::size_t position   = m_cpu.m_opcodeLogger.bufferPosition();
 				std::size_t bufferSize = m_cpu.m_opcodeLogger.bufferSize();
-				
+
 				ImGuiListClipper clipper;
 				clipper.Begin((int)bufferSize);
 				while (clipper.Step())
@@ -335,7 +335,8 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 			ImGui::TableSetColumnIndex(1);
 
-			if (ImGui::BeginTable("CPU Registers", 2))
+			ImGui::Text("CPU Registers");
+			if (ImGui::BeginTable("CPU Registers", 2, ImGuiTabBarFlags_NoTooltip))
 			{
 				ImGui::TableNextRow();
 
@@ -356,10 +357,65 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 				ImGui::EndTable();
 			}
 
+			ImGui::NewLine();
+
+			constexpr ImVec4 buttonColor = ImVec4(0.260f, 0.590f, 0.980f, 1.0f);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColor);
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColor);
+
+			if (m_guiContext.flags & GuiContextFlags_PAUSE)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
+				if (ImGui::Button("Pause"))
+					m_guiContext.flags &= ~GuiContextFlags_PAUSE;
+				ImGui::PopStyleColor(1);
+			}
+			else if (ImGui::Button("Pause"))
+				m_guiContext.flags |= GuiContextFlags_PAUSE;
+
 			ImGui::BeginDisabled(!m_cartridge.isLoaded() || !(m_guiContext.flags & GuiContextFlags_PAUSE));
 			if (ImGui::Button("Instruction Step"))
 				m_guiContext.flags |= GuiContextFlags_INSTRUCTION_STEP;
 			ImGui::EndDisabled();
+
+			ImGui::Text("Lines to Log");
+			auto &selectedIndex = m_cpu.m_opcodeLogger.m_selectedOptionIdx;
+			ImGui::BeginDisabled(m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG);
+			if (ImGui::BeginCombo("", OpcodeLogger::LOGGER_OPTIONS[selectedIndex].label))
+			{
+				for (uint8_t n = 0; n < OpcodeLogger::LOGGER_OPTIONS.size(); ++n)
+				{
+					const bool selected = n == selectedIndex;
+					if (ImGui::Selectable(OpcodeLogger::LOGGER_OPTIONS[n].label, selected))
+						selectedIndex = n;
+
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				ImGui::EndCombo();
+			}
+			ImGui::EndDisabled();
+
+			if (m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
+				if (ImGui::Button("Stop Logging"))
+				{
+					m_guiContext.flags &= ~GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
+					m_cpu.m_logEnable = m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
+					m_cpu.m_opcodeLogger.stopLog();
+				}
+				ImGui::PopStyleColor(1);
+			}
+			else if (ImGui::Button("Start Logging"))
+			{
+				m_guiContext.flags |= GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
+				m_cpu.m_opcodeLogger.startLog();
+				m_cpu.m_logEnable = m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
+			}
+
+			ImGui::PopStyleColor(2);
 
 			ImGui::EndTable();
 		}

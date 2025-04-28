@@ -5,17 +5,19 @@
 
 #include "fmt/base.h"
 
-OpcodeLogger::OpcodeLogger(std::size_t size)
-{
-	m_buffer.resize(size);
-}
-
 // start a new opcode entry in logger
-void OpcodeLogger::begin(uint16_t address)
+void OpcodeLogger::next(uint16_t address, uint16_t sp, uint16_t af, uint16_t bc, uint16_t de, uint16_t hl)
 {
 	m_bufferPosition = (m_bufferPosition + 1) % m_buffer.size();
-	m_buffer[m_bufferPosition].clear();
-	m_buffer[m_bufferPosition].m_opcodeAddress = address;
+
+	Sm83Instruction &intr = m_buffer[m_bufferPosition];
+	intr.clear();
+	intr.m_opcodeAddress = address;
+	intr.m_stackPointer  = sp;
+	intr.m_registerAF    = af;
+	intr.m_registerBC    = bc;
+	intr.m_registerDE    = de;
+	intr.m_registerHL    = hl;
 }
 
 void OpcodeLogger::setOpcodeAddress(const uint16_t address)
@@ -55,19 +57,46 @@ const char *OpcodeLogger::getLogAt(std::size_t index)
 	Sm83Instruction &item = m_buffer[index];
 	item.m_buffer.clear();
 
-	fmt::format_to(std::back_inserter(item.m_buffer), "{:04X}   ", item.m_opcodeAddress);
+	char addressBuffer[5]{};
+	char opcodeBytesBuffer[9]{};
+	char opcodeBuffer[32]{};
+	char registerBuffer[64]{};
+
+	fmt::format_to_n(addressBuffer, sizeof(addressBuffer), "{:04X}\0", item.m_opcodeAddress);
 
 	if (item.m_opcodeLength == 1)
-		fmt::format_to(std::back_inserter(item.m_buffer), "{:02X}         ", item.m_opcodeBytes[0]);
+		fmt::format_to_n(opcodeBytesBuffer, sizeof(opcodeBytesBuffer), "{:02X}", item.m_opcodeBytes[0]);
 	else if (item.m_opcodeLength == 2)
-		fmt::format_to(std::back_inserter(item.m_buffer), "{:02X} {:02X}      ", item.m_opcodeBytes[0], item.m_opcodeBytes[1]);
+		fmt::format_to_n(opcodeBytesBuffer, sizeof(opcodeBytesBuffer), "{:02X} {:02X}", item.m_opcodeBytes[0], item.m_opcodeBytes[1]);
 	else if (item.m_opcodeLength == 3)
-		fmt::format_to(std::back_inserter(item.m_buffer), "{:02X} {:02X} {:02X}   ", item.m_opcodeBytes[0], item.m_opcodeBytes[1], item.m_opcodeBytes[2]);
+		fmt::format_to_n(opcodeBytesBuffer, sizeof(opcodeBytesBuffer), "{:02X} {:02X} {:02X}", item.m_opcodeBytes[0], item.m_opcodeBytes[1], item.m_opcodeBytes[2]);
 
 	if (!item.m_arg.has_value())
-		fmt::format_to(std::back_inserter(item.m_buffer), item.m_opcodeFormat);
+		fmt::format_to_n(opcodeBuffer, sizeof(opcodeBuffer), item.m_opcodeFormat);
 	else
-		fmt::format_to(std::back_inserter(item.m_buffer), item.m_opcodeFormat, item.m_arg.value());
+		fmt::format_to_n(opcodeBuffer, sizeof(opcodeBuffer), item.m_opcodeFormat, item.m_arg.value());
+
+	fmt::format_to_n(registerBuffer, sizeof(registerBuffer), "SP:{:04X} AF:{:04X} BC:{:04X} DE:{:04X} HL:{:04X}", item.m_stackPointer, item.m_registerAF, item.m_registerBC, item.m_registerDE, item.m_registerHL);
+
+	fmt::format_to(std::back_inserter(item.m_buffer), "{:s}   {:>8s}   {:20s} {:s}  {:s}{:s}{:s}{:s}", 
+		addressBuffer, opcodeBytesBuffer, opcodeBuffer, registerBuffer, 
+		(item.m_registerAF & 0x80) ? "Z" : "z", 
+		(item.m_registerAF & 0x40) ? "N" : "n", 
+		(item.m_registerAF & 0x20) ? "H" : "h", 
+		(item.m_registerAF & 0x10) ? "C" : "c"
+	);
 
 	return item.m_buffer.c_str();
+}
+
+void OpcodeLogger::startLog()
+{
+	m_buffer.resize(LOGGER_OPTIONS[m_selectedOptionIdx].lines);
+	m_bufferPosition = 0;
+}
+
+void OpcodeLogger::stopLog()
+{
+	m_buffer.resize(0);
+	m_bufferPosition = 0;
 }
