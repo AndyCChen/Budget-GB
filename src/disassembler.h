@@ -2,9 +2,10 @@
 
 #include <array>
 #include <cstdint>
-#include <iterator>
-#include <string>
 #include <cstring>
+#include <iterator>
+#include <optional>
+#include <string>
 
 #include "bus.h"
 #include "fmt/base.h"
@@ -12,12 +13,13 @@
 
 struct NextInstruction
 {
-	uint16_t m_opcodeAddress = 0;
-	char     m_opcodeString[32];
-	char     m_buffer[64];
+	std::optional<uint16_t> m_opcodeAddress;
+	char                    m_opcodeString[32];
+	char                    m_buffer[64];
 
 	NextInstruction()
 	{
+		m_opcodeAddress = std::nullopt;
 		std::memset(m_opcodeString, 0, sizeof(m_opcodeString));
 		std::memset(m_buffer, 0, sizeof(m_buffer));
 	}

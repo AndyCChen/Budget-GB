@@ -5,7 +5,7 @@ void Disassembler::step()
 {
 	for (uint8_t i = 0; i < m_buffer.size(); ++i)
 	{
-		m_bufferPosition = i;
+		m_bufferPosition            = i;
 		m_buffer[i].m_opcodeAddress = m_programCounter;
 
 		uint8_t opcode = fetch_n8();
@@ -17,10 +17,14 @@ const char *Disassembler::getDisassemblyAt(std::size_t index)
 {
 	NextInstruction &intr = m_buffer[index];
 
-	std::memset(intr.m_buffer, 0, sizeof(intr.m_buffer));
-
-	fmt::format_to_n(intr.m_buffer, sizeof(intr.m_buffer), "{:04X}   {:s}", intr.m_opcodeAddress, intr.m_opcodeString);
-	return intr.m_buffer;
+	if (intr.m_opcodeAddress.has_value())
+	{
+		std::memset(intr.m_buffer, 0, sizeof(intr.m_buffer));
+		fmt::format_to_n(intr.m_buffer, sizeof(intr.m_buffer), "{:04X}   {:s}", intr.m_opcodeAddress.value(), intr.m_opcodeString);
+		return intr.m_buffer;
+	}
+	else
+		return "";
 }
 
 void Disassembler::disassembleOpcode(uint8_t opcode)

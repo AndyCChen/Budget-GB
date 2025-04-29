@@ -17,17 +17,13 @@ class OpcodeLogger
 
 	uint8_t m_selectedOptionIdx = 0;
 
-	static constexpr std::array<LoggerOption, 3> LOGGER_OPTIONS = {
-		LoggerOption{"100", 100},
-		LoggerOption{"1000", 1000},
-		LoggerOption{"10000", 10000}
-	};
+	static constexpr std::array<LoggerOption, 3> LOGGER_OPTIONS = {{{"100", 100}, {"1000", 1000}, {"10000", 10000}}};
 
 	struct Sm83Instruction
 	{
-		uint8_t                 m_opcodeLength  = 0;         // opcodes are 1-3 bytes long
-		uint16_t                m_opcodeAddress = 0;         // starting address of instruction
-		std::array<uint8_t, 3>  m_opcodeBytes   = {0, 0, 0}; // store an array of bytes representing it's opcode and any operands if any
+		uint8_t                 m_opcodeLength  = 0;            // opcodes are 1-3 bytes long
+		std::optional<uint16_t> m_opcodeAddress = std::nullopt; // starting address of instruction
+		std::array<uint8_t, 3>  m_opcodeBytes   = {0, 0, 0};    // store an array of bytes representing it's opcode and any operands if any
 		std::string             m_opcodeFormat  = "";
 		std::optional<uint16_t> m_arg           = std::nullopt; // stores either a 1-2 immediate bytes of a opcode or a computed jump address for JR instructions
 
@@ -37,17 +33,13 @@ class OpcodeLogger
 		uint16_t m_registerDE   = 0;
 		uint16_t m_registerHL   = 0;
 
-		std::string m_buffer; // intermediate buffer to hold full string formated instruction log
-
-		Sm83Instruction()
-		{
-			m_buffer.reserve(100);
-		}
+		std::string m_buffer = ""; // intermediate buffer to hold full string formated instruction log
 
 		void clear()
 		{
-			m_arg          = std::nullopt;
-			m_opcodeLength = 0;
+			m_opcodeAddress = std::nullopt;
+			m_arg           = std::nullopt;
+			m_opcodeLength  = 0;
 			m_opcodeFormat.clear();
 		}
 	};
