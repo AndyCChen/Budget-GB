@@ -92,7 +92,12 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 			return SDL_APP_SUCCESS;
 
 		else if (event->type == SDL_EVENT_WINDOW_RESIZED)
-			resizeViewport();
+		{
+			if (m_guiContext.flags & GuiContextFlags_FULLSCREEN_FIT)
+				resizeViewportFit();
+			else
+				resizeViewportStretched();
+		}
 	}
 
 	if (!ImGui::GetIO().WantCaptureMouse && event->type == SDL_EVENT_MOUSE_BUTTON_UP)
@@ -147,9 +152,9 @@ bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 	return status;
 }
 
-void BudgetGB::resizeViewport()
+void BudgetGB::resizeViewportStretched()
 {
-	int resizedWidth, resizedHeight, gl_viewportX, gl_viewportY;
+	int resizedWidth, resizedHeight;
 	SDL_GetWindowSize(m_window, &resizedWidth, &resizedHeight);
 
 	// aspect ratio of gameboy display is 10:9
@@ -170,26 +175,34 @@ void BudgetGB::resizeViewport()
 		viewportSize.x = static_cast<uint32_t>(heightRatio * 10);
 	}
 
-	gl_viewportX = (resizedWidth - viewportSize.x) / 2;
-	gl_viewportY = (resizedHeight - viewportSize.y) / 2;
+	int viewportX = (resizedWidth - viewportSize.x) / 2;
+	int viewportY = (resizedHeight - viewportSize.y) / 2;
 
-	RendererGB::setMainViewportSize(m_renderContext, gl_viewportX, gl_viewportY, viewportSize.x, viewportSize.y);
+	RendererGB::setMainViewportSize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
+}
 
-	// clamp window size to perfectly fit the 10:9 aspect ratio if below threshold
-	/*if (false)
+void BudgetGB::resizeViewportFit()
+{
+	int resizedWidth, resizedHeight;
+	SDL_GetWindowSize(m_window, &resizedWidth, &resizedHeight);
+
+	Utils::struct_Vec2<uint32_t> viewportSize;
+
+	if (resizedHeight < resizedWidth)
 	{
-	    float calcThreshold = SDL_fabsf((resizedWidth / 10.0f) - (resizedHeight / 9.0f));
+		viewportSize.y = BudgetGB::LCD_HEIGHT * (resizedHeight / BudgetGB::LCD_HEIGHT);
+		viewportSize.x = static_cast<uint32_t>(10 * (viewportSize.y / 9.0f));
+	}
+	else
+	{
+		viewportSize.x = BudgetGB::LCD_WIDTH * (resizedWidth / BudgetGB::LCD_WIDTH);
+		viewportSize.y = static_cast<uint32_t>(9 * (viewportSize.x / 10.0f));
+	}
 
-	    if (calcThreshold < 2.5f)
-	    {
-	        if (widthRatio < heightRatio)
-	            resizedHeight = static_cast<uint32_t>(widthRatio * 9);
-	        else
-	            resizedWidth = static_cast<uint32_t>(heightRatio * 10);
+	int viewportX = (resizedWidth - viewportSize.x) / 2;
+	int viewportY = (resizedHeight - viewportSize.y) / 2;
 
-	        SDL_SetWindowSize(m_window, resizedWidth, resizedHeight);
-	    }
-	}*/
+	RendererGB::setMainViewportSize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
 }
 
 void BudgetGB::resizeWindowFixed(WindowScale scale)
@@ -208,10 +221,6 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 	SDL_SetWindowSize(m_window, static_cast<int>(scale) * BudgetGB::LCD_WIDTH, static_cast<int>(scale) * BudgetGB::LCD_HEIGHT);
 
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-
-	/*int newWidth, newHeight;
-	SDL_GetWindowSize(m_window, &newWidth, &newHeight);
-	RendererGB::setMainViewportSize(m_renderContext, 0, 0, newWidth, newHeight);*/
 }
 
 static void SDLCALL fileDialogCallback(void *userdata, const char *const *filelist, int filter)
@@ -305,6 +314,22 @@ void BudgetGB::guiMain()
 					ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 			}
 
+			ImGui::BeginDisabled(!(m_guiContext.flags & GuiContextFlags_FULLSCREEN));
+
+			if (ImGui::MenuItem("Fullscreen Fit", "", m_guiContext.flags & GuiContextFlags_FULLSCREEN_FIT))
+			{
+				m_guiContext.flags |= GuiContextFlags_FULLSCREEN_FIT;
+				resizeViewportFit();
+			}
+
+			if (ImGui::MenuItem("Fullscreen Stretched", "", !(m_guiContext.flags & GuiContextFlags_FULLSCREEN_FIT)))
+			{
+				m_guiContext.flags &= ~GuiContextFlags_FULLSCREEN_FIT;
+				resizeViewportStretched();
+			}
+
+			ImGui::EndDisabled();
+
 			ImGui::EndMenu();
 		}
 
@@ -341,7 +366,7 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 			{
 				std::size_t position   = m_cpu.m_opcodeLogger.bufferPosition();
 				std::size_t bufferSize = m_cpu.m_opcodeLogger.bufferSize();
-				
+
 				if (snapInstructionScrollY)
 				{
 					ImGui::SetScrollFromPosY(ImGui::GetTextLineHeightWithSpacing() * bufferSize);

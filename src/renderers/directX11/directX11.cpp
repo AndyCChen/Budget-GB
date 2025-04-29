@@ -5,9 +5,9 @@
 #include "BudgetGB.h"
 #include "renderer.h"
 
-#include <cstring>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <vector>
@@ -71,6 +71,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	}
 
 	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * windowScale, BudgetGB::LCD_HEIGHT * windowScale, 0);
+	SDL_SetWindowMinimumSize(window, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT);
 
 	if (!window)
 	{
@@ -142,16 +143,16 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 
 void RendererGB::drawMainViewport(const std::vector<Utils::array_u8Vec4> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
 {
-	(void) window;
+	(void)window;
 	GbMainViewport &mainViewport = renderContext->m_mainViewport;
 
 	/*renderContext->m_deviceContext->UpdateSubresource(
-		mainViewport.m_viewportTexture.Get(),
-		0,
-		nullptr,
-		pixelBuffer.data(),
-		BudgetGB::LCD_WIDTH * sizeof(Utils::array_u8Vec4),
-		pixelBuffer.size() * sizeof(Utils::array_u8Vec4)
+	    mainViewport.m_viewportTexture.Get(),
+	    0,
+	    nullptr,
+	    pixelBuffer.data(),
+	    BudgetGB::LCD_WIDTH * sizeof(Utils::array_u8Vec4),
+	    pixelBuffer.size() * sizeof(Utils::array_u8Vec4)
 	);*/
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource{};
@@ -159,7 +160,7 @@ void RendererGB::drawMainViewport(const std::vector<Utils::array_u8Vec4> &pixelB
 	std::memcpy(mappedResource.pData, pixelBuffer.data(), pixelBuffer.size() * sizeof(Utils::array_u8Vec4));
 	renderContext->m_deviceContext->Unmap(mainViewport.m_viewportTexture.Get(), 0);
 
-	const float colors[] = {136 / 255.0f, 192 / 255.0f, 112 / 255.0f, 1.0f};
+	constexpr float colors[] = {0 / 255.0f, 0 / 255.0f, 0 / 255.0f, 1.0f};
 	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_renderTargetView.Get(), colors);
 
 	D3D11_VIEWPORT vp{};

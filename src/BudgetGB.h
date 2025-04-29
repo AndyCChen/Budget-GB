@@ -64,6 +64,7 @@ class BudgetGB
 		GuiContextFlags_SHOW_CPU_VIEWER        = 1 << 4,
 		GuiContextFlags_INSTRUCTION_STEP       = 1 << 5,
 		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
+		GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
 	};
 
 	struct GuiContext
@@ -97,9 +98,14 @@ class BudgetGB
 
 	/**
 	 * @brief Resize viewport to fit any arbitary window size while still respecting the 10:9 aspect
-	 * ratio of gameboy display.
+	 * ratio of gameboy display. Will stretch the visible viewport to the window dimensions to the max.
 	 */
-	void resizeViewport();
+	void resizeViewportStretched();
+
+	/**
+	 * @brief Resize the viewport to dimensions that are multiples of the lcd display dimensions (144 by 160 pixels)
+	 */
+	void resizeViewportFit();
 
 	/**
 	 * @brief Resize window with prefined fixed scales.
