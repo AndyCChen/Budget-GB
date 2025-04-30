@@ -8,8 +8,8 @@ Sm83::Sm83(Bus &bus)
 {
 	initDMG();
 
-	m_tCycleTicks = 0;
-	m_ime         = false;
+	m_tCycles = 0;
+	m_interrupts.reset();
 }
 
 void Sm83::runInstruction()
@@ -19,6 +19,66 @@ void Sm83::runInstruction()
 
 	uint8_t opcode = cpuFetch_u8();
 	decodeExecute(opcode);
+
+	m_interrupts.handle_ie_requests();
+	handleInterrupt();
+}
+
+void Sm83::handleInterrupt()
+{
+	if (m_interrupts.interruptMasterEnable)
+	{
+		uint8_t requestedInterrupt = m_interrupts.interruptEnable.get_u8() & m_interrupts.interruptFlag.get_u8();
+		InterruptVector irqAddress = InterruptVector::NONE;
+
+		// acknowledge any requested interrupts 
+
+		// vblank requested
+		if (requestedInterrupt & 0x01)
+		{
+			irqAddress = InterruptVector::VBLANK;
+			m_interrupts.interruptFlag.vblank = 0;
+		}
+		// lcd requested
+		else if (requestedInterrupt & 0x02)
+		{
+			irqAddress = InterruptVector::STAT;
+			m_interrupts.interruptFlag.lcd = 0;
+		}
+		// timer requested
+		else if (requestedInterrupt & 0x04)
+		{
+			irqAddress = InterruptVector::TIMER;
+			m_interrupts.interruptFlag.timer = 0;
+		}
+		// serial requested
+		else if (requestedInterrupt & 0x08)
+		{
+			irqAddress = InterruptVector::SERIAL;
+			m_interrupts.interruptFlag.serial = 0;
+		}
+		// joypad requested
+		else if (requestedInterrupt & 0x10)
+		{
+			irqAddress = InterruptVector::JOYPAD;
+			m_interrupts.interruptFlag.joypad = 0;
+		}
+
+		// jump to the interrupt handler address
+		if (irqAddress != InterruptVector::NONE)
+		{
+			m_interrupts.interruptMasterEnable = false; // prevent further interrupts while servicing current interrupt
+
+			cpuTickM();
+			cpuTickM();
+
+			cpuTickM();
+			m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
+			m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
+
+			m_programCounter = static_cast<uint16_t>(irqAddress);
+		}
+	}
 }
 
 uint8_t Sm83::cpuFetch_u8()
@@ -3393,7 +3453,7 @@ void Sm83::RET_CC(bool condition)
 void Sm83::RETI()
 {
 	RET();
-	m_ime = true;
+	m_interrupts.interruptMasterEnable = true;
 }
 
 void Sm83::POP_r16(Sm83Register &dest)
@@ -3508,9 +3568,27 @@ void Sm83::SET_indirect_HL(BitSelect b)
 
 void Sm83::DI()
 {
-	m_ime = false;
+	m_interrupts.interruptMasterEnable = false;
 }
 
 void Sm83::EI()
 {
+	m_interrupts.interruptEnable.ie_requested += 1;
+}
+
+void Sm83::Sm83InterruptRegisters::handle_ie_requests()
+{
+	if (interruptEnable.ie_requested && ++interruptEnable.ie_counter >= 2)
+	{
+		interruptEnable.ie_requested -= 1;
+		interruptEnable.ie_counter -= 2;
+		interruptMasterEnable = true;
+	}
+}
+
+void Sm83::Sm83InterruptRegisters::reset()
+{
+	interruptMasterEnable = false;
+	std::memset(&interruptEnable, 0, sizeof(interruptEnable));
+	std::memset(&interruptFlag, 0, sizeof(interruptFlag));
 }

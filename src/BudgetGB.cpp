@@ -54,12 +54,12 @@ void BudgetGB::onUpdate(float deltaTime)
 			if (m_cartridge.isLoaded())
 			{
 				constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
-				while (m_cpu.m_tCycleTicks < ticksPerFrame)
+				while (m_cpu.m_tCycles < ticksPerFrame)
 				{
 					m_cpu.runInstruction();
 				}
 
-				m_cpu.m_tCycleTicks -= ticksPerFrame;
+				m_cpu.m_tCycles -= ticksPerFrame;
 			}
 			m_accumulatedDeltaTime -= time;
 		}
@@ -223,6 +223,10 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
 
+constexpr static SDL_DialogFileFilter fileFilters[] = {
+	{"*.gb", "gb;gb"},
+};
+
 static void SDLCALL fileDialogCallback(void *userdata, const char *const *filelist, int filter)
 {
 	(void)filter;
@@ -279,12 +283,7 @@ void BudgetGB::guiMain()
 		}
 
 		if (ImGui::MenuItem("Load ROM..."))
-		{
-			SDL_DialogFileFilter filters[] = {
-				{"*.gb", "gb;gb"},
-			};
-			SDL_ShowOpenFileDialog(fileDialogCallback, this, m_window, filters, 1, nullptr, false);
-		}
+			SDL_ShowOpenFileDialog(fileDialogCallback, this, m_window, fileFilters, 1, nullptr, false);
 
 		if (ImGui::BeginMenu("Window Sizes"))
 		{

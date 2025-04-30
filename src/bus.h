@@ -30,6 +30,8 @@ class Bus
 	static constexpr uint16_t IO_REGISTERS_END  = 0xFF80;
 	static constexpr uint16_t HRAM_END          = 0xFFFF;
 
+	// 
+
 	enum class BusMode
 	{
 		NONE = 0,

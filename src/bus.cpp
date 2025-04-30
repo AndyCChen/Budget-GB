@@ -1,6 +1,6 @@
 #include "bus.h"
-#include "sm83.h"
 #include "fmt/base.h"
+#include "sm83.h"
 
 Bus::Bus(Cartridge &cartridge, Sm83 &cpu, BusMode mode)
 	: m_cartridge(cartridge), m_cpu(cpu)
@@ -99,7 +99,14 @@ uint8_t Bus::cpuRead(uint16_t position)
 		}
 		else if (position < IO_REGISTERS_END)
 		{
-			return 0;
+			if (position == 0xFF0F)
+			{
+				return m_cpu.m_interrupts.interruptFlag.get_u8();
+			}
+			else
+			{
+				return 0;
+			}
 		}
 		else if (position < HRAM_END)
 		{
@@ -108,7 +115,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 		// interrupt enable register at 0xFFFF
 		else
 		{
-			return 0;
+			return m_cpu.m_interrupts.interruptEnable.get_u8();
 		}
 	}
 	else
@@ -146,6 +153,10 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 			{
 				fmt::print("{:c}", static_cast<char>(data));
 			}
+			else if (position == 0xFF0F)
+			{
+				m_cpu.m_interrupts.interruptFlag.set_u8(data);
+			}
 		}
 		else if (position < HRAM_END)
 		{
@@ -154,6 +165,7 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 		// interrupt enable register at 0xFFFF
 		else
 		{
+			m_cpu.m_interrupts.interruptEnable.set_u8(data);
 		}
 	}
 	else

@@ -1,11 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <string>
 
 #include "bus.h"
-#include "opcodeLogger.h"
 #include "fmt/base.h"
+#include "opcodeLogger.h"
 
 class Sm83
 {
@@ -14,11 +15,10 @@ class Sm83
   private:
 	struct Sm83FlagsRegister
 	{
-		unsigned int Z : 1; // bit 7, zero flag
-		unsigned int N : 1; // bit 6, subtraction flag
-		unsigned int H : 1; // bit 5, half carry flag
-		unsigned int C : 1; // bit 4, carry flag
-		// unsigned int UNUSED : 4; // unused
+		unsigned char Z : 1; // bit 7, zero flag
+		unsigned char N : 1; // bit 6, subtraction flag
+		unsigned char H : 1; // bit 5, half carry flag
+		unsigned char C : 1; // bit 4, carry flag
 
 		/**
 		 * @brief Set all at once flags with a single 8bit value as input.
@@ -29,7 +29,6 @@ class Sm83
 			N = in >> 6;
 			H = in >> 5;
 			C = in >> 4;
-			//	UNUSED = in & 0xF;
 		}
 
 		/**
@@ -72,6 +71,87 @@ class Sm83
 		}
 	};
 
+	enum class InterruptVector
+	{
+		NONE   = 0,
+		VBLANK = 0x40,
+		STAT   = 0x48,
+		TIMER  = 0x50,
+		SERIAL = 0x58,
+		JOYPAD = 0x60,
+	};
+
+	struct Sm83InterruptRegisters
+	{
+		bool interruptMasterEnable = false; // interrupt master enable
+
+		// control which interrrupt handler categories are allowed to happen
+		struct Sm83InterruptEnable
+		{
+
+			unsigned char joypad : 1; // bit 4
+			unsigned char serial : 1; // bit 3
+			unsigned char timer : 1;  // bit 2
+			unsigned char lcd : 1;    // bit 1
+			unsigned char vblank : 1; // bit 0
+
+			// Effects of the ie instruction are delayed by once instruction.
+			// Meaning after ie is executed, the ime flag is set only after the next
+			// instruction finishes execution.
+
+			uint8_t ie_requested = 0;
+			uint8_t ie_counter   = 0;
+
+			void set_u8(uint8_t in)
+			{
+				joypad = in >> 4;
+				serial = in >> 3;
+				timer  = in >> 2;
+				lcd    = in >> 1;
+				vblank = in >> 0;
+			}
+
+			uint8_t get_u8() const
+			{
+				return static_cast<uint8_t>((joypad << 4) | (serial << 3) | (timer << 2) | (lcd << 1) | (vblank << 0));
+			}
+
+		} interruptEnable;
+
+		// controls which interrupt handlers are being requested
+		struct Sm83InterruptFlag
+		{
+			unsigned char joypad : 1; // bit 4
+			unsigned char serial : 1; // bit 3
+			unsigned char timer : 1;  // bit 2
+			unsigned char lcd : 1;    // bit 1
+			unsigned char vblank : 1; // bit 0
+
+			void set_u8(uint8_t in)
+			{
+				joypad = in >> 4;
+				serial = in >> 3;
+				timer  = in >> 2;
+				lcd    = in >> 1;
+				vblank = in >> 0;
+			}
+
+			uint8_t get_u8() const
+			{
+				return static_cast<uint8_t>((joypad << 4) | (serial << 3) | (timer << 2) | (lcd << 1) | (vblank << 0));
+			}
+
+		} interruptFlag;
+
+		Sm83InterruptRegisters()
+		{
+			reset();
+		}
+
+		void handle_ie_requests();
+		void reset();
+	};
+
   public:
 	uint16_t       m_programCounter;
 	uint16_t       m_stackPointer;
@@ -79,10 +159,11 @@ class Sm83
 	Sm83Register   m_registerBC;
 	Sm83Register   m_registerDE;
 	Sm83Register   m_registerHL;
-	bool           m_ime; // interupt master enable
+
+	Sm83InterruptRegisters m_interrupts;
 
 	bool        m_logEnable = false;
-	std::size_t m_tCycleTicks; // T-Cycle: 4,194,304 hz
+	std::size_t m_tCycles; // T-Cycle: 4,194,304 hz
 
 	OpcodeLogger m_opcodeLogger;
 
@@ -90,9 +171,9 @@ class Sm83
 
 	void cpuReset()
 	{
-		m_tCycleTicks = 0;
+		m_tCycles = 0;
 		initDMG();
-		m_ime = false;
+		m_interrupts.reset();
 	}
 
 	/**
@@ -100,7 +181,7 @@ class Sm83
 	 */
 	void cpuTickM()
 	{
-		m_tCycleTicks += 4;
+		m_tCycles += 4;
 	}
 
 	/**
@@ -140,6 +221,12 @@ class Sm83
 		m_registerHL.hi = 0x01;
 		m_registerHL.lo = 0x4D;
 	}
+
+	/**
+	 * @brief Service any pending interrupt if the ime flag is set and the corresponding
+	 * interrupt enable flag is set.
+	 */
+	void handleInterrupt();
 
 	/**
 	 * @brief Read single byte from memory currently pointed to by program counter
