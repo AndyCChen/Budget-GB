@@ -8,11 +8,10 @@ Sm83::Sm83(Bus &bus)
 {
 	initDMG();
 
-	m_tCycles = 0;
 	m_interrupts.reset();
 }
 
-void Sm83::runInstruction()
+void Sm83::instructionStep()
 {
 	if (m_logEnable)
 		m_opcodeLogger.next(m_programCounter, m_stackPointer, m_registerAF.get_u16(), m_registerBC.get_u16(), m_registerDE.get_u16(), m_registerHL.get_u16());
@@ -26,53 +25,53 @@ void Sm83::runInstruction()
 
 void Sm83::handleInterrupt()
 {
-	if (m_interrupts.interruptMasterEnable)
+	if (m_interrupts.m_interruptMasterEnable)
 	{
-		uint8_t requestedInterrupt = m_interrupts.interruptEnable.get_u8() & m_interrupts.interruptFlag.get_u8();
-		InterruptVector irqAddress = InterruptVector::NONE;
+		uint8_t         requestedInterrupt = m_interrupts.m_interruptEnable.m_enableFlags & m_interrupts.m_interruptFlags;
+		InterruptVector irqAddress         = InterruptVector::NONE;
 
-		// acknowledge any requested interrupts 
+		// acknowledge any requested interrupts
 
 		// vblank requested
 		if (requestedInterrupt & 0x01)
 		{
 			irqAddress = InterruptVector::VBLANK;
-			m_interrupts.interruptFlag.vblank = 0;
+			m_interrupts.m_interruptFlags &= ~InterruptFlags_VBLANK;
 		}
 		// lcd requested
 		else if (requestedInterrupt & 0x02)
 		{
 			irqAddress = InterruptVector::STAT;
-			m_interrupts.interruptFlag.lcd = 0;
+			m_interrupts.m_interruptFlags &= ~InterruptFlags_LCD;
 		}
 		// timer requested
 		else if (requestedInterrupt & 0x04)
 		{
 			irqAddress = InterruptVector::TIMER;
-			m_interrupts.interruptFlag.timer = 0;
+			m_interrupts.m_interruptFlags &= ~InterruptFlags_TIMER;
 		}
 		// serial requested
 		else if (requestedInterrupt & 0x08)
 		{
 			irqAddress = InterruptVector::SERIAL;
-			m_interrupts.interruptFlag.serial = 0;
+			m_interrupts.m_interruptFlags &= ~InterruptFlags_SERIAL;
 		}
 		// joypad requested
 		else if (requestedInterrupt & 0x10)
 		{
 			irqAddress = InterruptVector::JOYPAD;
-			m_interrupts.interruptFlag.joypad = 0;
+			m_interrupts.m_interruptFlags &= ~InterruptFlags_JOYPAD;
 		}
 
 		// jump to the interrupt handler address
 		if (irqAddress != InterruptVector::NONE)
 		{
-			m_interrupts.interruptMasterEnable = false; // prevent further interrupts while servicing current interrupt
+			m_interrupts.m_interruptMasterEnable = false; // prevent further interrupts while servicing current interrupt
 
-			cpuTickM();
-			cpuTickM();
+			m_bus.tickM();
+			m_bus.tickM();
 
-			cpuTickM();
+			m_bus.tickM();
 			m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
 			m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
 
@@ -2721,7 +2720,7 @@ void Sm83::LDH_A_indirect_C()
 
 void Sm83::LD_SP_HL()
 {
-	cpuTickM();
+	m_bus.tickM();
 	m_stackPointer = (m_registerHL.hi << 8) | m_registerHL.lo;
 }
 
@@ -2735,7 +2734,7 @@ void Sm83::LD_HL_SP_i8()
 	m_registerAF.flags.H = ((m_stackPointer & 0xF) + (offset & 0xF)) >> 4;
 	m_registerAF.flags.C = ((m_stackPointer & 0xFF) + offset) >> 8;
 
-	cpuTickM();
+	m_bus.tickM();
 	m_registerHL.hi = sum >> 8;
 	m_registerHL.lo = sum & 0xFF;
 }
@@ -3103,13 +3102,13 @@ void Sm83::ADD_SP_i8()
 {
 	uint8_t operand = cpuFetch_u8();
 
-	cpuTickM();
+	m_bus.tickM();
 	m_registerAF.flags.Z = 0;
 	m_registerAF.flags.N = 0;
 	m_registerAF.flags.H = ((m_stackPointer & 0xF) + (operand & 0xF)) >> 4;
 	m_registerAF.flags.C = ((m_stackPointer & 0xFF) + (operand)) >> 8;
 
-	cpuTickM();
+	m_bus.tickM();
 	m_stackPointer = static_cast<uint16_t>(m_stackPointer + static_cast<int8_t>(operand));
 }
 
@@ -3252,7 +3251,7 @@ void Sm83::JR_i8()
 {
 	int8_t offset       = static_cast<int8_t>(cpuFetch_u8());
 	computedJumpAddress = m_programCounter + offset;
-	cpuTickM();
+	m_bus.tickM();
 	m_programCounter = computedJumpAddress;
 }
 
@@ -3265,7 +3264,7 @@ void Sm83::JR_CC_i8(bool condition)
 	// 1 m-cycle == 4 t-cycles
 	if (condition)
 	{
-		cpuTickM();
+		m_bus.tickM();
 		m_programCounter = computedJumpAddress;
 	}
 }
@@ -3276,7 +3275,7 @@ void Sm83::JP_CC_n16(bool condition)
 
 	if (condition)
 	{
-		cpuTickM();
+		m_bus.tickM();
 		m_programCounter = address;
 	}
 }
@@ -3285,7 +3284,7 @@ void Sm83::JP_n16()
 {
 	uint16_t address = cpuFetch_u16();
 
-	cpuTickM();
+	m_bus.tickM();
 	m_programCounter = address;
 }
 
@@ -3439,13 +3438,13 @@ void Sm83::RET()
 	uint8_t lo = m_bus.cpuRead(m_stackPointer++);
 	uint8_t hi = m_bus.cpuRead(m_stackPointer++);
 
-	cpuTickM();
+	m_bus.tickM();
 	m_programCounter = (hi << 8) | lo;
 }
 
 void Sm83::RET_CC(bool condition)
 {
-	cpuTickM();
+	m_bus.tickM();
 	if (condition)
 		RET();
 }
@@ -3453,7 +3452,7 @@ void Sm83::RET_CC(bool condition)
 void Sm83::RETI()
 {
 	RET();
-	m_interrupts.interruptMasterEnable = true;
+	m_interrupts.m_interruptMasterEnable = true;
 }
 
 void Sm83::POP_r16(Sm83Register &dest)
@@ -3475,14 +3474,14 @@ void Sm83::POP_AF()
 
 void Sm83::PUSH_r16(Sm83Register &dest)
 {
-	cpuTickM();
+	m_bus.tickM();
 	m_bus.cpuWrite(--m_stackPointer, dest.hi);
 	m_bus.cpuWrite(--m_stackPointer, dest.lo);
 }
 
 void Sm83::PUSH_AF()
 {
-	cpuTickM();
+	m_bus.tickM();
 	m_bus.cpuWrite(--m_stackPointer, m_registerAF.accumulator);
 	m_bus.cpuWrite(--m_stackPointer, m_registerAF.flags.getFlagsU8());
 }
@@ -3491,7 +3490,7 @@ void Sm83::CALL_n16()
 {
 	uint16_t callAddress = cpuFetch_u16();
 
-	cpuTickM();
+	m_bus.tickM();
 
 	// save hi byte of pc to stack followed by the lo byte
 	m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
@@ -3506,7 +3505,7 @@ void Sm83::CALL_CC_n16(bool condition)
 
 	if (condition)
 	{
-		cpuTickM();
+		m_bus.tickM();
 
 		// save hi byte of pc to stack followed by the lo byte
 		m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
@@ -3518,7 +3517,7 @@ void Sm83::CALL_CC_n16(bool condition)
 
 void Sm83::RST(RstVector vec)
 {
-	cpuTickM();
+	m_bus.tickM();
 	m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter >> 8));
 	m_bus.cpuWrite(--m_stackPointer, static_cast<uint8_t>(m_programCounter));
 
@@ -3568,27 +3567,124 @@ void Sm83::SET_indirect_HL(BitSelect b)
 
 void Sm83::DI()
 {
-	m_interrupts.interruptMasterEnable = false;
+	m_interrupts.m_interruptMasterEnable = false;
 }
 
 void Sm83::EI()
 {
-	m_interrupts.interruptEnable.ie_requested += 1;
+	m_interrupts.m_interruptEnable.m_ie_requested += 1;
 }
 
 void Sm83::Sm83InterruptRegisters::handle_ie_requests()
 {
-	if (interruptEnable.ie_requested && ++interruptEnable.ie_counter >= 2)
+	if (m_interruptEnable.m_ie_requested && ++m_interruptEnable.m_ie_counter >= 2)
 	{
-		interruptEnable.ie_requested -= 1;
-		interruptEnable.ie_counter -= 2;
-		interruptMasterEnable = true;
+		m_interruptEnable.m_ie_requested -= 1;
+		m_interruptEnable.m_ie_counter -= 2;
+		m_interruptMasterEnable = true;
 	}
 }
 
 void Sm83::Sm83InterruptRegisters::reset()
 {
-	interruptMasterEnable = false;
-	std::memset(&interruptEnable, 0, sizeof(interruptEnable));
-	std::memset(&interruptFlag, 0, sizeof(interruptFlag));
+	m_interruptMasterEnable = false;
+
+	m_interruptEnable.m_enableFlags  = 0;
+	m_interruptEnable.m_ie_requested = 0;
+	m_interruptEnable.m_ie_counter   = 0;
+	m_interruptFlags                 = 0;
+}
+
+void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
+{
+	constexpr uint8_t BIT_1 = 1 << 1;
+	constexpr uint8_t BIT_3 = 1 << 3;
+	constexpr uint8_t BIT_5 = 1 << 5;
+	constexpr uint8_t BIT_7 = 1 << 7;
+
+	if (m_reloadScheduled)
+	{
+		m_reloadScheduled = false;
+		m_timerControl = m_timerModulo;
+		interruptFlags |= InterruptFlags_TIMER;
+	}
+
+	// when currentState is false and m_previous state is true, a falling edge occured and tick increment is fired
+	bool enabled = m_timerControl & TAC_ENABLE;
+	bool currentState;
+
+	switch (m_timerControl & 0x3)
+	{
+	case TAC_CLOCK_SELECT_0:
+		currentState = enabled && (m_divider & BIT_7);
+		if (!currentState && m_prevStateDivider)
+		{
+			if (m_timerCounter++ == 0xFF)
+			{
+				m_reloadScheduled = !m_timerCounterIsWritten;
+				m_timerCounter    = 0;
+			}
+		}
+
+		m_prevStateDivider = currentState;
+		break;
+
+	case TAC_CLOCK_SELECT_1:
+		currentState = enabled && (m_divider & BIT_1);
+		if (!currentState && m_prevStateDivider)
+		{
+			if (m_timerCounter++ == 0xFF)
+			{
+				m_reloadScheduled = !m_timerCounterIsWritten;
+				m_timerCounter    = 0;
+			}
+		}
+
+		m_prevStateDivider = currentState;
+		break;
+
+	case TAC_CLOCK_SELECT_2:
+		currentState = enabled && (m_divider & BIT_3);
+		if (!currentState && m_prevStateDivider)
+		{
+			if (m_timerCounter++ == 0xFF)
+			{
+				m_reloadScheduled = !m_timerCounterIsWritten;
+				m_timerCounter    = 0;
+			}
+		}
+
+		m_prevStateDivider = currentState;
+		break;
+
+	case TAC_CLOCK_SELECT_3:
+		currentState = enabled && (m_divider & BIT_5);
+		if (!currentState && m_prevStateDivider)
+		{
+			if (m_timerCounter++ == 0xFF)
+			{
+				m_reloadScheduled = !m_timerCounterIsWritten;
+				m_timerCounter    = 0;
+			}
+		}
+
+		m_prevStateDivider = currentState;
+		break;
+	}
+
+	m_divider += 1;
+	m_timerCounterIsWritten = false;
+}
+
+void Sm83::Sm83Timer::reset()
+{
+	m_timerModulo  = 0;
+	m_timerControl = 0;
+	m_divider      = 0;
+	m_timerCounter = 0;
+
+	m_timerCounterIsWritten = false;
+	m_reloadScheduled       = false;
+	m_prevStateDivider      = false;
+	m_prevStateCounter      = false;
 }

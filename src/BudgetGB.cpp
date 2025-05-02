@@ -45,31 +45,15 @@ BudgetGB::~BudgetGB()
 
 void BudgetGB::onUpdate(float deltaTime)
 {
-	if (!(m_guiContext.flags & GuiContextFlags_PAUSE))
+	if (!(m_guiContext.flags & GuiContextFlags_PAUSE) && m_cartridge.isLoaded())
 	{
 		m_accumulatedDeltaTime += deltaTime;
-		constexpr float time = 1.0f / 60.0f;
-		if (m_accumulatedDeltaTime > time)
+		constexpr float TIME_STEP = 1.0f / 60.0f;
+		if (m_accumulatedDeltaTime > TIME_STEP)
 		{
-			if (m_cartridge.isLoaded())
-			{
-				constexpr int ticksPerFrame = BudgetGB::CLOCK_RATE_T / 60;
-				while (m_cpu.m_tCycles < ticksPerFrame)
-				{
-					m_cpu.runInstruction();
-				}
-
-				m_cpu.m_tCycles -= ticksPerFrame;
-			}
-			m_accumulatedDeltaTime -= time;
+			m_bus.onUpdate();
+			m_accumulatedDeltaTime -= TIME_STEP;
 		}
-	}
-	else if (m_guiContext.flags & GuiContextFlags_INSTRUCTION_STEP)
-	{
-		m_guiContext.flags &= ~GuiContextFlags_INSTRUCTION_STEP;
-		m_cpu.runInstruction();
-		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
-		m_disassembler.step();
 	}
 
 	guiMain();
@@ -141,7 +125,7 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 {
 	bool status = false;
-	m_bus.clearBus();
+	m_bus.resetBus();
 	m_cpu.cpuReset();
 	if (m_cartridge.loadCartridgeFromPath(cartridgePath))
 	{
@@ -442,15 +426,17 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 			ImGui::BeginDisabled(!m_cartridge.isLoaded() || !(m_guiContext.flags & GuiContextFlags_PAUSE));
 			if (ImGui::Button("Instruction Step"))
-				m_guiContext.flags |= GuiContextFlags_INSTRUCTION_STEP;
+			{
+				m_cpu.instructionStep();
+				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+				m_disassembler.step();
+			}
 			ImGui::EndDisabled();
 
 			ImGui::BeginDisabled(!m_cartridge.isLoaded());
 			if (ImGui::Button("Reset"))
 			{
-				m_cpu.cpuReset();
-				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
-				m_disassembler.step();
+				reset();
 			}
 			ImGui::EndDisabled();
 

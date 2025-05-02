@@ -12,7 +12,7 @@ class Sm83
 {
 	friend class Sm83JsonTest;
 
-  private:
+  public:
 	struct Sm83FlagsRegister
 	{
 		unsigned char Z : 1; // bit 7, zero flag
@@ -81,78 +81,95 @@ class Sm83
 		JOYPAD = 0x60,
 	};
 
+	enum InterruptFlags
+	{
+		InterruptFlags_VBLANK = 1 << 0,
+		InterruptFlags_LCD    = 1 << 1,
+		InterruptFlags_TIMER  = 1 << 2,
+		InterruptFlags_SERIAL = 1 << 3,
+		InterruptFlags_JOYPAD = 1 << 4,
+	};
+
 	struct Sm83InterruptRegisters
 	{
-		bool interruptMasterEnable = false; // interrupt master enable
+		bool m_interruptMasterEnable = false; // interrupt master enable
 
-		// control which interrrupt handler categories are allowed to happen
 		struct Sm83InterruptEnable
 		{
-
-			unsigned char joypad : 1; // bit 4
-			unsigned char serial : 1; // bit 3
-			unsigned char timer : 1;  // bit 2
-			unsigned char lcd : 1;    // bit 1
-			unsigned char vblank : 1; // bit 0
+			// control which interrrupt handler categories are allowed to happen
+			uint8_t m_enableFlags = 0;
 
 			// Effects of the ie instruction are delayed by once instruction.
 			// Meaning after ie is executed, the ime flag is set only after the next
 			// instruction finishes execution.
 
-			uint8_t ie_requested = 0;
-			uint8_t ie_counter   = 0;
-
-			void set_u8(uint8_t in)
-			{
-				joypad = in >> 4;
-				serial = in >> 3;
-				timer  = in >> 2;
-				lcd    = in >> 1;
-				vblank = in >> 0;
-			}
-
-			uint8_t get_u8() const
-			{
-				return static_cast<uint8_t>((joypad << 4) | (serial << 3) | (timer << 2) | (lcd << 1) | (vblank << 0));
-			}
-
-		} interruptEnable;
+			uint8_t m_ie_requested = 0;
+			uint8_t m_ie_counter   = 0;
+		} m_interruptEnable;
 
 		// controls which interrupt handlers are being requested
-		struct Sm83InterruptFlag
-		{
-			unsigned char joypad : 1; // bit 4
-			unsigned char serial : 1; // bit 3
-			unsigned char timer : 1;  // bit 2
-			unsigned char lcd : 1;    // bit 1
-			unsigned char vblank : 1; // bit 0
-
-			void set_u8(uint8_t in)
-			{
-				joypad = in >> 4;
-				serial = in >> 3;
-				timer  = in >> 2;
-				lcd    = in >> 1;
-				vblank = in >> 0;
-			}
-
-			uint8_t get_u8() const
-			{
-				return static_cast<uint8_t>((joypad << 4) | (serial << 3) | (timer << 2) | (lcd << 1) | (vblank << 0));
-			}
-
-		} interruptFlag;
-
-		Sm83InterruptRegisters()
-		{
-			reset();
-		}
+		uint8_t m_interruptFlags = 0;
 
 		void handle_ie_requests();
 		void reset();
 	};
 
-  public:
+	// https://gbdev.io/pandocs/Timer_and_Divider_Registers.html
+	struct Sm83Timer
+	{
+	  private:
+		uint16_t m_divider      = 0;
+		uint8_t  m_timerCounter = 0;
+
+	  public:
+		// Bit 0-1: Clock select
+		// Bit 2: timer counter increment enable
+		uint8_t m_timerControl = 0;
+		uint8_t m_timerModulo  = 0; // reload value for timerCounter
+
+		void tick(uint8_t &interruptFlags);
+
+		void setTimerCounter(uint8_t in)
+		{
+			m_timerCounter          = in;
+			m_timerCounterIsWritten = true;
+		}
+
+		uint8_t getTimerCounter() const
+		{
+			return m_timerCounter;
+		}
+
+		// writing to the divider resets it to 0
+		void setDivider()
+		{
+			m_divider = 0;
+		}
+
+		uint8_t getDivider() const
+		{
+			return static_cast<uint8_t>((m_divider & 0x3FC0) >> 6);
+		}
+
+		void reset();
+
+	  private:
+		bool m_timerCounterIsWritten = false; // true when timerCounter(TIMA) register is written to
+		bool m_reloadScheduled       = false; // true when timerCounter overflows from increment, meaning a reload and interrupt request is scheduled on the next m-cycle (next 4 t-cycles)
+
+		bool m_prevStateDivider = false; // hold the prev state of the bit selected by timer control
+		bool m_prevStateCounter = false; // hold the prev state
+
+		enum TimerControlFlags
+		{
+			TAC_CLOCK_SELECT_0 = 0, // increment every 256 m-cycles
+			TAC_CLOCK_SELECT_1,     // increment every 4 m-cycles
+			TAC_CLOCK_SELECT_2,     // increment every 16 m-cycles
+			TAC_CLOCK_SELECT_3,     // increment every 64 m-cycles
+			TAC_ENABLE,             // timer counter increment enable
+		};
+	};
+
 	uint16_t       m_programCounter;
 	uint16_t       m_stackPointer;
 	Sm83RegisterAF m_registerAF;
@@ -161,9 +178,9 @@ class Sm83
 	Sm83Register   m_registerHL;
 
 	Sm83InterruptRegisters m_interrupts;
+	Sm83Timer              m_timer;
 
-	bool        m_logEnable = false;
-	std::size_t m_tCycles; // T-Cycle: 4,194,304 hz
+	bool m_logEnable = false;
 
 	OpcodeLogger m_opcodeLogger;
 
@@ -171,23 +188,15 @@ class Sm83
 
 	void cpuReset()
 	{
-		m_tCycles = 0;
 		initDMG();
 		m_interrupts.reset();
-	}
-
-	/**
-	 * @brief Clock cpu for one machine cycle. 1 M-cycle is 4 T-cycles.
-	 */
-	void cpuTickM()
-	{
-		m_tCycles += 4;
+		m_timer.reset();
 	}
 
 	/**
 	 * @brief Emulate cpu for a single instruction.
 	 */
-	void runInstruction();
+	void instructionStep();
 
   private:
 	Bus &m_bus;

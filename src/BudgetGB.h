@@ -22,7 +22,7 @@ class BudgetGB
 	static constexpr uint32_t LCD_WIDTH            = 160;
 	static constexpr uint32_t LCD_HEIGHT           = 144;
 	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4;       // value should be 1-6 only!
-	static constexpr uint32_t CLOCK_RATE_T         = 4194304; // sm83 clock rate for the gameboy in T-cycles
+	static constexpr uint32_t CLOCK_RATE_T         = 4194304; // gameboy clock frequency
 
 	/**
 	 * @brief Initialize gameboy instance with a optional path to a cartridge.
@@ -62,7 +62,7 @@ class BudgetGB
 		GuiContextFlags_PAUSE                  = 1 << 2,
 		GuiContextFlags_FULLSCREEN             = 1 << 3,
 		GuiContextFlags_SHOW_CPU_VIEWER        = 1 << 4,
-		GuiContextFlags_INSTRUCTION_STEP       = 1 << 5,
+
 		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
 		GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
 	};
@@ -95,6 +95,13 @@ class BudgetGB
 	std::random_device              m_rd;
 	std::mt19937                    m_gen;
 	std::uniform_int_distribution<> m_palleteRange;
+
+	void reset()
+	{
+		m_cpu.cpuReset();
+		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+		m_disassembler.step();
+	}
 
 	/**
 	 * @brief Resize viewport to fit any arbitary window size while still respecting the 10:9 aspect

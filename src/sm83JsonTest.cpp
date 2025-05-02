@@ -23,7 +23,7 @@ bool Sm83JsonTest::runJsonTest(Sm83 &cpu, const std::string &path)
 	for (size_t i = 0; i < data.size(); ++i)
 	{
 		initState(cpu, data[i]["initial"]);
-		cpu.runInstruction();
+		cpu.instructionStep();
 		if (!checkState(cpu, data[i]["final"]))
 		{
 			logState(cpu, data[i]);

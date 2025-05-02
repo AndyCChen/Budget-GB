@@ -2,7 +2,7 @@
 
 #include <array>
 #include <cstdint>
-#include <vector>
+#include <functional>
 
 #include "cartridge.h"
 
@@ -14,10 +14,9 @@ class Bus
   public:
 	// memory sizes
 
-	static constexpr unsigned int DEFAULT_WRAM_SIZE   = 1024 * 8;
-	static constexpr unsigned int TEST_MODE_WRAM_SIZE = 1024 * 64;
-	static constexpr unsigned int VRAM_SIZE           = 1024 * 8;
-	static constexpr unsigned int HRAM_SIZE           = 127;
+	static constexpr unsigned int WRAM_SIZE = 1024 * 8;
+	static constexpr unsigned int VRAM_SIZE = 1024 * 8;
+	static constexpr unsigned int HRAM_SIZE = 127;
 
 	// address ranges
 
@@ -30,15 +29,7 @@ class Bus
 	static constexpr uint16_t IO_REGISTERS_END  = 0xFF80;
 	static constexpr uint16_t HRAM_END          = 0xFFFF;
 
-	// 
-
-	enum class BusMode
-	{
-		NONE = 0,
-		SM83_TEST, // set up bus with 64kb of unmapped wram
-	};
-
-	Bus(Cartridge &cartridge, Sm83 &cpu, BusMode mode = BusMode::NONE);
+	Bus(Cartridge &cartridge, Sm83 &cpu);
 
 	void clearWram();
 
@@ -67,21 +58,49 @@ class Bus
 	/**
 	 * @brief Reset all memory components to zero.
 	 */
-	void clearBus()
+	void resetBus()
 	{
+		m_tCyclePerFrame = 0;
+		m_tCycles        = 0;
+
 		std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 		std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 		std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));
 	}
 
+	// one m-cycle clock
+	void tickM();
+
+	/**
+	 * @brief Run cpu for
+	 */
+	void onUpdate();
+
   private:
-	BusMode    m_mode;
 	Cartridge &m_cartridge;
 	Sm83      &m_cpu;
 
+	std::size_t m_tCycles        = 0; // track total elapsed gameboy cycles
+	std::size_t m_tCyclePerFrame = 0; // track elasped cycles in a frame (1/60 of a second), decremented after frame ends
+
 	// memory components
 
-	std::vector<uint8_t>                m_wram;
+	std::array<uint8_t, Bus::WRAM_SIZE> m_wram;
 	std::array<uint8_t, Bus::VRAM_SIZE> m_vram;
 	std::array<uint8_t, Bus::HRAM_SIZE> m_hram;
+
+	enum IORegisters
+	{
+		SERIAL_SB = 0xFF01, // Serial transfer data
+
+		INTERRUPT_IF = 0xFF0F, // interrupt flag
+
+		TIMER_DIV  = 0xFF04, // divider register
+		TIMER_TIMA = 0xFF05, // timer counter
+		TIMER_TMA  = 0xFF06, // timer modulo (reload value for timer counter)
+		TIMER_TAC  = 0xFF07, // timer control
+	};
+
+	void    writeIO(uint16_t position, uint8_t data);
+	uint8_t readIO(uint16_t position);
 };
