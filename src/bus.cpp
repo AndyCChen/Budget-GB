@@ -88,7 +88,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 	// interrupt enable register at 0xFFFF
 	else
 	{
-		out = m_cpu.m_interrupts.m_interruptEnable.m_enableFlags;
+		out = m_cpu.m_interrupts.m_interruptEnable;
 	}
 
 	tickM();
@@ -125,8 +125,7 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	// interrupt enable register at 0xFFFF
 	else
 	{
-		m_cpu.m_interrupts.m_interruptEnable.m_enableFlags = data;
-		;
+		m_cpu.m_interrupts.m_interruptEnable = data;
 	}
 	tickM();
 }

@@ -7,7 +7,6 @@ Sm83::Sm83(Bus &bus)
 	: m_bus(bus)
 {
 	initDMG();
-
 	m_interrupts.reset();
 }
 
@@ -16,48 +15,62 @@ void Sm83::instructionStep()
 	if (m_logEnable)
 		m_opcodeLogger.next(m_programCounter, m_stackPointer, m_registerAF.get_u16(), m_registerBC.get_u16(), m_registerDE.get_u16(), m_registerHL.get_u16());
 
-	uint8_t opcode = cpuFetch_u8();
-	decodeExecute(opcode);
+	// normal execution when cpu is not halted from HALT instructions
+	if (!m_isHalted)
+	{
+		uint8_t opcode = cpuFetch_u8();
+		decodeExecute(opcode);
 
-	m_interrupts.handle_ie_requests();
-	handleInterrupt();
+		m_interrupts.handle_ie_requests();
+		handleInterrupt();
+	}
+	// cpu is halted and "wakes up" only when a interrupt is requested
+	else
+	{
+		m_bus.tickM();
+		if (m_interrupts.interruptPending())
+		{
+			m_isHalted = false;
+			handleInterrupt();
+		}
+	}
 }
 
 void Sm83::handleInterrupt()
 {
 	if (m_interrupts.m_interruptMasterEnable)
 	{
-		uint8_t         requestedInterrupt = m_interrupts.m_interruptEnable.m_enableFlags & m_interrupts.m_interruptFlags;
-		InterruptVector irqAddress         = InterruptVector::NONE;
+		uint8_t         pendingInterrupts = m_interrupts.m_interruptEnable & m_interrupts.m_interruptFlags;
+		InterruptVector irqAddress        = InterruptVector::NONE;
 
 		// acknowledge any requested interrupts
 
 		// vblank requested
-		if (requestedInterrupt & 0x01)
+		if (pendingInterrupts & 0x01)
 		{
 			irqAddress = InterruptVector::VBLANK;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_VBLANK;
 		}
 		// lcd requested
-		else if (requestedInterrupt & 0x02)
+		else if (pendingInterrupts & 0x02)
 		{
 			irqAddress = InterruptVector::STAT;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_LCD;
 		}
 		// timer requested
-		else if (requestedInterrupt & 0x04)
+		else if (pendingInterrupts & 0x04)
 		{
 			irqAddress = InterruptVector::TIMER;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_TIMER;
 		}
 		// serial requested
-		else if (requestedInterrupt & 0x08)
+		else if (pendingInterrupts & 0x08)
 		{
 			irqAddress = InterruptVector::SERIAL;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_SERIAL;
 		}
 		// joypad requested
-		else if (requestedInterrupt & 0x10)
+		else if (pendingInterrupts & 0x10)
 		{
 			irqAddress = InterruptVector::JOYPAD;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_JOYPAD;
@@ -714,6 +727,7 @@ void Sm83::decodeExecute(uint8_t opcode)
 
 	case 0x76:
 		formatToOpcodeString("HALT");
+		HALT();
 		break;
 
 	case 0x77:
@@ -3572,27 +3586,40 @@ void Sm83::DI()
 
 void Sm83::EI()
 {
-	m_interrupts.m_interruptEnable.m_ie_requested += 1;
+	m_interrupts.m_eiPending = true;
+}
+
+void Sm83::HALT()
+{
+	m_isHalted = true;
+
+	// pending interrupt but ime is disabled which causes the "halt bug" (PC is not correctly incremented)
+	if (!m_interrupts.m_interruptMasterEnable && m_interrupts.interruptPending())
+	{
+		m_programCounter -= 1;
+	}
 }
 
 void Sm83::Sm83InterruptRegisters::handle_ie_requests()
 {
-	if (m_interruptEnable.m_ie_requested && ++m_interruptEnable.m_ie_counter >= 2)
+	if (m_eiPending)
 	{
-		m_interruptEnable.m_ie_requested -= 1;
-		m_interruptEnable.m_ie_counter -= 2;
-		m_interruptMasterEnable = true;
+		if (++m_eiPendingElapsedInstructions >= 2)
+		{
+			m_interruptMasterEnable        = true;
+			m_eiPending                    = false;
+			m_eiPendingElapsedInstructions = 0;
+		}
 	}
 }
 
 void Sm83::Sm83InterruptRegisters::reset()
 {
 	m_interruptMasterEnable = false;
+	m_eiPending             = false;
 
-	m_interruptEnable.m_enableFlags  = 0;
-	m_interruptEnable.m_ie_requested = 0;
-	m_interruptEnable.m_ie_counter   = 0;
-	m_interruptFlags                 = 0;
+	m_interruptEnable = 0;
+	m_interruptFlags  = 0;
 }
 
 void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
@@ -3605,7 +3632,7 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 	if (m_reloadScheduled)
 	{
 		m_reloadScheduled = false;
-		m_timerControl = m_timerModulo;
+		m_timerControl    = m_timerModulo;
 		interruptFlags |= InterruptFlags_TIMER;
 	}
 

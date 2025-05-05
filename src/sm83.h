@@ -92,23 +92,17 @@ class Sm83
 
 	struct Sm83InterruptRegisters
 	{
-		bool m_interruptMasterEnable = false; // interrupt master enable
+		bool    m_interruptMasterEnable       = false; // interrupt master enable
+		bool    m_eiPending                   = false;
+		uint8_t m_eiPendingElapsedInstructions = 0;
 
-		struct Sm83InterruptEnable
+		uint8_t m_interruptEnable = 0; // control which interrupts are allowed to fire
+		uint8_t m_interruptFlags  = 0; // controls which interrupt handlers are being requested
+
+		bool interruptPending() const
 		{
-			// control which interrrupt handler categories are allowed to happen
-			uint8_t m_enableFlags = 0;
-
-			// Effects of the ie instruction are delayed by once instruction.
-			// Meaning after ie is executed, the ime flag is set only after the next
-			// instruction finishes execution.
-
-			uint8_t m_ie_requested = 0;
-			uint8_t m_ie_counter   = 0;
-		} m_interruptEnable;
-
-		// controls which interrupt handlers are being requested
-		uint8_t m_interruptFlags = 0;
+			return m_interruptEnable & m_interruptFlags;
+		}
 
 		void handle_ie_requests();
 		void reset();
@@ -191,6 +185,7 @@ class Sm83
 		initDMG();
 		m_interrupts.reset();
 		m_timer.reset();
+		m_isHalted = false;
 	}
 
 	/**
@@ -203,6 +198,8 @@ class Sm83
 
 	uint16_t opcodeOperand       = 0; // saves the 1 or 2 byte long operand of cpu instructions for logging purposes
 	uint16_t computedJumpAddress = 0; // saves computed jump address for logging purposes
+
+	bool m_isHalted = false;
 
 	void formatToOpcodeString(const std::string &format, uint16_t arg);
 	void formatToOpcodeString(const std::string &format);
@@ -996,4 +993,6 @@ class Sm83
 	 * EI.
 	 */
 	void EI();
+
+	void HALT();
 };
