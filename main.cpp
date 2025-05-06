@@ -3,8 +3,8 @@
 #include <SDL3/SDL_main.h>
 
 #include "BudgetGB.h"
-#include "renderer.h"
 #include "fmt/base.h"
+#include "renderer.h"
 
 #include <stdexcept>
 #include <string>
@@ -17,7 +17,8 @@ struct AppWithTimer
 	float previousTime = 0.0f;
 	float deltaTime    = 0.0f;
 
-	AppWithTimer(const std::string &romPath = "") : gameboy(romPath)
+	AppWithTimer(const std::string &romPath = "")
+		: gameboy(romPath)
 	{
 	}
 };
@@ -33,8 +34,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 			*appstate = new AppWithTimer(std::string(argv[1]));
 		else
 		{
-			fmt::println(stderr,
-			             "Invalid number of arguments, please provide only one path to rom file or none at all!");
+			fmt::println(stderr, "Invalid number of arguments, please provide only one path to rom file or none at all!");
 			return SDL_APP_FAILURE;
 		}
 	}
@@ -72,7 +72,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 // clean up on exit
 void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
-	(void) result;
+	(void)result;
 	AppWithTimer *app = (AppWithTimer *)appstate;
 	delete app;
 }

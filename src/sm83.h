@@ -92,8 +92,8 @@ class Sm83
 
 	struct Sm83InterruptRegisters
 	{
-		bool    m_interruptMasterEnable       = false; // interrupt master enable
-		bool    m_eiPending                   = false;
+		bool    m_interruptMasterEnable        = false; // interrupt master enable
+		bool    m_eiPending                    = false;
 		uint8_t m_eiPendingElapsedInstructions = 0;
 
 		uint8_t m_interruptEnable = 0; // control which interrupts are allowed to fire
@@ -157,10 +157,10 @@ class Sm83
 		enum TimerControlFlags
 		{
 			TAC_CLOCK_SELECT_0 = 0, // increment every 256 m-cycles
-			TAC_CLOCK_SELECT_1,     // increment every 4 m-cycles
-			TAC_CLOCK_SELECT_2,     // increment every 16 m-cycles
-			TAC_CLOCK_SELECT_3,     // increment every 64 m-cycles
-			TAC_ENABLE,             // timer counter increment enable
+			TAC_CLOCK_SELECT_1 = 1, // increment every 4 m-cycles
+			TAC_CLOCK_SELECT_2 = 2, // increment every 16 m-cycles
+			TAC_CLOCK_SELECT_3 = 3, // increment every 64 m-cycles
+			TAC_ENABLE         = 4, // timer counter increment enable
 		};
 	};
 
@@ -278,15 +278,15 @@ class Sm83
 	void LDH_indirect_n8_A();
 
 	/**
-	 * @brief Load accumulator into address 0xFF00 + 8-bit C register.
-	 */
-	void LDH_indirect_C_A();
-
-	/**
 	 * @brief Load value at address 0xFF00 + 8-bit immediate value into
 	 * accumulator.
 	 */
 	void LDH_A_indirect_n8();
+
+	/**
+	 * @brief Load accumulator into address 0xFF00 + 8-bit C register.
+	 */
+	void LDH_indirect_C_A();
 
 	/**
 	 * @brief Load value at address 0xFF00 + 8-bit C register into accumulator.

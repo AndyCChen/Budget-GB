@@ -40,7 +40,7 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 	}
 	else if (position < IO_REGISTERS_END)
 	{
-		return 0;
+		return readIO(position);
 	}
 	else if (position < HRAM_END)
 	{
@@ -127,6 +127,7 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	{
 		m_cpu.m_interrupts.m_interruptEnable = data;
 	}
+
 	tickM();
 }
 
@@ -164,8 +165,8 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		break;
 
 	case IORegisters::TIMER_DIV:
-		 m_cpu.m_timer.setDivider();
-		 break;
+		m_cpu.m_timer.setDivider();
+		break;
 
 	case IORegisters::TIMER_TIMA:
 		m_cpu.m_timer.setTimerCounter(data);

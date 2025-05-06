@@ -2713,17 +2713,17 @@ void Sm83::LDH_indirect_n8_A()
 	m_bus.cpuWrite(address, m_registerAF.accumulator);
 }
 
-void Sm83::LDH_indirect_C_A()
-{
-	uint16_t address = 0xFF00 + m_registerBC.lo;
-	m_bus.cpuWrite(address, m_registerAF.accumulator);
-}
-
 void Sm83::LDH_A_indirect_n8()
 {
 	uint8_t  offset          = cpuFetch_u8();
 	uint16_t address         = 0xFF00 + offset;
 	m_registerAF.accumulator = m_bus.cpuRead(address);
+}
+
+void Sm83::LDH_indirect_C_A()
+{
+	uint16_t address = 0xFF00 + m_registerBC.lo;
+	m_bus.cpuWrite(address, m_registerAF.accumulator);
 }
 
 void Sm83::LDH_A_indirect_C()
@@ -2869,10 +2869,12 @@ void Sm83::INC_r16(Sm83Register &dest)
 	uint16_t value = ((dest.hi << 8) | dest.lo) + 1;
 	dest.lo        = value & 0xFF;
 	dest.hi        = (value >> 8) & 0xFF;
+	m_bus.tickM();
 }
 
 void Sm83::INC_SP()
 {
+	m_bus.tickM();
 	m_stackPointer += 1;
 }
 
@@ -2900,6 +2902,7 @@ void Sm83::DEC_r16(Sm83Register &dest)
 	value -= 1;
 	dest.hi = (value & 0xFF00) >> 8;
 	dest.lo = value & 0xFF;
+	m_bus.tickM();
 }
 
 void Sm83::DEC_indirect_HL()
@@ -2912,6 +2915,7 @@ void Sm83::DEC_indirect_HL()
 
 void Sm83::DEC_SP()
 {
+	m_bus.tickM();
 	m_stackPointer -= 1;
 }
 
@@ -3128,6 +3132,7 @@ void Sm83::ADD_SP_i8()
 
 void Sm83::ADD_HL_r16(Sm83Register &operand)
 {
+	m_bus.tickM();
 	uint16_t hl  = (m_registerHL.hi << 8) | m_registerHL.lo;
 	uint16_t op  = (operand.hi << 8) | operand.lo;
 	uint32_t sum = hl + op;
@@ -3143,6 +3148,7 @@ void Sm83::ADD_HL_r16(Sm83Register &operand)
 
 void Sm83::ADD_HL_SP()
 {
+	m_bus.tickM();
 	uint16_t hl  = (m_registerHL.hi << 8) | m_registerHL.lo;
 	uint32_t sum = hl + m_stackPointer;
 
@@ -3550,7 +3556,6 @@ void Sm83::BIT_indirect_HL(BitSelect b)
 	uint16_t address = (m_registerHL.hi << 8) | m_registerHL.lo;
 	uint8_t  dest    = m_bus.cpuRead(address);
 	BIT_r8(b, dest);
-	m_bus.cpuWrite(address, dest);
 }
 
 void Sm83::RES_r8(BitSelect b, uint8_t &dest)
@@ -3624,6 +3629,7 @@ void Sm83::Sm83InterruptRegisters::reset()
 
 void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 {
+	m_divider += 1;
 	constexpr uint8_t BIT_1 = 1 << 1;
 	constexpr uint8_t BIT_3 = 1 << 3;
 	constexpr uint8_t BIT_5 = 1 << 5;
@@ -3632,7 +3638,7 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 	if (m_reloadScheduled)
 	{
 		m_reloadScheduled = false;
-		m_timerControl    = m_timerModulo;
+		m_timerCounter    = m_timerModulo;
 		interruptFlags |= InterruptFlags_TIMER;
 	}
 
@@ -3646,10 +3652,9 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 		currentState = enabled && (m_divider & BIT_7);
 		if (!currentState && m_prevStateDivider)
 		{
-			if (m_timerCounter++ == 0xFF)
+			if (++m_timerCounter == 0)
 			{
 				m_reloadScheduled = !m_timerCounterIsWritten;
-				m_timerCounter    = 0;
 			}
 		}
 
@@ -3660,10 +3665,9 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 		currentState = enabled && (m_divider & BIT_1);
 		if (!currentState && m_prevStateDivider)
 		{
-			if (m_timerCounter++ == 0xFF)
+			if (++m_timerCounter == 0)
 			{
 				m_reloadScheduled = !m_timerCounterIsWritten;
-				m_timerCounter    = 0;
 			}
 		}
 
@@ -3674,10 +3678,9 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 		currentState = enabled && (m_divider & BIT_3);
 		if (!currentState && m_prevStateDivider)
 		{
-			if (m_timerCounter++ == 0xFF)
+			if (++m_timerCounter == 0)
 			{
 				m_reloadScheduled = !m_timerCounterIsWritten;
-				m_timerCounter    = 0;
 			}
 		}
 
@@ -3688,10 +3691,9 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 		currentState = enabled && (m_divider & BIT_5);
 		if (!currentState && m_prevStateDivider)
 		{
-			if (m_timerCounter++ == 0xFF)
+			if (++m_timerCounter == 0)
 			{
 				m_reloadScheduled = !m_timerCounterIsWritten;
-				m_timerCounter    = 0;
 			}
 		}
 
@@ -3699,7 +3701,6 @@ void Sm83::Sm83Timer::tick(uint8_t &interruptFlags)
 		break;
 	}
 
-	m_divider += 1;
 	m_timerCounterIsWritten = false;
 }
 
