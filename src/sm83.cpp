@@ -3586,7 +3586,9 @@ void Sm83::SET_indirect_HL(BitSelect b)
 
 void Sm83::DI()
 {
-	m_interrupts.m_interruptMasterEnable = false;
+	m_interrupts.m_interruptMasterEnable        = false;
+	m_interrupts.m_eiPending                    = false;
+	m_interrupts.m_eiPendingElapsedInstructions = 0;
 }
 
 void Sm83::EI()
@@ -3620,8 +3622,9 @@ void Sm83::Sm83InterruptRegisters::handle_ie_requests()
 
 void Sm83::Sm83InterruptRegisters::reset()
 {
-	m_interruptMasterEnable = false;
-	m_eiPending             = false;
+	m_interruptMasterEnable        = false;
+	m_eiPending                    = false;
+	m_eiPendingElapsedInstructions = 0;
 
 	m_interruptEnable = 0;
 	m_interruptFlags  = 0;
