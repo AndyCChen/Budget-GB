@@ -7,7 +7,6 @@ Bus::Bus(Cartridge &cartridge, Sm83 &cpu)
 	: m_cartridge(cartridge), m_cpu(cpu)
 {
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
-	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 	std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));
 }
 
@@ -24,7 +23,7 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 	}
 	else if (position < VRAM_END)
 	{
-		return m_vram[position & 0x1FFF];
+		return m_ppu.loggerReadVram(position);
 	}
 	else if (position < EXTERNAL_RAM_END)
 	{
@@ -63,7 +62,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 	}
 	else if (position < VRAM_END)
 	{
-		out = m_vram[position & 0x1FFF];
+		out = m_ppu.readVram(position);
 	}
 	else if (position < EXTERNAL_RAM_END)
 	{
@@ -102,7 +101,7 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	}
 	else if (position < VRAM_END)
 	{
-		m_vram[position & 0x1FFF] = data;
+		m_ppu.writeVram(position, data);
 	}
 	else if (position < EXTERNAL_RAM_END)
 	{
@@ -160,10 +159,6 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		fmt::print("{:c}", static_cast<char>(data));
 		break;
 
-	case IORegisters::INTERRUPT_IF:
-		m_cpu.m_interrupts.m_interruptFlags = data;
-		break;
-
 	case IORegisters::TIMER_DIV:
 		m_cpu.m_timer.setDivider();
 		break;
@@ -180,6 +175,22 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		m_cpu.m_timer.m_timerControl = data;
 		break;
 
+	case IORegisters::LCD_CONTROL:
+		m_ppu.m_lcdControl = data;
+		break;
+
+	case IORegisters::LCD_STAT:
+		m_ppu.setLcdStatus(data);
+		break;
+
+	case IORegisters::LCD_LYC:
+		m_ppu.m_LYC = data;
+		break;
+
+	case IORegisters::INTERRUPT_IF:
+		m_cpu.m_interrupts.m_interruptFlags = data;
+		break;
+
 	default:
 		break;
 	}
@@ -189,9 +200,6 @@ uint8_t Bus::readIO(uint16_t position)
 {
 	switch (position)
 	{
-	case IORegisters::INTERRUPT_IF:
-		return m_cpu.m_interrupts.m_interruptFlags;
-
 	case IORegisters::TIMER_DIV:
 		return m_cpu.m_timer.getDivider();
 
@@ -203,6 +211,21 @@ uint8_t Bus::readIO(uint16_t position)
 
 	case IORegisters::TIMER_TAC:
 		return m_cpu.m_timer.m_timerControl;
+
+	case IORegisters::LCD_CONTROL:
+		return m_ppu.m_lcdControl;
+
+	case IORegisters::LCD_STAT:
+		return m_ppu.getLcdStatus();
+
+	case IORegisters::LCD_LY:
+		return m_ppu.getLcdY();
+
+	case IORegisters::LCD_LYC:
+		return m_ppu.m_LYC;
+
+	case IORegisters::INTERRUPT_IF:
+		return m_cpu.m_interrupts.m_interruptFlags;
 
 	default:
 		return 0;
