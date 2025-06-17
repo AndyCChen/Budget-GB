@@ -176,7 +176,7 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		break;
 
 	case IORegisters::LCD_CONTROL:
-		m_ppu.m_lcdControl = data;
+		m_ppu.r_lcdControl = data;
 		break;
 
 	case IORegisters::LCD_STAT:
@@ -184,7 +184,7 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		break;
 
 	case IORegisters::LCD_LYC:
-		m_ppu.m_LYC = data;
+		m_ppu.r_LYC = data;
 		break;
 
 	case IORegisters::INTERRUPT_IF:
@@ -213,7 +213,7 @@ uint8_t Bus::readIO(uint16_t position)
 		return m_cpu.m_timer.m_timerControl;
 
 	case IORegisters::LCD_CONTROL:
-		return m_ppu.m_lcdControl;
+		return m_ppu.r_lcdControl;
 
 	case IORegisters::LCD_STAT:
 		return m_ppu.getLcdStatus();
@@ -222,7 +222,7 @@ uint8_t Bus::readIO(uint16_t position)
 		return m_ppu.getLcdY();
 
 	case IORegisters::LCD_LYC:
-		return m_ppu.m_LYC;
+		return m_ppu.r_LYC;
 
 	case IORegisters::INTERRUPT_IF:
 		return m_cpu.m_interrupts.m_interruptFlags;

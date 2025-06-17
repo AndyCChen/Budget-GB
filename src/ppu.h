@@ -8,20 +8,50 @@ class PPU
   public:
 	static constexpr unsigned int VRAM_SIZE = 1024 * 8;
 
-	uint8_t m_lcdControl = 0;
-	uint8_t m_LYC        = 0;
-	uint8_t m_scrollX    = 0;
-	uint8_t m_scrollY    = 0;
-	uint8_t m_windowX    = 0;
-	uint8_t m_windowY    = 0;
+	// Bits
+	// 0: enable/disable BG and window
+	// 1: enable/disable objects
+	// 2: toggle between 8x8 or 8x16 sprites
+	// 3: select 0x9800 or 0x9C00 to use for BG tile map
+	// 4: control addressing mode for BG and window
+	// 5: window enable
+	// 6: select 0x9800 or 0x9C00 to use for window tile map
+	// 7: enable/disable lcd (ppu)
+	uint8_t r_lcdControl = 0;
+	uint8_t r_LYC        = 0; // value to compare against the current scanline (lcdY)
+	uint8_t r_scrollX    = 0;
+	uint8_t r_scrollY    = 0;
+	uint8_t r_windowX    = 0;
+	uint8_t r_windowY    = 0;
+
+	struct Fetcher
+	{
+		uint8_t  fetcherX             = 0;
+		uint8_t  bgNametableTileIndex = 0;
+		uint16_t bgPatternTileAddress = 0;
+		uint8_t  bgPatternTileLoLatch = 0;
+		uint8_t  bgPatternTileHiLatch = 0;
+	};
+
+	struct BgFifo
+	{
+		uint8_t patternTileLoShifter = 0;
+		uint8_t patternTileHiShifter = 0;
+
+		void shiftFifo()
+		{
+			patternTileLoShifter <<= 1;
+			patternTileHiShifter <<= 1;
+		}
+	};
 
   private:
 	static constexpr unsigned int MODE_2_DURATION = 80; // oam scan lasts 80 dots
 
 	std::array<uint8_t, VRAM_SIZE> m_vram;
 
-	uint8_t m_lcdY      = 0; // holds the current horizontal scanline
-	uint8_t m_lcdStatus = 0;
+	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
+	uint8_t r_lcdStatus = 0;
 
 	uint16_t m_scanlineDotCounter = 0;
 
@@ -39,13 +69,67 @@ class PPU
 		CYCLE_1,
 	};
 
+	// B01: initial dummy fetch to fill shift registers, takes total of 6 dots
+	// B01S: remaining fetches of mode 3
+	// B = nametable fetches, aka the tile index is fetched
+	// 0, 1 = lo and hi tiles are fetches with nametable index
+	// s = where sprite fetches in inserted if needed
+
 	enum class PixelRenderState
 	{
-		
+		// first fetch is discarded aka do nothing (6 cycles)
+
+		DUMMY_FETCH_NAMETABLE_0,
+		DUMMY_FETCH_NAMETABLE_1,
+		DUMMY_FETCH_TILE_LO_0,
+		DUMMY_FETCH_TILE_LO_1,
+		DUMMY_FETCH_TILE_HI_0,
+		DUMMY_FETCH_TILE_HI_1,
+
+		// prefetch to fill shift registers
+
+		PREFETCH_NAMETABLE_0,
+		PREFETCH_NAMETABLE_1,
+		PREFETCH_TILE_LO_0,
+		PREFETCH_TILE_LO_1,
+		PREFETCH_TILE_HI_0,
+		PREFETCH_TILE_HI_1,
+
+		// first tile to be rendered can be paused for r_scrollX % 8 cycles to shift out pixels that should be offscreen
+
+		SHIFT_PIXELS_NAMETABLE_0,
+		SHIFT_PIXELS_NAMETABLE_1,
+		SHIFT_PIXELS_TILE_LO_2,
+		SHIFT_PIXELS_TILE_LO_3,
+		SHIFT_PIXELS_TILE_HI_4,
+		SHIFT_PIXELS_TILE_HI_5,
+		SHIFT_PIXELS_PUSH_FIFO_6,
+
+		// render pixels for the rest of the scanline
+
+		B01S_NAMETABLE_0,
+		B01S_NAMETABLE_1,
+		B01S_TILE_LO_0,
+		B01S_TILE_LO_1,
+		B01S_TILE_HI_0,
+		B01S_TILE_HI_1,
+		B01S_PUSH_FIFO_0,
+		B01S_PUSH_FIFO_1,
 	};
 
-	Mode         m_ppuMode      = Mode::MODE_2;
-	OamScanState m_oamScanState = OamScanState::CYCLE_0;
+	Mode             m_ppuMode          = Mode::MODE_2;
+	OamScanState     m_oamScanState     = OamScanState::CYCLE_0;
+	PixelRenderState m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
+
+	Fetcher m_fetcher;
+	BgFifo  m_bgFifo;
+
+	void fetchNametable();
+
+	// lo/hi tile fetches for background and window
+
+	void fetchTileLo();
+	void fetchTileHi();
 
   public:
 	PPU();
@@ -55,12 +139,16 @@ class PPU
 
 	uint8_t readVram(uint16_t position)
 	{
-		return m_vram[position & 0x1FFF];
+		if (m_ppuMode != Mode::MODE_3)
+			return m_vram[position & 0x1FFF];
+		else
+			return 0xFF;
 	}
 
 	void writeVram(uint16_t position, uint8_t data)
 	{
-		m_vram[position & 0x1FFF] = data;
+		if (m_ppuMode != Mode::MODE_3)
+			m_vram[position & 0x1FFF] = data;
 	}
 
 	/**
@@ -76,18 +164,18 @@ class PPU
 
 	uint8_t getLcdY() const
 	{
-		return m_lcdY;
+		return r_lcdY;
 	}
 
 	uint8_t getLcdStatus() const
 	{
-		return m_lcdStatus;
+		return r_lcdStatus;
 	}
 
 	void setLcdStatus(uint8_t in)
 	{
 		// bits 0-2 are read only
-		m_lcdStatus = in & 0xF8;
+		r_lcdStatus = in & 0xF8;
 	}
 
 	void reset()
