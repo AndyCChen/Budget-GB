@@ -3,8 +3,8 @@
 #include "fmt/base.h"
 #include "sm83.h"
 
-Bus::Bus(Cartridge &cartridge, Sm83 &cpu)
-	: m_cartridge(cartridge), m_cpu(cpu)
+Bus::Bus(Cartridge &cartridge, Sm83 &cpu, std::vector<Utils::array_u8Vec4> &lcdPixelBuffer)
+	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(lcdPixelBuffer, m_cpu.m_interrupts.m_interruptFlags)
 {
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 	std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));
@@ -138,6 +138,10 @@ void Bus::tickM()
 	m_tCycles += 4;
 
 	m_cpu.m_timer.tick(m_cpu.m_interrupts.m_interruptFlags);
+	m_ppu.tick();
+	m_ppu.tick();
+	m_ppu.tick();
+	m_ppu.tick();
 }
 
 void Bus::onUpdate()
@@ -187,6 +191,26 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		m_ppu.r_LYC = data;
 		break;
 
+	case IORegisters::BGP:
+		m_ppu.r_bgPaletteData = data;
+		break;
+
+	case IORegisters::LCD_SCX:
+		m_ppu.r_scrollX = data;
+		break;
+
+	case IORegisters::LCD_SCY:
+		m_ppu.r_scrollY = data;
+		break;
+
+	case IORegisters::LCD_WX:
+		m_ppu.r_windowX = data;
+		break;
+
+	case IORegisters::LCD_WY:
+		m_ppu.r_windowY = data;
+		break;
+
 	case IORegisters::INTERRUPT_IF:
 		m_cpu.m_interrupts.m_interruptFlags = data;
 		break;
@@ -223,6 +247,26 @@ uint8_t Bus::readIO(uint16_t position)
 
 	case IORegisters::LCD_LYC:
 		return m_ppu.r_LYC;
+
+	case IORegisters::BGP:
+		return m_ppu.r_bgPaletteData;
+		break;
+
+	case IORegisters::LCD_SCX:
+		return m_ppu.r_scrollX;
+		break;
+
+	case IORegisters::LCD_SCY:
+		return m_ppu.r_scrollY;
+		break;
+
+	case IORegisters::LCD_WX:
+		return m_ppu.r_windowX;
+		break;
+
+	case IORegisters::LCD_WY:
+		return m_ppu.r_windowY;
+		break;
 
 	case IORegisters::INTERRUPT_IF:
 		return m_cpu.m_interrupts.m_interruptFlags;

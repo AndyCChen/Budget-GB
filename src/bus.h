@@ -6,6 +6,7 @@
 
 #include "cartridge.h"
 #include "ppu.h"
+#include "utils/vec.h"
 
 class Sm83; // forward declare Sm83
 class Bus
@@ -29,7 +30,7 @@ class Bus
 	static constexpr uint16_t IO_REGISTERS_END  = 0xFF80;
 	static constexpr uint16_t HRAM_END          = 0xFFFF;
 
-	Bus(Cartridge &cartridge, Sm83 &cpu);
+	Bus(Cartridge &cartridge, Sm83 &cpu, std::vector<Utils::array_u8Vec4> &lcdPixelBuffer);
 
 	void clearWram();
 
@@ -105,6 +106,8 @@ class Bus
 		LCD_STAT    = 0xFF41,
 		LCD_LY      = 0xFF44,
 		LCD_LYC     = 0xFF45,
+
+		BGP = 0xFF47, // bg color palette
 
 		// PPU registers - scrolling
 		LCD_SCY = 0xFF42,

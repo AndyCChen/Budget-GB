@@ -1,12 +1,22 @@
 #pragma once
 
+#include "utils/vec.h"
 #include <array>
 #include <cstdint>
+#include <vector>
 
 class PPU
 {
   public:
 	static constexpr unsigned int VRAM_SIZE = 1024 * 8;
+
+	std::array<std::array<uint8_t, 3>, 4> m_colorPallete =
+		{{
+			{224, 248, 208},
+			{136, 192, 112},
+			{52, 104, 86},
+			{8, 24, 32},
+		}};
 
 	// Bits
 	// 0: enable/disable BG and window
@@ -23,6 +33,8 @@ class PPU
 	uint8_t r_scrollY    = 0;
 	uint8_t r_windowX    = 0;
 	uint8_t r_windowY    = 0;
+
+	uint8_t r_bgPaletteData = 0;
 
 	struct Fetcher
 	{
@@ -46,9 +58,13 @@ class PPU
 	};
 
   private:
-	static constexpr unsigned int MODE_2_DURATION = 80; // oam scan lasts 80 dots
+	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
+	static constexpr unsigned int SCANLINE_DURATION = 456; // each scanline always lasts 456 dots
 
-	std::array<uint8_t, VRAM_SIZE> m_vram;
+	uint8_t &m_interruptLine;
+
+	std::array<uint8_t, VRAM_SIZE>    m_vram;
+	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
 
 	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
 	uint8_t r_lcdStatus = 0;
@@ -99,11 +115,11 @@ class PPU
 
 		SHIFT_PIXELS_NAMETABLE_0,
 		SHIFT_PIXELS_NAMETABLE_1,
-		SHIFT_PIXELS_TILE_LO_2,
-		SHIFT_PIXELS_TILE_LO_3,
-		SHIFT_PIXELS_TILE_HI_4,
-		SHIFT_PIXELS_TILE_HI_5,
-		SHIFT_PIXELS_PUSH_FIFO_6,
+		SHIFT_PIXELS_TILE_LO_0,
+		SHIFT_PIXELS_TILE_LO_1,
+		SHIFT_PIXELS_TILE_HI_0,
+		SHIFT_PIXELS_TILE_HI_1,
+		SHIFT_PIXELS_PUSH_FIFO_0,
 
 		// render pixels for the rest of the scanline
 
@@ -132,7 +148,7 @@ class PPU
 	void fetchTileHi();
 
   public:
-	PPU();
+	PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags);
 
 	// tick ppu for 4 dots (1 cpu m-cycle == 4 ppu dots)
 	void tick();
@@ -147,7 +163,7 @@ class PPU
 
 	void writeVram(uint16_t position, uint8_t data)
 	{
-		if (m_ppuMode != Mode::MODE_3)
+		//if (m_ppuMode != Mode::MODE_3)
 			m_vram[position & 0x1FFF] = data;
 	}
 
@@ -182,4 +198,6 @@ class PPU
 	{
 		std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 	}
+
+	void pushPixelToLCD();
 };

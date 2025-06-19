@@ -1,6 +1,7 @@
 #include "ppu.h"
 
-PPU::PPU()
+PPU::PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags)
+	: m_lcdPixelBuffer(lcdPixelBuffer), m_interruptLine(interruptFlags)
 {
 	reset();
 }
@@ -11,10 +12,36 @@ void PPU::tick()
 
 	switch (m_ppuMode)
 	{
-	case Mode::MODE_0:
+	case Mode::MODE_0: // H-blank
+		if (m_scanlineDotCounter == SCANLINE_DURATION)
+		{
+			m_scanlineDotCounter = 0;
+
+			// switch to V-blank once 144 scanlines have been drawn
+			if (++r_lcdY == 144)
+			{
+				m_interruptLine |= 0x1;
+				m_ppuMode = Mode::MODE_1;
+			}
+			else
+			{
+				m_ppuMode = Mode::MODE_2;
+			}
+		}
 		break;
 
-	case Mode::MODE_1:
+	case Mode::MODE_1: //  V-blank
+		if (m_scanlineDotCounter == SCANLINE_DURATION)
+		{
+			m_scanlineDotCounter = 0;
+
+			// exit V-blank once bottom-most scanline is finished
+			if (++r_lcdY == 154)
+			{
+				m_ppuMode = Mode::MODE_2;
+				r_lcdY    = 0;
+			}
+		}
 		break;
 
 	case Mode::MODE_2: // oam scan
@@ -31,12 +58,16 @@ void PPU::tick()
 		}
 
 		if (m_scanlineDotCounter == MODE_2_DURATION)
-			m_ppuMode = Mode::MODE_3;
+		{
+			m_ppuMode          = Mode::MODE_3;
+			m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
+		}
 
 		break;
 
 	case Mode::MODE_3:
 
+	EXIT_PIXEL_SHIFT:
 		switch (m_pixelRenderState)
 		{
 
@@ -92,6 +123,7 @@ void PPU::tick()
 
 		case PixelRenderState::PREFETCH_TILE_HI_1:
 			fetchTileHi();
+			m_fetcher.fetcherX += 8; // plus eight pixels to advance fetcher to the next tile
 			m_bgFifo.patternTileLoShifter = m_fetcher.bgPatternTileLoLatch;
 			m_bgFifo.patternTileHiShifter = m_fetcher.bgPatternTileHiLatch;
 			m_pixelRenderState            = PixelRenderState::SHIFT_PIXELS_NAMETABLE_0;
@@ -102,10 +134,12 @@ void PPU::tick()
 		case PixelRenderState::SHIFT_PIXELS_NAMETABLE_0:
 			if ((r_scrollX & 7) == 0)
 			{
-				m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_1;
+				m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_0;
+				goto EXIT_PIXEL_SHIFT;
 			}
 			else
 			{
+				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_NAMETABLE_1;
 			}
@@ -114,107 +148,132 @@ void PPU::tick()
 		case PixelRenderState::SHIFT_PIXELS_NAMETABLE_1:
 			if ((r_scrollX & 7) == 1)
 			{
-				m_pixelRenderState = PixelRenderState::B01S_TILE_LO_0;
+				m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_1;
+				goto EXIT_PIXEL_SHIFT;
 			}
 			else
 			{
+				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_2;
+				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_0;
 			}
 			break;
 
-		case PixelRenderState::SHIFT_PIXELS_TILE_LO_2:
+		case PixelRenderState::SHIFT_PIXELS_TILE_LO_0:
 			if ((r_scrollX & 7) == 2)
 			{
-				m_pixelRenderState = PixelRenderState::B01S_TILE_LO_1;
+				m_pixelRenderState = PixelRenderState::B01S_TILE_LO_0;
+				goto EXIT_PIXEL_SHIFT;
 			}
 			else
 			{
+				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_3;
+				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_1;
 			}
 			break;
 
-		case PixelRenderState::SHIFT_PIXELS_TILE_LO_3:
+		case PixelRenderState::SHIFT_PIXELS_TILE_LO_1:
 			if ((r_scrollX & 7) == 3)
 			{
-				m_pixelRenderState = PixelRenderState::B01S_TILE_HI_0;
+				m_pixelRenderState = PixelRenderState::B01S_TILE_LO_1;
+				goto EXIT_PIXEL_SHIFT;
 			}
 			else
 			{
+				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_4;
+				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_0;
 			}
 			break;
 
-		case PixelRenderState::SHIFT_PIXELS_TILE_HI_4:
+		case PixelRenderState::SHIFT_PIXELS_TILE_HI_0:
 			if ((r_scrollX & 7) == 4)
 			{
-				m_pixelRenderState = PixelRenderState::B01S_TILE_HI_1;
+				m_pixelRenderState = PixelRenderState::B01S_TILE_HI_0;
+				goto EXIT_PIXEL_SHIFT;
 			}
 			else
 			{
+				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_5;
+				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_1;
 			}
 			break;
 
-		case PixelRenderState::SHIFT_PIXELS_TILE_HI_5:
+		case PixelRenderState::SHIFT_PIXELS_TILE_HI_1:
 			if ((r_scrollX & 7) == 5)
 			{
-				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_0;
+				m_pixelRenderState = PixelRenderState::B01S_TILE_HI_1;
+				goto EXIT_PIXEL_SHIFT;
 			}
 			else
 			{
+				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_6;
+				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0;
 			}
 			break;
 
-		case PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_6:
-			if ((r_scrollX & 7) != 6)
+		case PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0:
+			if ((r_scrollX & 7) == 6)
 			{
+				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_0;
+				goto EXIT_PIXEL_SHIFT;
+			}
+			else
+			{
+				m_fetcher.fetcherX += 1;
+				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
 				m_bgFifo.shiftFifo();
 			}
-			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
 			break;
 
-			// ---------------- continue rendering pixels for entire scanline ------------------
+			// ---------------- start rendering pixels for entire scanline ------------------
 
 		case PixelRenderState::B01S_NAMETABLE_0:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_1;
 			break;
+
 		case PixelRenderState::B01S_NAMETABLE_1:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			fetchNametable();
 			m_pixelRenderState = PixelRenderState::B01S_TILE_LO_0;
 			break;
+
 		case PixelRenderState::B01S_TILE_LO_0:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			m_pixelRenderState = PixelRenderState::B01S_TILE_LO_1;
 			break;
+
 		case PixelRenderState::B01S_TILE_LO_1:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			fetchTileLo();
 			m_pixelRenderState = PixelRenderState::B01S_TILE_HI_0;
 			break;
+
 		case PixelRenderState::B01S_TILE_HI_0:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			m_pixelRenderState = PixelRenderState::B01S_TILE_HI_1;
 			break;
+
 		case PixelRenderState::B01S_TILE_HI_1:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			fetchTileHi();
 			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_0;
 			break;
+
 		case PixelRenderState::B01S_PUSH_FIFO_0:
-			m_fetcher.fetcherX += 1;
+			pushPixelToLCD();
 			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
 			break;
+
 		case PixelRenderState::B01S_PUSH_FIFO_1:
-			m_fetcher.fetcherX += 1;
-			m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_0;
+			pushPixelToLCD();
+			m_bgFifo.patternTileLoShifter = m_fetcher.bgPatternTileLoLatch;
+			m_bgFifo.patternTileHiShifter = m_fetcher.bgPatternTileHiLatch;
+			m_pixelRenderState            = PixelRenderState::B01S_NAMETABLE_0;
 			break;
 		}
 
@@ -222,16 +281,44 @@ void PPU::tick()
 	}
 }
 
+void PPU::pushPixelToLCD()
+{
+	uint8_t colorIndex = (m_bgFifo.patternTileHiShifter & 0x80) | ((m_bgFifo.patternTileLoShifter & 0x80) >> 1);
+	colorIndex >>= 6;
+	m_bgFifo.shiftFifo();
+
+	colorIndex = (r_bgPaletteData >> (colorIndex * 2)) & 0x3;
+
+	uint16_t lcdPixelIndex = (160 * (143 - r_lcdY)) + (m_fetcher.fetcherX - 8);
+	m_fetcher.fetcherX += 1;
+
+	m_lcdPixelBuffer[lcdPixelIndex][0] = m_colorPallete[colorIndex][0]; // r
+	m_lcdPixelBuffer[lcdPixelIndex][1] = m_colorPallete[colorIndex][1]; // g
+	m_lcdPixelBuffer[lcdPixelIndex][2] = m_colorPallete[colorIndex][2]; // b
+	m_lcdPixelBuffer[lcdPixelIndex][3] = 0xFF;                          // a
+
+	// enter H-blank once 160 pixels are drawn
+	if (m_fetcher.fetcherX == 160 + 8)
+	{
+		m_fetcher.fetcherX = 0;
+		m_ppuMode          = Mode::MODE_0;
+	}
+}
+
 void PPU::fetchNametable()
 {
-	// 1001 10YY YYYX XXXX
+	// 1001 1BYY YYYX XXXX
+	// |||| |||| |||+-++++-       X: x coord of tile
+	// |||| ||++-+++-------       Y: y coord of tile
+	// |||| |+------------------- B: (0) fetch nametable from tile map 0x9800, (1) fetch nametable from tile map 0x9C00
+	// ++++-+-------------- 1001 10: Tiles begin at adress 0x9800
 
 	uint16_t baseAddress = 0x9800 | ((r_lcdControl & 0x08) << 7);
 
 	uint8_t tileX = ((r_scrollX + m_fetcher.fetcherX) & 0xF8) >> 3;
 	uint8_t tileY = ((r_scrollY + r_lcdY) & 0xF8) >> 3;
 
-	uint16_t address = baseAddress | ((tileY << 5) | tileX);
+	uint16_t address = baseAddress | (tileY << 5) | tileX;
 
 	m_fetcher.bgNametableTileIndex = m_vram[address & 0x1FFF];
 }
@@ -240,7 +327,11 @@ void PPU::fetchTileLo()
 {
 	uint8_t fineY = (r_scrollY + r_lcdY) & 0x7;
 
-	// NNNN TTTT TTTT YYYP
+	// 100A TTTT TTTT YYYP
+	//    | |||| |||| |||+- P: Bit plane selection
+	//    | |||| |||| +++-- Y: Fine y offset (row within a 8 pixel high tile)
+	//    | ++++-++++------ T: Tile index from nametable
+	//    +---------------- A: Addressing mode selection, 0: use 0x9000 as base address, 1: use 0x8000 as base address
 
 	// 0x8000 as base address with unsigned offset
 	if (r_lcdControl & 0x10)

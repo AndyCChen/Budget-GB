@@ -5,12 +5,12 @@
 #include <stdexcept>
 
 static unsigned char colorPallete[][3] = {
-	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}
+	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}
 };
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu), m_cpu(m_bus), m_disassembler(m_bus), m_gen(m_rd()),
-	  m_palleteRange(0, 4)
+	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus), m_gen(m_rd()),
+	  m_palleteRange(0, 3)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 
@@ -28,7 +28,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 		}
 	}
 
-	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
+	for (std::size_t i = 0; i < 170; ++i)
 	{
 		unsigned char colorIdx = (unsigned char)m_palleteRange(m_gen);
 		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
