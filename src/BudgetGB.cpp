@@ -125,12 +125,13 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 {
 	bool status = false;
-	m_bus.resetBus();
-	m_cpu.cpuReset();
+	//m_bus.resetBus();
+	//m_cpu.cpuReset();
 	if (m_cartridge.loadCartridgeFromPath(cartridgePath))
 	{
-		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
-		m_disassembler.step();
+		reset();
+		//m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+		//m_disassembler.step();
 		status = true;
 	}
 	return status;

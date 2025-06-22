@@ -1,4 +1,5 @@
 #include "ppu.h"
+#include "sm83.h"
 
 PPU::PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags)
 	: m_lcdPixelBuffer(lcdPixelBuffer), m_interruptLine(interruptFlags)
@@ -8,11 +9,20 @@ PPU::PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFla
 
 void PPU::tick()
 {
+	if ((r_lcdControl & LCD_CONTROLS::PPU_ENABLE) == 0)
+	{
+		return;
+	}
+
 	++m_scanlineDotCounter;
 
 	switch (m_ppuMode)
 	{
 	case Mode::MODE_0: // H-blank
+
+		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 0;
+		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_0_SELECT) ? 1 : 0;
+
 		if (m_scanlineDotCounter == SCANLINE_DURATION)
 		{
 			m_scanlineDotCounter = 0;
@@ -20,17 +30,21 @@ void PPU::tick()
 			// switch to V-blank once 144 scanlines have been drawn
 			if (++r_lcdY == 144)
 			{
-				m_interruptLine |= 0x1;
+				m_interruptLine |= Sm83::InterruptFlags::InterruptFlags_VBLANK; // request regular vblank interrupt
 				m_ppuMode = Mode::MODE_1;
 			}
 			else
 			{
-				m_ppuMode = Mode::MODE_2;
+				m_ppuMode = Mode::MODE_2; // begin new rendering scanline starting with oam scan
 			}
 		}
 		break;
 
 	case Mode::MODE_1: //  V-blank
+
+		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 1;
+		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_1_SELECT) ? 2 : 0;
+
 		if (m_scanlineDotCounter == SCANLINE_DURATION)
 		{
 			m_scanlineDotCounter = 0;
@@ -45,6 +59,9 @@ void PPU::tick()
 		break;
 
 	case Mode::MODE_2: // oam scan
+
+		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 2;
+		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_2_SELECT) ? 4 : 0;
 
 		switch (m_oamScanState)
 		{
@@ -66,6 +83,9 @@ void PPU::tick()
 		break;
 
 	case Mode::MODE_3:
+
+		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 3;
+		m_statInterruptSources = 0;
 
 	EXIT_PIXEL_SHIFT:
 		switch (m_pixelRenderState)
@@ -279,6 +299,26 @@ void PPU::tick()
 
 		break;
 	}
+
+	// update bit 2 of stat register based on LYC == LY condition
+	if (r_lcdY != r_LYC)
+		r_lcdStatus &= ~LCD_STATS::LYC_EQUALS_LY;
+	else
+	{
+		r_lcdStatus |= LCD_STATS::LYC_EQUALS_LY;
+		m_statInterruptSources = (r_lcdStatus & LCD_STATS::LYC_SELECT) ? 8 : 0;
+	}
+
+	if (m_statInterruptSources == 0)
+		m_sharedInterruptLine = false;
+	else
+	{
+		// request stat interrupt on lo to hi transition
+		if (!m_sharedInterruptLine)
+			m_interruptLine |= Sm83::InterruptFlags::InterruptFlags_LCD;
+
+		m_sharedInterruptLine = true;
+	}
 }
 
 void PPU::pushPixelToLCD()
@@ -352,4 +392,30 @@ void PPU::fetchTileHi()
 {
 	m_fetcher.bgPatternTileAddress += 1;
 	m_fetcher.bgPatternTileHiLatch = m_vram[m_fetcher.bgPatternTileAddress & 0x1FFF];
+}
+
+void PPU::reset()
+{
+	r_lcdControl         = 0;
+	r_LYC                = 0;
+	r_scrollX            = 0;
+	r_scrollY            = 0;
+	r_windowX            = 0;
+	r_windowY            = 0;
+	r_bgPaletteData      = 0;
+	r_lcdY               = 0;
+	r_lcdStatus          = 0;
+	m_scanlineDotCounter = 0;
+
+	m_ppuMode          = Mode::MODE_2;
+	m_oamScanState     = OamScanState::CYCLE_0;
+	m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
+
+	std::memset(&m_fetcher, 0, sizeof(Fetcher));
+	m_bgFifo.reset();
+
+	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
+
+	m_statInterruptSources = 0;
+	m_sharedInterruptLine  = 0;
 }

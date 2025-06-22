@@ -45,8 +45,9 @@ class PPU
 		uint8_t  bgPatternTileHiLatch = 0;
 	};
 
-	struct BgFifo
+	class BgFifo
 	{
+	  public:
 		uint8_t patternTileLoShifter = 0;
 		uint8_t patternTileHiShifter = 0;
 
@@ -55,21 +56,64 @@ class PPU
 			patternTileLoShifter <<= 1;
 			patternTileHiShifter <<= 1;
 		}
+
+		void reset()
+		{
+			patternTileLoShifter = 0;
+			patternTileHiShifter = 0;
+		}
 	};
 
   private:
 	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
 	static constexpr unsigned int SCANLINE_DURATION = 456; // each scanline always lasts 456 dots
 
-	uint8_t &m_interruptLine;
+	uint8_t &m_interruptLine; // interrupt line from the cpu
+
+	// 0: mode 0 state
+	// 1: mode 1 state
+	// 2: mode 2 state
+	// 3: LYC state
+	uint8_t m_statInterruptSources;
+	bool    m_sharedInterruptLine = false; // interrupt is requested when this transitions from low to high
 
 	std::array<uint8_t, VRAM_SIZE>    m_vram;
 	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
 
-	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
+	uint8_t r_lcdY = 0; // holds the current horizontal scanline
+
+	// bits
+	// 0, 1: Holds ppu's current mode status
+	// 2: Set when r_LYC == r_lcdY
+	// 3: Mode 0 select for stat interrupt
+	// 4: Mode 1 select for stat interrupt
+	// 5: Mode 2 select for stat interrupt
+	// 6: LYC == LY select for stat interrupt
 	uint8_t r_lcdStatus = 0;
 
 	uint16_t m_scanlineDotCounter = 0;
+
+	enum LCD_CONTROLS
+	{
+		BG_WINDOW_ENABLE            = 1 << 0,
+		OBJ_ENABLE                  = 1 << 1,
+		OBJ_SIZE                    = 1 << 2,
+		BG_TILEMAP                  = 1 << 3,
+		BG_WINDOW_PATTERN_DATA_AREA = 1 << 4,
+		WINDOW_ENABLE               = 1 << 5,
+		WINDOW_TILEMAP              = 1 << 6,
+		PPU_ENABLE                  = 1 << 7,
+	};
+
+	enum LCD_STATS
+	{
+		PPU_MODE      = 0x03,
+		LYC_EQUALS_LY = 0x04,
+		MODE_0_SELECT = 0x08,
+		MODE_1_SELECT = 0x10,
+		MODE_2_SELECT = 0x20,
+		LYC_SELECT    = 0x40,
+	};
 
 	enum class Mode
 	{
@@ -155,7 +199,7 @@ class PPU
 
 	uint8_t readVram(uint16_t position)
 	{
-		if (m_ppuMode != Mode::MODE_3)
+		if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
 			return m_vram[position & 0x1FFF];
 		else
 			return 0xFF;
@@ -163,7 +207,7 @@ class PPU
 
 	void writeVram(uint16_t position, uint8_t data)
 	{
-		//if (m_ppuMode != Mode::MODE_3)
+		if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
 			m_vram[position & 0x1FFF] = data;
 	}
 
@@ -194,10 +238,7 @@ class PPU
 		r_lcdStatus = in & 0xF8;
 	}
 
-	void reset()
-	{
-		std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
-	}
+	void reset();
 
 	void pushPixelToLCD();
 };

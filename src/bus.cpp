@@ -159,8 +159,10 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 {
 	switch (position)
 	{
+	case IORegisters::JOYPAD:
+		break;
+
 	case IORegisters::SERIAL_SB:
-		fmt::print("{:c}", static_cast<char>(data));
 		break;
 
 	case IORegisters::TIMER_DIV:
@@ -224,6 +226,12 @@ uint8_t Bus::readIO(uint16_t position)
 {
 	switch (position)
 	{
+	case IORegisters::JOYPAD:
+		return 0x3F;
+
+	case IORegisters::SERIAL_SB:
+		return 0xFF;
+
 	case IORegisters::TIMER_DIV:
 		return m_cpu.m_timer.getDivider();
 

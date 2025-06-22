@@ -46,31 +46,31 @@ void Sm83::handleInterrupt()
 		// acknowledge any requested interrupts
 
 		// vblank requested
-		if (pendingInterrupts & 0x01)
+		if (pendingInterrupts & InterruptFlags_VBLANK)
 		{
 			irqAddress = InterruptVector::VBLANK;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_VBLANK;
 		}
 		// lcd requested
-		else if (pendingInterrupts & 0x02)
+		else if (pendingInterrupts & InterruptFlags_LCD)
 		{
 			irqAddress = InterruptVector::STAT;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_LCD;
 		}
 		// timer requested
-		else if (pendingInterrupts & 0x04)
+		else if (pendingInterrupts & InterruptFlags_TIMER)
 		{
 			irqAddress = InterruptVector::TIMER;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_TIMER;
 		}
 		// serial requested
-		else if (pendingInterrupts & 0x08)
+		else if (pendingInterrupts & InterruptFlags_SERIAL)
 		{
 			irqAddress = InterruptVector::SERIAL;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_SERIAL;
 		}
 		// joypad requested
-		else if (pendingInterrupts & 0x10)
+		else if (pendingInterrupts & InterruptFlags_JOYPAD)
 		{
 			irqAddress = InterruptVector::JOYPAD;
 			m_interrupts.m_interruptFlags &= ~InterruptFlags_JOYPAD;

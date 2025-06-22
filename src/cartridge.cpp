@@ -10,7 +10,7 @@ bool Cartridge::loadCartridgeFromPath(const std::string &path)
 	{
 		fmt::println(stderr, "Failed to open rom at: {}", path);
 		m_cartridgeLoaded = false;
-		return false;
+		return m_cartridgeLoaded;
 	}
 
 	romFile.seekg(0, std::ios::end);
@@ -25,7 +25,7 @@ bool Cartridge::loadCartridgeFromPath(const std::string &path)
 	fmt::println("Cartridge rom size: {:d} bytes", romSize);
 
 	m_cartridgeLoaded = true;
-	return true;
+	return m_cartridgeLoaded;
 }
 
 uint8_t Cartridge::cartridgeRead(uint16_t position)

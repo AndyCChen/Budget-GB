@@ -99,6 +99,7 @@ class BudgetGB
 	void reset()
 	{
 		m_cpu.cpuReset();
+		m_bus.resetBus();
 		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		m_disassembler.step();
 	}

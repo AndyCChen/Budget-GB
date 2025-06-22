@@ -92,6 +92,7 @@ class Bus
 
 	enum IORegisters
 	{
+		JOYPAD    = 0xFF00,
 		SERIAL_SB = 0xFF01, // Serial transfer data
 
 		TIMER_DIV  = 0xFF04, // divider register
