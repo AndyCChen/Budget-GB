@@ -20,7 +20,7 @@ void PPU::tick()
 	{
 	case Mode::MODE_0: // H-blank
 
-		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 0;
+		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 0;
 		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_0_SELECT) ? 1 : 0;
 
 		if (m_scanlineDotCounter == SCANLINE_DURATION)
@@ -42,7 +42,7 @@ void PPU::tick()
 
 	case Mode::MODE_1: //  V-blank
 
-		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 1;
+		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 1;
 		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_1_SELECT) ? 2 : 0;
 
 		if (m_scanlineDotCounter == SCANLINE_DURATION)
@@ -60,7 +60,7 @@ void PPU::tick()
 
 	case Mode::MODE_2: // oam scan
 
-		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 2;
+		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 2;
 		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_2_SELECT) ? 4 : 0;
 
 		switch (m_oamScanState)
@@ -84,8 +84,8 @@ void PPU::tick()
 
 	case Mode::MODE_3:
 
-		r_lcdStatus &= ~LCD_STATS::PPU_MODE | 3;
-		m_statInterruptSources = 0;
+		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 3;
+		m_statInterruptSources = m_statInterruptSources & ~0x03;
 
 	EXIT_PIXEL_SHIFT:
 		switch (m_pixelRenderState)

@@ -229,7 +229,10 @@ class PPU
 
 	uint8_t getLcdStatus() const
 	{
-		return r_lcdStatus;
+		if (r_lcdControl & LCD_CONTROLS::PPU_ENABLE)
+			return r_lcdStatus;
+		else
+			return r_lcdStatus & 0xFC; // bits 0,1 read as zero when ppu is disabled
 	}
 
 	void setLcdStatus(uint8_t in)
