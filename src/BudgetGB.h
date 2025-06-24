@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include "SDL3/SDL.h"
 #include "bus.h"
@@ -13,8 +14,11 @@
 #include "sm83.h"
 #include "utils/vec.h"
 
-#include <cstdint>
-#include <random>
+
+struct BudgetGbConfig
+{
+	bool useBootrom;
+};
 
 class BudgetGB
 {
@@ -57,11 +61,11 @@ class BudgetGB
 
 	enum GuiContextFlags
 	{
-		GuiContextFlags_SHOW_IMGUI_DEMO        = 1 << 0,
-		GuiContextFlags_SHOW_MAIN_MENU         = 1 << 1,
-		GuiContextFlags_PAUSE                  = 1 << 2,
-		GuiContextFlags_FULLSCREEN             = 1 << 3,
-		GuiContextFlags_SHOW_CPU_VIEWER        = 1 << 4,
+		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
+		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
+		GuiContextFlags_PAUSE           = 1 << 2,
+		GuiContextFlags_FULLSCREEN      = 1 << 3,
+		GuiContextFlags_SHOW_CPU_VIEWER = 1 << 4,
 
 		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
 		GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
@@ -84,7 +88,8 @@ class BudgetGB
 	Sm83         m_cpu;
 	Disassembler m_disassembler;
 
-	GuiContext m_guiContext;
+	GuiContext     m_guiContext;
+	BudgetGbConfig m_config;
 
 	float m_accumulatedDeltaTime = 0.0f;
 
@@ -92,13 +97,14 @@ class BudgetGB
 	RendererGB::RenderContext       *m_renderContext;
 	std::vector<Utils::array_u8Vec4> m_lcdPixelBuffer;
 
-	std::random_device              m_rd;
+	/*std::random_device              m_rd;
 	std::mt19937                    m_gen;
-	std::uniform_int_distribution<> m_palleteRange;
+	std::uniform_int_distribution<> m_palleteRange;*/
 
 	void resetBudgetGB()
 	{
-		m_cpu.init();
+		bool useBootrom = m_cpu.m_bootrom.loadFromFile("dmg_boot.bin") && m_config.useBootrom;
+		m_cpu.init(useBootrom);
 		m_bus.resetBus();
 		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		m_disassembler.step();

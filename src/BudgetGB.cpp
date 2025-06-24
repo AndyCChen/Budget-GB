@@ -9,8 +9,7 @@ static unsigned char colorPallete[][3] = {
 };
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus), m_gen(m_rd()),
-	  m_palleteRange(0, 3)
+	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus)
 {
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 
@@ -28,16 +27,18 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 		}
 	}
 
-	m_cpu.m_bootrom.loadFromFile("dmg_boot.bin");
+	m_config.useBootrom = true;
 
-	/*for (std::size_t i = 0; i < 170; ++i)
+	bool useBootrom = m_cpu.m_bootrom.loadFromFile("dmg_boot.bin") && m_config.useBootrom;
+	m_cpu.init(useBootrom);
+
+	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
 	{
-		unsigned char colorIdx = (unsigned char)m_palleteRange(m_gen);
-		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
-		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
-		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
+		m_lcdPixelBuffer[i][0] = colorPallete[3][0];
+		m_lcdPixelBuffer[i][1] = colorPallete[3][1];
+		m_lcdPixelBuffer[i][2] = colorPallete[3][2];
 		m_lcdPixelBuffer[i][3] = 255;
-	}*/
+	}
 }
 
 BudgetGB::~BudgetGB()
@@ -126,17 +127,13 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 {
-	bool status = false;
-	//m_bus.resetBus();
-	//m_cpu.cpuReset();
 	if (m_cartridge.loadCartridgeFromPath(cartridgePath))
 	{
 		resetBudgetGB();
-		//m_disassembler.setProgramCounter(m_cpu.m_programCounter);
-		//m_disassembler.step();
-		status = true;
+		return true;
 	}
-	return status;
+	else
+		return false;
 }
 
 void BudgetGB::resizeViewportStretched()
@@ -214,7 +211,7 @@ constexpr static SDL_DialogFileFilter fileFilters[] = {
 	{"*.gb", "gb;gb"},
 };
 
-static void SDLCALL fileDialogCallback(void *userdata, const char *const *filelist, int filter)
+static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *filelist, int filter)
 {
 	(void)filter;
 	BudgetGB *gameboy = (BudgetGB *)userdata;
@@ -270,7 +267,7 @@ void BudgetGB::guiMain()
 		}
 
 		if (ImGui::MenuItem("Load ROM..."))
-			SDL_ShowOpenFileDialog(fileDialogCallback, this, m_window, fileFilters, 1, nullptr, false);
+			SDL_ShowOpenFileDialog(loadRomDialogCallback, this, m_window, fileFilters, 1, nullptr, false);
 
 		if (ImGui::BeginMenu("Window Sizes"))
 		{

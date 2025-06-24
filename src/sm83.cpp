@@ -6,7 +6,6 @@
 Sm83::Sm83(Bus &bus)
 	: m_bus(bus)
 {
-	init();
 }
 
 void Sm83::instructionStep()
@@ -35,9 +34,13 @@ void Sm83::instructionStep()
 	}
 }
 
-void Sm83::init()
+void Sm83::init(bool useBootrom)
 {
-	initWithBootrom();
+	if (useBootrom)
+		initWithBootrom();
+	else
+		initWithoutBootrom();
+
 	m_interrupts.reset();
 	m_timer.reset();
 	m_isHalted = false;
@@ -55,7 +58,7 @@ void Sm83::initWithBootrom()
 	m_registerAF.flags.C     = 0;
 
 	m_registerBC.hi = 0;
-	m_registerBC.lo = 0x13;
+	m_registerBC.lo = 0;
 
 	m_registerDE.hi = 0;
 	m_registerDE.lo = 0;
@@ -3778,6 +3781,7 @@ bool DmgBootRom::loadFromFile(const std::string &path)
 	std::ifstream file(path, std::ios::binary);
 	if (!file.is_open())
 	{
+		m_errorMsg = fmt::format("Failed to open bootrom at path: {}", path);
 		return false;
 	}
 
@@ -3787,6 +3791,7 @@ bool DmgBootRom::loadFromFile(const std::string &path)
 
 	if (fileSize != m_bootrom.size())
 	{
+		m_errorMsg = fmt::format("Bootrom size is incorrect, make sure it is a DMG bootrom!");
 		return false;
 	}
 

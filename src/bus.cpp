@@ -23,7 +23,7 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 		{
 			return m_cartridge.cartridgeRead(position);
 		}
-		else if (position < 0x100)
+		else if (position < BOOT_ROM_END)
 		{
 			return m_cpu.m_bootrom.read(position);
 		}
@@ -73,7 +73,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 		{
 			out = m_cartridge.cartridgeRead(position);
 		}
-		else if (position < 0x100)
+		else if (position < BOOT_ROM_END)
 		{
 			out = m_cpu.m_bootrom.read(position);
 		}

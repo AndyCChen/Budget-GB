@@ -16,6 +16,7 @@ class DmgBootRom
 
   private:
 	std::array<uint8_t, DMG_BOOTROM_SIZE> m_bootrom;
+	std::string m_errorMsg;
 
   public:
 	bool loadFromFile(const std::string &path);
@@ -23,6 +24,11 @@ class DmgBootRom
 	uint8_t read(uint16_t position)
 	{
 		return m_bootrom[position & 0xFF];
+	}
+
+	std::string getErrorMsg()
+	{
+		return m_errorMsg;
 	}
 };
 
@@ -202,7 +208,7 @@ class Sm83
 
 	Sm83(Bus &bus);
 
-	void init();
+	void init(bool useBootrom);
 
 	/**
 	 * @brief Emulate cpu for a single instruction.

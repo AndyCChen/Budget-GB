@@ -22,6 +22,7 @@ class Bus
 	// address ranges
 
 	static constexpr uint16_t CARTRIDGE_ROM_END = 0x8000;
+	static constexpr uint16_t BOOT_ROM_END      = 0x0100;
 	static constexpr uint16_t VRAM_END          = 0xA000;
 	static constexpr uint16_t EXTERNAL_RAM_END  = 0xC000;
 	static constexpr uint16_t ECHO_RAM_END      = 0xFE00;
