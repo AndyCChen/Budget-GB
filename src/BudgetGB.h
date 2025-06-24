@@ -96,9 +96,9 @@ class BudgetGB
 	std::mt19937                    m_gen;
 	std::uniform_int_distribution<> m_palleteRange;
 
-	void reset()
+	void resetBudgetGB()
 	{
-		m_cpu.cpuReset();
+		m_cpu.init();
 		m_bus.resetBus();
 		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		m_disassembler.step();

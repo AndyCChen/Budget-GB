@@ -19,7 +19,18 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 {
 	if (position < CARTRIDGE_ROM_END)
 	{
-		return m_cartridge.cartridgeRead(position);
+		if (m_cpu.m_bootRomDisable)
+		{
+			return m_cartridge.cartridgeRead(position);
+		}
+		else if (position < 0x100)
+		{
+			return m_cpu.m_bootrom.read(position);
+		}
+		else
+		{
+			return m_cartridge.cartridgeRead(position);
+		}
 	}
 	else if (position < VRAM_END)
 	{
@@ -58,7 +69,18 @@ uint8_t Bus::cpuRead(uint16_t position)
 
 	if (position < CARTRIDGE_ROM_END)
 	{
-		out = m_cartridge.cartridgeRead(position);
+		if (m_cpu.m_bootRomDisable)
+		{
+			out = m_cartridge.cartridgeRead(position);
+		}
+		else if (position < 0x100)
+		{
+			out = m_cpu.m_bootrom.read(position);
+		}
+		else
+		{
+			out = m_cartridge.cartridgeRead(position);
+		}
 	}
 	else if (position < VRAM_END)
 	{
@@ -197,6 +219,10 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		m_ppu.r_bgPaletteData = data;
 		break;
 
+	case IORegisters::BOOT_ROM_ENABLE:
+		m_cpu.m_bootRomDisable = data;
+		break;
+
 	case IORegisters::LCD_SCX:
 		m_ppu.r_scrollX = data;
 		break;
@@ -258,23 +284,21 @@ uint8_t Bus::readIO(uint16_t position)
 
 	case IORegisters::BGP:
 		return m_ppu.r_bgPaletteData;
-		break;
+
+	case IORegisters::BOOT_ROM_ENABLE:
+		return m_cpu.m_bootRomDisable;
 
 	case IORegisters::LCD_SCX:
 		return m_ppu.r_scrollX;
-		break;
 
 	case IORegisters::LCD_SCY:
 		return m_ppu.r_scrollY;
-		break;
 
 	case IORegisters::LCD_WX:
 		return m_ppu.r_windowX;
-		break;
 
 	case IORegisters::LCD_WY:
 		return m_ppu.r_windowY;
-		break;
 
 	case IORegisters::INTERRUPT_IF:
 		return m_cpu.m_interrupts.m_interruptFlags;

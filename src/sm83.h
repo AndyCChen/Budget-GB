@@ -3,10 +3,28 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <fstream>
 
 #include "bus.h"
 #include "fmt/base.h"
 #include "opcodeLogger.h"
+
+class DmgBootRom
+{
+  public:
+	static constexpr uint16_t DMG_BOOTROM_SIZE = 256;
+
+  private:
+	std::array<uint8_t, DMG_BOOTROM_SIZE> m_bootrom;
+
+  public:
+	bool loadFromFile(const std::string &path);
+
+	uint8_t read(uint16_t position)
+	{
+		return m_bootrom[position & 0xFF];
+	}
+};
 
 class Sm83
 {
@@ -164,6 +182,8 @@ class Sm83
 		};
 	};
 
+	DmgBootRom m_bootrom;
+
 	uint16_t       m_programCounter;
 	uint16_t       m_stackPointer;
 	Sm83RegisterAF m_registerAF;
@@ -174,19 +194,15 @@ class Sm83
 	Sm83InterruptRegisters m_interrupts;
 	Sm83Timer              m_timer;
 
+	uint8_t m_bootRomDisable = 0;
+
 	bool m_logEnable = false;
 
 	OpcodeLogger m_opcodeLogger;
 
 	Sm83(Bus &bus);
 
-	void cpuReset()
-	{
-		initDMG();
-		m_interrupts.reset();
-		m_timer.reset();
-		m_isHalted = false;
-	}
+	void init();
 
 	/**
 	 * @brief Emulate cpu for a single instruction.
@@ -204,29 +220,8 @@ class Sm83
 	void formatToOpcodeString(const std::string &format, uint16_t arg);
 	void formatToOpcodeString(const std::string &format);
 
-	/**
-	 * @brief Cpu state after the DMG boot is finished executing.
-	 */
-	void initDMG()
-	{
-		m_programCounter = 0x0100;
-		m_stackPointer   = 0xFFFE;
-
-		m_registerAF.accumulator = 0x1;
-		m_registerAF.flags.Z     = 1;
-		m_registerAF.flags.N     = 0;
-		m_registerAF.flags.H     = 0;
-		m_registerAF.flags.C     = 0;
-
-		m_registerBC.hi = 0x00;
-		m_registerBC.lo = 0x13;
-
-		m_registerDE.hi = 0x00;
-		m_registerDE.lo = 0xD8;
-
-		m_registerHL.hi = 0x01;
-		m_registerHL.lo = 0x4D;
-	}
+	void initWithBootrom();
+	void initWithoutBootrom();
 
 	/**
 	 * @brief Service any pending interrupt if the ime flag is set and the corresponding

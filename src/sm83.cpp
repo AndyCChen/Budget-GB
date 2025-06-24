@@ -6,8 +6,7 @@
 Sm83::Sm83(Bus &bus)
 	: m_bus(bus)
 {
-	initDMG();
-	m_interrupts.reset();
+	init();
 }
 
 void Sm83::instructionStep()
@@ -34,6 +33,60 @@ void Sm83::instructionStep()
 			handleInterrupt();
 		}
 	}
+}
+
+void Sm83::init()
+{
+	initWithBootrom();
+	m_interrupts.reset();
+	m_timer.reset();
+	m_isHalted = false;
+}
+
+void Sm83::initWithBootrom()
+{
+	m_programCounter = 0;
+	m_stackPointer   = 0;
+
+	m_registerAF.accumulator = 0;
+	m_registerAF.flags.Z     = 0;
+	m_registerAF.flags.N     = 0;
+	m_registerAF.flags.H     = 0;
+	m_registerAF.flags.C     = 0;
+
+	m_registerBC.hi = 0;
+	m_registerBC.lo = 0x13;
+
+	m_registerDE.hi = 0;
+	m_registerDE.lo = 0;
+
+	m_registerHL.hi = 0;
+	m_registerHL.lo = 0;
+
+	m_bootRomDisable = 0;
+}
+
+void Sm83::initWithoutBootrom()
+{
+	m_programCounter = 0x0100;
+	m_stackPointer   = 0xFFFE;
+
+	m_registerAF.accumulator = 0x1;
+	m_registerAF.flags.Z     = 1;
+	m_registerAF.flags.N     = 0;
+	m_registerAF.flags.H     = 0;
+	m_registerAF.flags.C     = 0;
+
+	m_registerBC.hi = 0x00;
+	m_registerBC.lo = 0x13;
+
+	m_registerDE.hi = 0x00;
+	m_registerDE.lo = 0xD8;
+
+	m_registerHL.hi = 0x01;
+	m_registerHL.lo = 0x4D;
+
+	m_bootRomDisable = 0xFF;
 }
 
 void Sm83::handleInterrupt()
@@ -3718,4 +3771,27 @@ void Sm83::Sm83Timer::reset()
 	m_reloadScheduled       = false;
 	m_prevStateDivider      = false;
 	m_prevStateCounter      = false;
+}
+
+bool DmgBootRom::loadFromFile(const std::string &path)
+{
+	std::ifstream file(path, std::ios::binary);
+	if (!file.is_open())
+	{
+		return false;
+	}
+
+	file.seekg(0, std::ios::end);
+	std::size_t fileSize = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	if (fileSize != m_bootrom.size())
+	{
+		return false;
+	}
+
+	file.read(reinterpret_cast<char *>(&m_bootrom[0]), fileSize);
+	file.close();
+
+	return true;
 }

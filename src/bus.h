@@ -110,6 +110,8 @@ class Bus
 
 		BGP = 0xFF47, // bg color palette
 
+		BOOT_ROM_ENABLE = 0xFF50, // non zero unmaps boot rom
+
 		// PPU registers - scrolling
 		LCD_SCY = 0xFF42,
 		LCD_SCX = 0xFF43,

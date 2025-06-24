@@ -28,14 +28,16 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 		}
 	}
 
-	for (std::size_t i = 0; i < 170; ++i)
+	m_cpu.m_bootrom.loadFromFile("dmg_boot.bin");
+
+	/*for (std::size_t i = 0; i < 170; ++i)
 	{
 		unsigned char colorIdx = (unsigned char)m_palleteRange(m_gen);
 		m_lcdPixelBuffer[i][0] = colorPallete[colorIdx][0];
 		m_lcdPixelBuffer[i][1] = colorPallete[colorIdx][1];
 		m_lcdPixelBuffer[i][2] = colorPallete[colorIdx][2];
 		m_lcdPixelBuffer[i][3] = 255;
-	}
+	}*/
 }
 
 BudgetGB::~BudgetGB()
@@ -129,7 +131,7 @@ bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 	//m_cpu.cpuReset();
 	if (m_cartridge.loadCartridgeFromPath(cartridgePath))
 	{
-		reset();
+		resetBudgetGB();
 		//m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		//m_disassembler.step();
 		status = true;
@@ -437,7 +439,7 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 			ImGui::BeginDisabled(!m_cartridge.isLoaded());
 			if (ImGui::Button("Reset"))
 			{
-				reset();
+				resetBudgetGB();
 			}
 			ImGui::EndDisabled();
 
