@@ -86,6 +86,10 @@ set(SOURCE_FILES
 	src/opcodeLogger.h
 	src/ppu.cpp
 	src/ppu.h
+	src/dmgBootrom.cpp
+	src/dmgBootrom.h
+	src/joypad.cpp
+	src/joypad.h
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)

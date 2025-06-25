@@ -36,8 +36,8 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 		}
 	}
 
-	m_config.useBootrom  = true;
-	m_config.bootromPath = "dmg_oot.bin";
+	m_config.useBootrom  = false;
+	m_config.bootromPath = "dmg_boot.bin";
 
 	if (m_config.useBootrom)
 	{

@@ -6,36 +6,8 @@
 #include "bus.h"
 #include "fmt/base.h"
 #include "opcodeLogger.h"
-
-class DmgBootRom
-{
-  public:
-	static constexpr uint16_t DMG_BOOTROM_SIZE = 256;
-
-  private:
-	std::array<uint8_t, DMG_BOOTROM_SIZE> m_bootrom;
-	std::string                           m_errorMsg;
-
-	bool loaded = false;
-
-  public:
-	bool loadFromFile(const std::string &path);
-
-	uint8_t read(uint16_t position)
-	{
-		return m_bootrom[position & 0xFF];
-	}
-
-	std::string getErrorMsg()
-	{
-		return m_errorMsg;
-	}
-
-	bool isLoaded() const
-	{
-		return loaded;
-	}
-};
+#include "dmgBootrom.h"
+#include "joypad.h"
 
 class Sm83
 {
@@ -194,6 +166,9 @@ class Sm83
 	};
 
 	DmgBootRom m_bootrom;
+	uint8_t    m_bootRomDisable = 0;
+
+	Joypad m_joypad;
 
 	uint16_t       m_programCounter;
 	uint16_t       m_stackPointer;
@@ -204,8 +179,6 @@ class Sm83
 
 	Sm83InterruptRegisters m_interrupts;
 	Sm83Timer              m_timer;
-
-	uint8_t m_bootRomDisable = 0;
 
 	bool m_logEnable = false;
 

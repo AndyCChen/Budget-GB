@@ -182,6 +182,7 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 	switch (position)
 	{
 	case IORegisters::JOYPAD:
+		m_cpu.m_joypad.writeJoypad(data);
 		break;
 
 	case IORegisters::SERIAL_SB:
@@ -253,7 +254,7 @@ uint8_t Bus::readIO(uint16_t position)
 	switch (position)
 	{
 	case IORegisters::JOYPAD:
-		return 0x3F;
+		return m_cpu.m_joypad.readJoypad();
 
 	case IORegisters::SERIAL_SB:
 		return 0xFF;
