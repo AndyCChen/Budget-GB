@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "SDL3/SDL.h"
 
 class Joypad
 {
@@ -38,5 +39,5 @@ class Joypad
 
 	uint8_t readJoypad() const;
 	void    writeJoypad(uint8_t data);
-	void    processInputs();
+	void    processEvent(SDL_Event *event);
 };

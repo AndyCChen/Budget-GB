@@ -89,6 +89,7 @@ void BudgetGB::onUpdate(float deltaTime)
 SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 {
 	ImGui_ImplSDL3_ProcessEvent(event);
+	m_cpu.m_joypad.processEvent(event);
 
 	if (event->type == SDL_EVENT_QUIT)
 		return SDL_APP_SUCCESS;
