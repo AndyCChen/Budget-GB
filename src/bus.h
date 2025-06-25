@@ -60,14 +60,14 @@ class Bus
 	/**
 	 * @brief Reset all memory components to zero.
 	 */
-	void resetBus()
+	void init(bool useBootrom)
 	{
 		m_tCyclePerFrame = 0;
 		m_tCycles        = 0;
 
 		std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 		std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));
-		m_ppu.reset();
+		m_ppu.init(useBootrom);
 	}
 
 	// one m-cycle clock

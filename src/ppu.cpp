@@ -4,7 +4,6 @@
 PPU::PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags)
 	: m_lcdPixelBuffer(lcdPixelBuffer), m_interruptLine(interruptFlags)
 {
-	reset();
 }
 
 void PPU::tick()
@@ -394,9 +393,9 @@ void PPU::fetchTileHi()
 	m_fetcher.bgPatternTileHiLatch = m_vram[m_fetcher.bgPatternTileAddress & 0x1FFF];
 }
 
-void PPU::reset()
+void PPU::init(bool useBootrom)
 {
-	r_lcdControl         = 0;
+	r_lcdControl         = useBootrom ? 0x00 : 0x91;
 	r_LYC                = 0;
 	r_scrollX            = 0;
 	r_scrollY            = 0;

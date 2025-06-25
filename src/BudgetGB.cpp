@@ -1,12 +1,21 @@
+#include <stdexcept>
+
 #include "BudgetGB.h"
 #include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
-#include <stdexcept>
+#include "misc/cpp/imgui_stdlib.h"
 
-static unsigned char colorPallete[][3] = {
-	{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}
+constexpr static SDL_DialogFileFilter romFileFilter[] = {
+	{"*.gb", "gb;gb"},
 };
+
+constexpr static SDL_DialogFileFilter bootromFileFilter[] = {
+	{"*.bin", "bin;bin"},
+};
+
+static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *filelist, int filter);
+static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const *filelist, int filter);
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
 	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus)
@@ -27,10 +36,21 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 		}
 	}
 
-	m_config.useBootrom = true;
+	m_config.useBootrom  = true;
+	m_config.bootromPath = "dmg_oot.bin";
 
-	bool useBootrom = m_cpu.m_bootrom.loadFromFile("dmg_boot.bin") && m_config.useBootrom;
-	m_cpu.init(useBootrom);
+	if (m_config.useBootrom)
+	{
+		if (!m_cpu.m_bootrom.loadFromFile(m_config.bootromPath))
+			m_guiContext.flags |= GuiContextFlags_SHOW_BOOTROM_ERROR;
+	}
+
+	m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
+	m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
+
+	unsigned char colorPallete[][3] = {
+		{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}
+	};
 
 	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
 	{
@@ -207,27 +227,6 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
 
-constexpr static SDL_DialogFileFilter fileFilters[] = {
-	{"*.gb", "gb;gb"},
-};
-
-static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *filelist, int filter)
-{
-	(void)filter;
-	BudgetGB *gameboy = (BudgetGB *)userdata;
-
-	if (!filelist)
-	{
-		SDL_LogError(0, "Failed to select file! %s", SDL_GetError());
-		return;
-	}
-	// canceled file dialog, no file selected
-	else if (!*filelist)
-		return;
-
-	gameboy->loadCartridge(std::string(*filelist));
-}
-
 void BudgetGB::guiMain()
 {
 	// imgui demo window
@@ -250,11 +249,13 @@ void BudgetGB::guiMain()
 
 	if (m_guiContext.flags & GuiContextFlags_SHOW_MAIN_MENU)
 	{
-		ImGui::OpenPopup("Main Menu");
+		ImGui::OpenPopup("Main Menu?");
 		m_guiContext.flags ^= GuiContextFlags_SHOW_MAIN_MENU;
 	}
 
-	if (ImGui::BeginPopup("Main Menu", ImGuiWindowFlags_NoMove))
+	bool showBootromModal = false;
+
+	if (ImGui::BeginPopup("Main Menu?", ImGuiWindowFlags_NoMove))
 	{
 		if (ImGui::MenuItem("Pause", "P", m_guiContext.flags & GuiContextFlags_PAUSE))
 		{
@@ -267,7 +268,7 @@ void BudgetGB::guiMain()
 		}
 
 		if (ImGui::MenuItem("Load ROM..."))
-			SDL_ShowOpenFileDialog(loadRomDialogCallback, this, m_window, fileFilters, 1, nullptr, false);
+			SDL_ShowOpenFileDialog(loadRomDialogCallback, this, m_window, romFileFilter, 1, nullptr, false);
 
 		if (ImGui::BeginMenu("Window Sizes"))
 		{
@@ -322,13 +323,53 @@ void BudgetGB::guiMain()
 		if (ImGui::MenuItem("CPU Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;
 
+		if (ImGui::Selectable("Bootrom"))
+			showBootromModal = true;
+
 		ImGui::Separator();
-		if (ImGui::MenuItem("Quit"))
+		if (ImGui::Selectable("Quit"))
 		{
 			SDL_Event event{};
 			event.type = SDL_EVENT_QUIT;
 			SDL_PushEvent(&event);
 		}
+		ImGui::EndPopup();
+	}
+
+	if (showBootromModal)
+		ImGui::OpenPopup("DMG bootrom");
+
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.9411f, 0.9411f, 0.9411f, 1.0f));
+	if (ImGui::BeginPopupModal("DMG bootrom", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::InputText("##Bootrom path", &m_config.bootromPath);
+		ImGui::SameLine();
+
+		if (ImGui::Button("..."))
+			SDL_ShowOpenFileDialog(loadBootromDialogCallback, &m_config, m_window, bootromFileFilter, 1, nullptr, false);
+
+		ImGui::Checkbox("Enable bootrom", &m_config.useBootrom);
+
+		if (ImGui::Button("Close", ImVec2(80, 0)))
+			ImGui::CloseCurrentPopup();
+
+		ImGui::EndPopup();
+	}
+	ImGui::PopStyleColor(1);
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_BOOTROM_ERROR)
+	{
+		ImGui::OpenPopup("Bootrom load error");
+		m_guiContext.flags ^= GuiContextFlags_SHOW_BOOTROM_ERROR;
+	}
+
+	if (ImGui::BeginPopupModal("Bootrom load error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text("%s", m_cpu.m_bootrom.getErrorMsg().c_str());
+
+		if (ImGui::Button("Ok", ImVec2(80, 0)))
+			ImGui::CloseCurrentPopup();
+
 		ImGui::EndPopup();
 	}
 }
@@ -507,4 +548,37 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 		}
 	}
 	ImGui::End();
+}
+
+static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *filelist, int filter)
+{
+	(void)filter;
+	BudgetGB *gameboy = (BudgetGB *)userdata;
+
+	if (!filelist)
+	{
+		SDL_LogError(0, "Failed to select file! %s", SDL_GetError());
+		return;
+	}
+	// canceled file dialog, no file selected
+	else if (!*filelist)
+		return;
+
+	gameboy->loadCartridge(std::string(*filelist));
+}
+
+static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const *filelist, int filter)
+{
+	(void)filter;
+	BudgetGbConfig *config = (BudgetGbConfig *)userdata;
+
+	if (!filelist)
+	{
+		SDL_LogError(0, "Failed to select file! %s", SDL_GetError());
+		return;
+	}
+	else if (!*filelist)
+		return;
+
+	config->bootromPath = *filelist;
 }

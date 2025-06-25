@@ -1,9 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <cstring>
 #include <string>
-#include <fstream>
 
 #include "bus.h"
 #include "fmt/base.h"
@@ -16,7 +14,9 @@ class DmgBootRom
 
   private:
 	std::array<uint8_t, DMG_BOOTROM_SIZE> m_bootrom;
-	std::string m_errorMsg;
+	std::string                           m_errorMsg;
+
+	bool loaded = false;
 
   public:
 	bool loadFromFile(const std::string &path);
@@ -29,6 +29,11 @@ class DmgBootRom
 	std::string getErrorMsg()
 	{
 		return m_errorMsg;
+	}
+
+	bool isLoaded() const
+	{
+		return loaded;
 	}
 };
 

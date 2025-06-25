@@ -35,6 +35,7 @@ set(IMGUI_SOURCE_FILES
 	vendor/imgui/imgui_tables.cpp
 	vendor/imgui/imgui_widgets.cpp
 	vendor/imgui/backends/imgui_impl_sdl3.cpp
+	vendor/imgui/misc/cpp/imgui_stdlib.cpp
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)

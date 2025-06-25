@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 #include "SDL3/SDL.h"
 #include "bus.h"
@@ -14,10 +13,10 @@
 #include "sm83.h"
 #include "utils/vec.h"
 
-
 struct BudgetGbConfig
 {
-	bool useBootrom;
+	bool        useBootrom;
+	std::string bootromPath;
 };
 
 class BudgetGB
@@ -67,6 +66,8 @@ class BudgetGB
 		GuiContextFlags_FULLSCREEN      = 1 << 3,
 		GuiContextFlags_SHOW_CPU_VIEWER = 1 << 4,
 
+		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 5,
+
 		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
 		GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
 	};
@@ -75,7 +76,7 @@ class BudgetGB
 	{
 		GuiContext()
 		{
-			flags              = GuiContextFlags_SHOW_IMGUI_DEMO | GuiContextFlags_PAUSE;
+			flags              = GuiContextFlags_PAUSE;
 			windowSizeSelector = 1 << BudgetGB::INITIAL_WINDOW_SCALE;
 		}
 
@@ -103,9 +104,14 @@ class BudgetGB
 
 	void resetBudgetGB()
 	{
-		bool useBootrom = m_cpu.m_bootrom.loadFromFile("dmg_boot.bin") && m_config.useBootrom;
-		m_cpu.init(useBootrom);
-		m_bus.resetBus();
+		if (m_config.useBootrom)
+		{
+			if (!m_cpu.m_bootrom.loadFromFile(m_config.bootromPath))
+				m_guiContext.flags |= GuiContextFlags_SHOW_BOOTROM_ERROR;
+		}
+
+		m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
+		m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		m_disassembler.step();
 	}

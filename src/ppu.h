@@ -10,6 +10,8 @@ class PPU
   public:
 	static constexpr unsigned int VRAM_SIZE = 1024 * 8;
 
+	void init(bool useBootrom);
+
 	std::array<std::array<uint8_t, 3>, 4> m_colorPallete =
 		{{
 			{224, 248, 208},
@@ -240,8 +242,6 @@ class PPU
 		// bits 0-2 are read only
 		r_lcdStatus = in & 0xF8;
 	}
-
-	void reset();
 
 	void pushPixelToLCD();
 };
