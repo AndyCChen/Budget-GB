@@ -19,8 +19,13 @@ void PPU::tick()
 	{
 	case Mode::MODE_0: // H-blank
 
-		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 0;
-		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_0_SELECT) ? 1 : 0;
+		r_lcdStatus = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 0;
+		m_statInterruptSources &= ~0x7;
+
+		if (r_lcdStatus & LCD_STATS::MODE_0_SELECT)
+		{
+			m_statInterruptSources |= 0x1;
+		}
 
 		if (m_scanlineDotCounter == SCANLINE_DURATION)
 		{
@@ -41,8 +46,13 @@ void PPU::tick()
 
 	case Mode::MODE_1: //  V-blank
 
-		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 1;
-		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_1_SELECT) ? 2 : 0;
+		r_lcdStatus = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 1;
+		m_statInterruptSources &= ~0x7;
+
+		if (r_lcdStatus & LCD_STATS::MODE_1_SELECT)
+		{
+			m_statInterruptSources |= 0x2;
+		}
 
 		if (m_scanlineDotCounter == SCANLINE_DURATION)
 		{
@@ -59,8 +69,13 @@ void PPU::tick()
 
 	case Mode::MODE_2: // oam scan
 
-		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 2;
-		m_statInterruptSources = (r_lcdStatus & LCD_STATS::MODE_2_SELECT) ? 4 : 0;
+		r_lcdStatus = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 2;
+		m_statInterruptSources &= ~0x7;
+
+		if (r_lcdStatus & LCD_STATS::MODE_2_SELECT)
+		{
+			m_statInterruptSources |= 0x4;
+		}
 
 		switch (m_oamScanState)
 		{
@@ -84,7 +99,7 @@ void PPU::tick()
 	case Mode::MODE_3:
 
 		r_lcdStatus            = (r_lcdStatus & ~LCD_STATS::PPU_MODE) | 3;
-		m_statInterruptSources = m_statInterruptSources & ~0x03;
+		m_statInterruptSources = m_statInterruptSources & ~0x7;
 
 	EXIT_PIXEL_SHIFT:
 		switch (m_pixelRenderState)
@@ -301,11 +316,16 @@ void PPU::tick()
 
 	// update bit 2 of stat register based on LYC == LY condition
 	if (r_lcdY != r_LYC)
+	{
 		r_lcdStatus &= ~LCD_STATS::LYC_EQUALS_LY;
+		m_statInterruptSources &= ~0x8;
+	}
 	else
 	{
 		r_lcdStatus |= LCD_STATS::LYC_EQUALS_LY;
-		m_statInterruptSources = (r_lcdStatus & LCD_STATS::LYC_SELECT) ? 8 : 0;
+
+		if (r_lcdStatus & LCD_STATS::LYC_SELECT)
+			m_statInterruptSources |= 0x8;
 	}
 
 	if (m_statInterruptSources == 0)
@@ -405,6 +425,9 @@ void PPU::init(bool useBootrom)
 	r_lcdY               = 0;
 	r_lcdStatus          = 0;
 	m_scanlineDotCounter = 0;
+	r_oamStart           = 0;
+
+	std::memset(&m_oamDmaController, 0, sizeof(OamDmaController));
 
 	m_ppuMode          = Mode::MODE_2;
 	m_oamScanState     = OamScanState::CYCLE_0;

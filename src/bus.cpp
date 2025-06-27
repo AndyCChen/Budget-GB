@@ -44,6 +44,10 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 	{
 		return m_wram[(position & 0xDFFF) & 0x1FFF];
 	}
+	else if (position < OAM_END)
+	{
+		return m_ppu.readOam(position);
+	}
 	else if (position < UNUSABLE_END)
 	{
 		return 0;
@@ -59,7 +63,45 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 	// interrupt enable register at 0xFFFF
 	else
 	{
-		return 0;
+		return m_cpu.m_interrupts.m_interruptEnable;
+	}
+}
+
+void Bus::cpuWriteNoTick(uint16_t position, uint8_t data)
+{
+	if (position < CARTRIDGE_ROM_END)
+	{
+	}
+	else if (position < VRAM_END)
+	{
+		m_ppu.writeVram(position, data);
+	}
+	else if (position < EXTERNAL_RAM_END)
+	{
+	}
+	else if (position < ECHO_RAM_END)
+	{
+		m_wram[(position & 0xDFFF) & 0x1FFF] = data;
+	}
+	else if (position < OAM_END)
+	{
+		m_ppu.writeOam(position, data);
+	}
+	else if (position < UNUSABLE_END)
+	{
+	}
+	else if (position < IO_REGISTERS_END)
+	{
+		writeIO(position, data);
+	}
+	else if (position < HRAM_END)
+	{
+		m_hram[position & 0x7F] = data;
+	}
+	// interrupt enable register at 0xFFFF
+	else
+	{
+		m_cpu.m_interrupts.m_interruptEnable = data;
 	}
 }
 
@@ -93,6 +135,10 @@ uint8_t Bus::cpuRead(uint16_t position)
 	else if (position < ECHO_RAM_END)
 	{
 		out = m_wram[(position & 0xDFFF) & 0x1FFF];
+	}
+	else if (position < OAM_END)
+	{
+		out = m_ppu.readOam(position);
 	}
 	else if (position < UNUSABLE_END)
 	{
@@ -132,6 +178,10 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	{
 		m_wram[(position & 0xDFFF) & 0x1FFF] = data;
 	}
+	else if (position < OAM_END)
+	{
+		m_ppu.writeOam(position, data);
+	}
 	else if (position < UNUSABLE_END)
 	{
 	}
@@ -158,6 +208,9 @@ void Bus::tickM()
 
 	m_tCyclePerFrame += 4;
 	m_tCycles += 4;
+
+	if (m_ppu.m_oamDmaController.dmaInProgress)
+		handleOamDMA();
 
 	m_cpu.m_timer.tick(m_cpu.m_interrupts.m_interruptFlags);
 	m_ppu.tick();
@@ -214,6 +267,10 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 
 	case IORegisters::LCD_LYC:
 		m_ppu.r_LYC = data;
+		break;
+
+	case IORegisters::OAM_DMA:
+		m_ppu.oamStartWrite(data);
 		break;
 
 	case IORegisters::BGP:
@@ -283,6 +340,9 @@ uint8_t Bus::readIO(uint16_t position)
 	case IORegisters::LCD_LYC:
 		return m_ppu.r_LYC;
 
+	case IORegisters::OAM_DMA:
+		return m_ppu.oamStartRead();
+
 	case IORegisters::BGP:
 		return m_ppu.r_bgPaletteData;
 
@@ -306,5 +366,20 @@ uint8_t Bus::readIO(uint16_t position)
 
 	default:
 		return 0;
+	}
+}
+
+void Bus::handleOamDMA()
+{
+	if (m_ppu.m_oamDmaController.byteCounter < 160)
+	{
+		uint8_t data = cpuReadNoTick((m_ppu.r_oamStart << 8) | m_ppu.m_oamDmaController.byteCounter);
+		m_ppu.writeOamDMA(m_ppu.m_oamDmaController.byteCounter, data);
+		++m_ppu.m_oamDmaController.byteCounter;
+	}
+	else
+	{
+		m_ppu.m_oamDmaController.dmaInProgress = false;
+		m_ppu.m_oamDmaController.byteCounter   = 0;
 	}
 }

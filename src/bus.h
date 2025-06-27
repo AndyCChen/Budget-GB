@@ -43,6 +43,8 @@ class Bus
 	 */
 	uint8_t cpuReadNoTick(uint16_t position);
 
+	void cpuWriteNoTick(uint16_t position, uint8_t data);
+
 	/**
 	 * @brief Reads contents off bus based on cpu memory map, clocks cpu for 1 M-cycle.
 	 * @param position
@@ -109,6 +111,8 @@ class Bus
 		LCD_LY      = 0xFF44,
 		LCD_LYC     = 0xFF45,
 
+		OAM_DMA = 0xFF46,
+
 		BGP = 0xFF47, // bg color palette
 
 		BOOT_ROM_ENABLE = 0xFF50, // non zero unmaps boot rom
@@ -122,4 +126,6 @@ class Bus
 
 	void    writeIO(uint16_t position, uint8_t data);
 	uint8_t readIO(uint16_t position);
+
+	void handleOamDMA();
 };

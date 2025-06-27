@@ -29,13 +29,13 @@ class PPU
 	// 5: window enable
 	// 6: select 0x9800 or 0x9C00 to use for window tile map
 	// 7: enable/disable lcd (ppu)
-	uint8_t r_lcdControl = 0;
-	uint8_t r_LYC        = 0; // value to compare against the current scanline (lcdY)
-	uint8_t r_scrollX    = 0;
-	uint8_t r_scrollY    = 0;
-	uint8_t r_windowX    = 0;
-	uint8_t r_windowY    = 0;
-
+	uint8_t r_lcdControl    = 0;
+	uint8_t r_LYC           = 0; // value to compare against the current scanline (lcdY)
+	uint8_t r_scrollX       = 0;
+	uint8_t r_scrollY       = 0;
+	uint8_t r_windowX       = 0;
+	uint8_t r_windowY       = 0;
+	uint8_t r_oamStart      = 0;
 	uint8_t r_bgPaletteData = 0;
 
 	struct Fetcher
@@ -70,6 +70,20 @@ class PPU
 	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
 	static constexpr unsigned int SCANLINE_DURATION = 456; // each scanline always lasts 456 dots
 
+	struct Sprite
+	{
+		uint8_t yPosition  = 0;
+		uint8_t xPosition  = 0;
+		uint8_t tileIndex  = 0;
+		uint8_t attributes = 0;
+	};
+
+	struct OamDmaController
+	{
+		uint8_t byteCounter   = 0;
+		bool    dmaInProgress = false;
+	};
+
 	uint8_t &m_interruptLine; // interrupt line from the cpu
 
 	// 0: mode 0 state
@@ -80,6 +94,7 @@ class PPU
 	bool    m_sharedInterruptLine = false; // interrupt is requested when this transitions from low to high
 
 	std::array<uint8_t, VRAM_SIZE>    m_vram;
+	std::array<Sprite, 40>            m_oamRam;
 	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
 
 	uint8_t r_lcdY = 0; // holds the current horizontal scanline
@@ -196,6 +211,8 @@ class PPU
   public:
 	PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags);
 
+	OamDmaController m_oamDmaController;
+
 	// tick ppu for 4 dots (1 cpu m-cycle == 4 ppu dots)
 	void tick();
 
@@ -207,10 +224,96 @@ class PPU
 			return 0xFF;
 	}
 
+	void oamStartWrite(uint8_t data)
+	{
+		m_oamDmaController.dmaInProgress = true;
+		r_oamStart = data % 0xE0;
+	}
+
+	uint8_t oamStartRead() const
+	{
+		return r_oamStart;
+	}
+
 	void writeVram(uint16_t position, uint8_t data)
 	{
 		if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
 			m_vram[position & 0x1FFF] = data;
+	}
+
+	uint8_t readOam(uint16_t position)
+	{
+		if (m_ppuMode == Mode::MODE_0 || m_ppuMode == Mode::MODE_1)
+		{
+			uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
+			switch (position & 0x3)
+			{
+			case 0:
+				return m_oamRam[spriteIndex].yPosition;
+
+			case 1:
+				return m_oamRam[spriteIndex].xPosition;
+
+			case 2:
+				return m_oamRam[spriteIndex].tileIndex;
+
+			case 3:
+				return m_oamRam[spriteIndex].attributes;
+			default:
+				return 0xFF;
+			}
+		}
+		else
+			return 0xFF;
+	}
+
+	void writeOam(uint16_t position, uint8_t data)
+	{
+		if (m_ppuMode == Mode::MODE_0 || m_ppuMode == Mode::MODE_1)
+		{
+			uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
+			switch (position & 0x3)
+			{
+			case 0:
+				m_oamRam[spriteIndex].yPosition = data;
+				break;
+
+			case 1:
+				m_oamRam[spriteIndex].xPosition = data;
+				break;
+
+			case 2:
+				m_oamRam[spriteIndex].tileIndex = data;
+				break;
+
+			case 3:
+				m_oamRam[spriteIndex].attributes = data;
+				break;
+			}
+		}
+	}
+
+	void writeOamDMA(uint16_t position, uint8_t data)
+	{
+		uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
+		switch (position & 0x3)
+		{
+		case 0:
+			m_oamRam[spriteIndex].yPosition = data;
+			break;
+
+		case 1:
+			m_oamRam[spriteIndex].xPosition = data;
+			break;
+
+		case 2:
+			m_oamRam[spriteIndex].tileIndex = data;
+			break;
+
+		case 3:
+			m_oamRam[spriteIndex].attributes = data;
+			break;
+		}
 	}
 
 	/**
