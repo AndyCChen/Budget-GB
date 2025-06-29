@@ -56,7 +56,7 @@ class Disassembler
 
 	uint8_t fetch_n8()
 	{
-		return m_bus.cpuReadNoTick(m_programCounter++);
+		return m_bus.busReadRaw(m_programCounter++);
 	}
 
 	/**

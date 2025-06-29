@@ -78,26 +78,38 @@ class PPU
 		uint8_t attributes = 0;
 	};
 
+	struct SpriteScanner
+	{
+		uint8_t oamScanIndex      = 0;
+		uint8_t secondaryOamIndex = 0;
+
+		std::array<uint8_t, 10> secondaryOAM;
+
+		void reset()
+		{
+			oamScanIndex      = 0;
+			secondaryOamIndex = 0;
+			std::fill_n(secondaryOAM.begin(), secondaryOAM.size(), static_cast<uint8_t>(0xFF));
+		}
+	};
+
 	struct OamDmaController
 	{
 		uint8_t byteCounter   = 0;
 		bool    dmaInProgress = false;
 	};
 
-	uint8_t &m_interruptLine; // interrupt line from the cpu
-
 	// 0: mode 0 state
 	// 1: mode 1 state
 	// 2: mode 2 state
 	// 3: LYC state
-	uint8_t m_statInterruptSources;
-	bool    m_sharedInterruptLine = false; // interrupt is requested when this transitions from low to high
+	uint8_t  m_statInterruptSources;
+	bool     m_sharedInterruptLine = false; // interrupt is requested when this transitions from low to high
+	uint8_t &m_interruptLine;               // interrupt line from the cpu
 
 	std::array<uint8_t, VRAM_SIZE>    m_vram;
 	std::array<Sprite, 40>            m_oamRam;
 	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
-
-	uint8_t r_lcdY = 0; // holds the current horizontal scanline
 
 	// bits
 	// 0, 1: Holds ppu's current mode status
@@ -107,8 +119,10 @@ class PPU
 	// 5: Mode 2 select for stat interrupt
 	// 6: LYC == LY select for stat interrupt
 	uint8_t r_lcdStatus = 0;
+	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
 
-	uint16_t m_scanlineDotCounter = 0;
+	uint16_t      m_scanlineDotCounter = 0;
+	SpriteScanner m_spriteScanner;
 
 	enum LCD_CONTROLS
 	{
@@ -192,6 +206,8 @@ class PPU
 		B01S_TILE_HI_1,
 		B01S_PUSH_FIFO_0,
 		B01S_PUSH_FIFO_1,
+
+		// fetch sprites
 	};
 
 	Mode             m_ppuMode          = Mode::MODE_2;
@@ -216,105 +232,15 @@ class PPU
 	// tick ppu for 4 dots (1 cpu m-cycle == 4 ppu dots)
 	void tick();
 
-	uint8_t readVram(uint16_t position)
-	{
-		if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
-			return m_vram[position & 0x1FFF];
-		else
-			return 0xFF;
-	}
+	uint8_t readVram(uint16_t position);
+	void    writeVram(uint16_t position, uint8_t data);
 
-	void oamStartWrite(uint8_t data)
-	{
-		m_oamDmaController.dmaInProgress = true;
-		r_oamStart = data % 0xE0;
-	}
+	void    oamStartWrite(uint8_t data);
+	uint8_t oamStartRead() const;
 
-	uint8_t oamStartRead() const
-	{
-		return r_oamStart;
-	}
-
-	void writeVram(uint16_t position, uint8_t data)
-	{
-		if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
-			m_vram[position & 0x1FFF] = data;
-	}
-
-	uint8_t readOam(uint16_t position)
-	{
-		if (m_ppuMode == Mode::MODE_0 || m_ppuMode == Mode::MODE_1)
-		{
-			uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
-			switch (position & 0x3)
-			{
-			case 0:
-				return m_oamRam[spriteIndex].yPosition;
-
-			case 1:
-				return m_oamRam[spriteIndex].xPosition;
-
-			case 2:
-				return m_oamRam[spriteIndex].tileIndex;
-
-			case 3:
-				return m_oamRam[spriteIndex].attributes;
-			default:
-				return 0xFF;
-			}
-		}
-		else
-			return 0xFF;
-	}
-
-	void writeOam(uint16_t position, uint8_t data)
-	{
-		if (m_ppuMode == Mode::MODE_0 || m_ppuMode == Mode::MODE_1)
-		{
-			uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
-			switch (position & 0x3)
-			{
-			case 0:
-				m_oamRam[spriteIndex].yPosition = data;
-				break;
-
-			case 1:
-				m_oamRam[spriteIndex].xPosition = data;
-				break;
-
-			case 2:
-				m_oamRam[spriteIndex].tileIndex = data;
-				break;
-
-			case 3:
-				m_oamRam[spriteIndex].attributes = data;
-				break;
-			}
-		}
-	}
-
-	void writeOamDMA(uint16_t position, uint8_t data)
-	{
-		uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
-		switch (position & 0x3)
-		{
-		case 0:
-			m_oamRam[spriteIndex].yPosition = data;
-			break;
-
-		case 1:
-			m_oamRam[spriteIndex].xPosition = data;
-			break;
-
-		case 2:
-			m_oamRam[spriteIndex].tileIndex = data;
-			break;
-
-		case 3:
-			m_oamRam[spriteIndex].attributes = data;
-			break;
-		}
-	}
+	uint8_t readOam(uint16_t position);
+	void    writeOam(uint16_t position, uint8_t data);
+	void    writeOamDMA(uint16_t position, uint8_t data);
 
 	/**
 	 * @brief Should only be used by logger to read into vram for instruction logging.
@@ -343,7 +269,7 @@ class PPU
 	void setLcdStatus(uint8_t in)
 	{
 		// bits 0-2 are read only
-		r_lcdStatus = in & 0xF8;
+		r_lcdStatus = (in & 0xF8) | (r_lcdStatus & 0x7);
 	}
 
 	void pushPixelToLCD();

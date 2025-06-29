@@ -36,14 +36,12 @@ class Bus
 	void clearWram();
 
 	/**
-	 * @brief Same as cpuRead() but does not clock the cpu. Meant to be used by instruction logger to read data without
+	 * @brief Same as cpuRead() but does not clock the cpu and has no read retrictions. Meant to be used by instruction logger or DMA controller to read data without
 	 * affecting cpu state.
 	 * @param position
 	 * @return
 	 */
-	uint8_t cpuReadNoTick(uint16_t position);
-
-	void cpuWriteNoTick(uint16_t position, uint8_t data);
+	uint8_t busReadRaw(uint16_t position);
 
 	/**
 	 * @brief Reads contents off bus based on cpu memory map, clocks cpu for 1 M-cycle.

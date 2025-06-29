@@ -15,7 +15,7 @@ void Bus::clearWram()
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 }
 
-uint8_t Bus::cpuReadNoTick(uint16_t position)
+uint8_t Bus::busReadRaw(uint16_t position)
 {
 	if (position < CARTRIDGE_ROM_END)
 	{
@@ -64,44 +64,6 @@ uint8_t Bus::cpuReadNoTick(uint16_t position)
 	else
 	{
 		return m_cpu.m_interrupts.m_interruptEnable;
-	}
-}
-
-void Bus::cpuWriteNoTick(uint16_t position, uint8_t data)
-{
-	if (position < CARTRIDGE_ROM_END)
-	{
-	}
-	else if (position < VRAM_END)
-	{
-		m_ppu.writeVram(position, data);
-	}
-	else if (position < EXTERNAL_RAM_END)
-	{
-	}
-	else if (position < ECHO_RAM_END)
-	{
-		m_wram[(position & 0xDFFF) & 0x1FFF] = data;
-	}
-	else if (position < OAM_END)
-	{
-		m_ppu.writeOam(position, data);
-	}
-	else if (position < UNUSABLE_END)
-	{
-	}
-	else if (position < IO_REGISTERS_END)
-	{
-		writeIO(position, data);
-	}
-	else if (position < HRAM_END)
-	{
-		m_hram[position & 0x7F] = data;
-	}
-	// interrupt enable register at 0xFFFF
-	else
-	{
-		m_cpu.m_interrupts.m_interruptEnable = data;
 	}
 }
 
@@ -282,7 +244,7 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		break;
 
 	case IORegisters::LCD_SCX:
-		m_ppu.r_scrollX = data;
+		m_ppu.r_scrollX = 5;
 		break;
 
 	case IORegisters::LCD_SCY:
@@ -373,7 +335,7 @@ void Bus::handleOamDMA()
 {
 	if (m_ppu.m_oamDmaController.byteCounter < 160)
 	{
-		uint8_t data = cpuReadNoTick((m_ppu.r_oamStart << 8) | m_ppu.m_oamDmaController.byteCounter);
+		uint8_t data = busReadRaw((m_ppu.r_oamStart << 8) | m_ppu.m_oamDmaController.byteCounter);
 		m_ppu.writeOamDMA(m_ppu.m_oamDmaController.byteCounter, data);
 		++m_ppu.m_oamDmaController.byteCounter;
 	}

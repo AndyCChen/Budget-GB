@@ -84,6 +84,14 @@ void PPU::tick()
 			break;
 
 		case OamScanState::CYCLE_1:
+
+			if (m_oamRam[m_spriteScanner.oamScanIndex].yPosition == (r_lcdY + 16) && m_spriteScanner.secondaryOamIndex < m_spriteScanner.secondaryOAM.size())
+			{
+				m_spriteScanner.secondaryOAM[m_spriteScanner.secondaryOamIndex++] = m_spriteScanner.oamScanIndex;
+			}
+
+			++m_spriteScanner.oamScanIndex;
+
 			m_oamScanState = OamScanState::CYCLE_0;
 			break;
 		}
@@ -173,7 +181,6 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_NAMETABLE_1;
 			}
@@ -187,7 +194,7 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
+				fetchNametable();
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_0;
 			}
@@ -201,7 +208,6 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_1;
 			}
@@ -215,7 +221,7 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
+				fetchTileLo();
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_0;
 			}
@@ -229,7 +235,6 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_1;
 			}
@@ -243,7 +248,7 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
+				fetchTileHi();
 				m_bgFifo.shiftFifo();
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0;
 			}
@@ -257,9 +262,8 @@ void PPU::tick()
 			}
 			else
 			{
-				m_fetcher.fetcherX += 1;
-				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
 				m_bgFifo.shiftFifo();
+				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
 			}
 			break;
 
@@ -340,6 +344,106 @@ void PPU::tick()
 	}
 }
 
+uint8_t PPU::readVram(uint16_t position)
+{
+	if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
+		return m_vram[position & 0x1FFF];
+	else
+		return 0xFF;
+}
+
+void PPU::writeVram(uint16_t position, uint8_t data)
+{
+	if (m_ppuMode != Mode::MODE_3 || (r_lcdControl & 0x80) == 0)
+		m_vram[position & 0x1FFF] = data;
+}
+
+void PPU::oamStartWrite(uint8_t data)
+{
+	m_oamDmaController.dmaInProgress = true;
+	r_oamStart                       = data % 0xE0;
+}
+
+uint8_t PPU::oamStartRead() const
+{
+	return r_oamStart;
+}
+
+uint8_t PPU::readOam(uint16_t position)
+{
+	if (m_ppuMode == Mode::MODE_0 || m_ppuMode == Mode::MODE_1)
+	{
+		uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
+		switch (position & 0x3)
+		{
+		case 0:
+			return m_oamRam[spriteIndex].yPosition;
+
+		case 1:
+			return m_oamRam[spriteIndex].xPosition;
+
+		case 2:
+			return m_oamRam[spriteIndex].tileIndex;
+
+		case 3:
+			return m_oamRam[spriteIndex].attributes;
+		default:
+			return 0xFF;
+		}
+	}
+	else
+		return 0xFF;
+}
+
+void PPU::writeOam(uint16_t position, uint8_t data)
+{
+	if (m_ppuMode == Mode::MODE_0 || m_ppuMode == Mode::MODE_1)
+	{
+		uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
+		switch (position & 0x3)
+		{
+		case 0:
+			m_oamRam[spriteIndex].yPosition = data;
+			break;
+
+		case 1:
+			m_oamRam[spriteIndex].xPosition = data;
+			break;
+
+		case 2:
+			m_oamRam[spriteIndex].tileIndex = data;
+			break;
+
+		case 3:
+			m_oamRam[spriteIndex].attributes = data;
+			break;
+		}
+	}
+}
+
+void PPU::writeOamDMA(uint16_t position, uint8_t data)
+{
+	uint8_t spriteIndex = static_cast<uint8_t>(((position) >> 2) & 0x3F);
+	switch (position & 0x3)
+	{
+	case 0:
+		m_oamRam[spriteIndex].yPosition = data;
+		break;
+
+	case 1:
+		m_oamRam[spriteIndex].xPosition = data;
+		break;
+
+	case 2:
+		m_oamRam[spriteIndex].tileIndex = data;
+		break;
+
+	case 3:
+		m_oamRam[spriteIndex].attributes = data;
+		break;
+	}
+}
+
 void PPU::pushPixelToLCD()
 {
 	uint8_t colorIndex = (m_bgFifo.patternTileHiShifter & 0x80) | ((m_bgFifo.patternTileLoShifter & 0x80) >> 1);
@@ -359,6 +463,7 @@ void PPU::pushPixelToLCD()
 	// enter H-blank once 160 pixels are drawn
 	if (m_fetcher.fetcherX == 160 + 8)
 	{
+		m_spriteScanner.reset();
 		m_fetcher.fetcherX = 0;
 		m_ppuMode          = Mode::MODE_0;
 	}
@@ -440,4 +545,6 @@ void PPU::init(bool useBootrom)
 
 	m_statInterruptSources = 0;
 	m_sharedInterruptLine  = 0;
+
+	m_spriteScanner.reset();
 }
