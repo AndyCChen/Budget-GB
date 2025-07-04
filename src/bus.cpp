@@ -244,7 +244,7 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		break;
 
 	case IORegisters::LCD_SCX:
-		m_ppu.r_scrollX = 5;
+		m_ppu.r_scrollX = data;
 		break;
 
 	case IORegisters::LCD_SCY:

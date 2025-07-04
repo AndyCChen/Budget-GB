@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/fixedQueue.h"
 #include "utils/vec.h"
 #include <array>
 #include <cstdint>
@@ -38,16 +39,63 @@ class PPU
 	uint8_t r_oamStart      = 0;
 	uint8_t r_bgPaletteData = 0;
 
-	struct Fetcher
+  private:
+	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
+	static constexpr unsigned int SCANLINE_DURATION = 456; // each scanline always lasts 456 dots
+
+	struct BackgroundFetcher
 	{
-		uint8_t  fetcherX             = 0;
-		uint8_t  bgNametableTileIndex = 0;
-		uint16_t bgPatternTileAddress = 0;
-		uint8_t  bgPatternTileLoLatch = 0;
-		uint8_t  bgPatternTileHiLatch = 0;
+		uint8_t  fetcherX           = 0;
+		uint8_t  tileIndex          = 0;
+		uint16_t patternTileAddress = 0;
+		uint8_t  patternTileLoLatch = 0;
+		uint8_t  patternTileHiLatch = 0;
+
+		void reset()
+		{
+			fetcherX           = 0;
+			tileIndex          = 0;
+			patternTileAddress = 0;
+			patternTileLoLatch = 0;
+			patternTileHiLatch = 0;
+		}
 	};
 
-	class BgFifo
+	struct SpriteFetcher
+	{
+		bool spriteFetchRequested = false;
+
+		uint16_t patternTileAddress = 0;
+		uint8_t  patternTileLoLatch = 0;
+
+		Utils::FixedQueue<uint8_t, 10> fetchQueue; // sprites queued up for fetching once bg tile fetches are complete
+
+		void reset()
+		{
+			spriteFetchRequested = false;
+			patternTileAddress   = 0;
+			patternTileLoLatch   = 0;
+			fetchQueue.clear();
+		}
+	};
+
+	struct Sprite
+	{
+		uint8_t yPosition  = 0;
+		uint8_t xPosition  = 0;
+		uint8_t tileIndex  = 0;
+		uint8_t attributes = 0;
+	};
+
+	struct OutputSprite
+	{
+		uint8_t xPosition            = 0;
+		uint8_t patternTileLoShifter = 0;
+		uint8_t patternTileHiShifter = 0;
+		uint8_t attributes           = 0;
+	};
+
+	class BackgroundFifo
 	{
 	  public:
 		uint8_t patternTileLoShifter = 0;
@@ -66,30 +114,34 @@ class PPU
 		}
 	};
 
-  private:
-	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
-	static constexpr unsigned int SCANLINE_DURATION = 456; // each scanline always lasts 456 dots
-
-	struct Sprite
+	class SpriteFifo
 	{
-		uint8_t yPosition  = 0;
-		uint8_t xPosition  = 0;
-		uint8_t tileIndex  = 0;
-		uint8_t attributes = 0;
+	  public:
+		Utils::FixedQueue<OutputSprite, 10> outputSprite;
+
+		void reset()
+		{
+			outputSprite.clear();
+		}
+
+		void shiftFifo(uint8_t fetcherX);
 	};
 
-	struct SpriteScanner
+	class SpriteScanner
 	{
-		uint8_t oamScanIndex      = 0;
-		uint8_t secondaryOamIndex = 0;
+	  public:
+		uint8_t oamScanIndex      = 0; // scan position of oam ram (indices: 0-39)
+		uint8_t spriteCount       = 0; // number of sprites select by oam scan
+		uint8_t outputSpriteCount = 0; // running total of sprites that have been queued up for fetching on current scanline
 
-		std::array<uint8_t, 10> secondaryOAM;
+		std::array<uint8_t, 10> secondaryOAM; // hold selected sprites from oam scan process
 
 		void reset()
 		{
 			oamScanIndex      = 0;
-			secondaryOamIndex = 0;
-			std::fill_n(secondaryOAM.begin(), secondaryOAM.size(), static_cast<uint8_t>(0xFF));
+			spriteCount       = 0;
+			outputSpriteCount = 0;
+			secondaryOAM.fill(static_cast<uint8_t>(0xFF));
 		}
 	};
 
@@ -97,32 +149,13 @@ class PPU
 	{
 		uint8_t byteCounter   = 0;
 		bool    dmaInProgress = false;
+
+		void reset()
+		{
+			byteCounter   = 0;
+			dmaInProgress = false;
+		}
 	};
-
-	// 0: mode 0 state
-	// 1: mode 1 state
-	// 2: mode 2 state
-	// 3: LYC state
-	uint8_t  m_statInterruptSources;
-	bool     m_sharedInterruptLine = false; // interrupt is requested when this transitions from low to high
-	uint8_t &m_interruptLine;               // interrupt line from the cpu
-
-	std::array<uint8_t, VRAM_SIZE>    m_vram;
-	std::array<Sprite, 40>            m_oamRam;
-	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
-
-	// bits
-	// 0, 1: Holds ppu's current mode status
-	// 2: Set when r_LYC == r_lcdY
-	// 3: Mode 0 select for stat interrupt
-	// 4: Mode 1 select for stat interrupt
-	// 5: Mode 2 select for stat interrupt
-	// 6: LYC == LY select for stat interrupt
-	uint8_t r_lcdStatus = 0;
-	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
-
-	uint16_t      m_scanlineDotCounter = 0;
-	SpriteScanner m_spriteScanner;
 
 	enum LCD_CONTROLS
 	{
@@ -134,6 +167,14 @@ class PPU
 		WINDOW_ENABLE               = 1 << 5,
 		WINDOW_TILEMAP              = 1 << 6,
 		PPU_ENABLE                  = 1 << 7,
+	};
+
+	enum SPRITE_ATTRIBUTES
+	{
+		DMG_PALETTE = 1 << 4,
+		X_FLIP      = 1 << 5,
+		Y_FLIP      = 1 << 6,
+		PRIORITY    = 1 << 7, // 1: bg and window is drawn over this sprite
 	};
 
 	enum LCD_STATS
@@ -185,6 +226,8 @@ class PPU
 		PREFETCH_TILE_LO_1,
 		PREFETCH_TILE_HI_0,
 		PREFETCH_TILE_HI_1,
+		PREFETCH_PUSH_FIFO_0,
+		PREFETCH_PUSH_FIFO_1,
 
 		// first tile to be rendered can be paused for r_scrollX % 8 cycles to shift out pixels that should be offscreen
 
@@ -206,16 +249,53 @@ class PPU
 		B01S_TILE_HI_1,
 		B01S_PUSH_FIFO_0,
 		B01S_PUSH_FIFO_1,
-
-		// fetch sprites
 	};
+
+	enum class SpriteFetchState
+	{
+		CYCLE_0,
+		CYCLE_1,
+		CYCLE_2,
+		CYCLE_3,
+		CYCLE_4,
+		CYCLE_5,
+	};
+
+	// 0: mode 0 state
+	// 1: mode 1 state
+	// 2: mode 2 state
+	// 3: LYC state
+	uint8_t  m_statInterruptSources;
+	bool     m_sharedInterruptLine = false; // interrupt is requested when this transitions from low to high
+	uint8_t &m_interruptLine;               // interrupt line from the cpu
+
+	std::array<uint8_t, VRAM_SIZE> m_vram;
+	std::array<Sprite, 40>         m_oamRam;
+
+	SpriteScanner     m_spriteScanner;
+	SpriteFetcher     m_spriteFetcher;
+	SpriteFifo        m_spriteFifo;
+	BackgroundFetcher m_bgFetcher;
+	BackgroundFifo    m_bgFifo;
+
+	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
+
+	// bits
+	// 0, 1: Holds ppu's current mode status
+	// 2: Set when r_LYC == r_lcdY
+	// 3: Mode 0 select for stat interrupt
+	// 4: Mode 1 select for stat interrupt
+	// 5: Mode 2 select for stat interrupt
+	// 6: LYC == LY select for stat interrupt
+	uint8_t r_lcdStatus = 0;
+	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
+
+	uint16_t m_scanlineDotCounter = 0;
 
 	Mode             m_ppuMode          = Mode::MODE_2;
 	OamScanState     m_oamScanState     = OamScanState::CYCLE_0;
 	PixelRenderState m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
-
-	Fetcher m_fetcher;
-	BgFifo  m_bgFifo;
+	SpriteFetchState m_spriteFetchState = SpriteFetchState::CYCLE_0;
 
 	void fetchNametable();
 
@@ -223,6 +303,12 @@ class PPU
 
 	void fetchTileLo();
 	void fetchTileHi();
+
+	// check if a sprite is present on current fetcherX coordinate
+	bool spritePresentCheck();
+
+	// 6 cycle sprite fetch
+	void processSpriteFetching();
 
   public:
 	PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags);
