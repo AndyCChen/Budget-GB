@@ -130,6 +130,8 @@ class PPU
 		// search through array of output sprites and shifts any sprites that are in range
 		// return true when sprite is found for outputing to lcd display
 		bool clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uint8_t &attributes);
+
+		void clockFifo(uint8_t fetcherX);
 	};
 
 	class SpriteScanner

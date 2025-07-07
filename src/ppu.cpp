@@ -155,7 +155,8 @@ void PPU::tick()
 		case PixelRenderState::PREFETCH_NAMETABLE_0:
 
 			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
+
 
 			m_pixelRenderState = PixelRenderState::PREFETCH_NAMETABLE_1;
 			break;
@@ -163,7 +164,7 @@ void PPU::tick()
 		case PixelRenderState::PREFETCH_NAMETABLE_1:
 
 			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 
 			fetchNametable();
 			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_LO_0;
@@ -172,7 +173,7 @@ void PPU::tick()
 		case PixelRenderState::PREFETCH_TILE_LO_0:
 
 			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 
 			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_LO_1;
 			break;
@@ -180,7 +181,7 @@ void PPU::tick()
 		case PixelRenderState::PREFETCH_TILE_LO_1:
 
 			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 
 			fetchTileLo();
 			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_HI_0;
@@ -189,7 +190,7 @@ void PPU::tick()
 		case PixelRenderState::PREFETCH_TILE_HI_0:
 
 			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 
 			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_HI_1;
 			break;
@@ -198,7 +199,7 @@ void PPU::tick()
 
 			fetchTileHi();
 			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 			else
 				processSpriteFetching();
 
@@ -214,6 +215,7 @@ void PPU::tick()
 			}
 			else
 			{
+				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX);
 				if ((m_bgFetcher.fetcherX++ & 0x7) == 7)
 				{
 					m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
@@ -226,6 +228,7 @@ void PPU::tick()
 
 		case PixelRenderState::PREFETCH_EXIT_SPRITE_FETCH:
 
+			m_spriteFifo.clockFifo(m_bgFetcher.fetcherX);
 			if ((m_bgFetcher.fetcherX++ & 0x7) == 7)
 			{
 				m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
@@ -541,6 +544,7 @@ void PPU::pushPixelToLCD()
 	uint8_t outputColorIndex = 0;
 
 	uint8_t bgColorIndex = (m_bgFifo.patternTileHiShifter & 0x80) | ((m_bgFifo.patternTileLoShifter & 0x80) >> 1);
+	bool    isBgZero     = bgColorIndex;
 	bgColorIndex >>= 6;
 	bgColorIndex = (r_bgPaletteData >> (bgColorIndex * 2)) & 0x3;
 	m_bgFifo.shiftFifo();
@@ -558,7 +562,7 @@ void PPU::pushPixelToLCD()
 
 		if (attributes & SPRITE_ATTRIBUTES::PRIORITY)
 		{
-			if (bgColorIndex == 0)
+			if (isBgZero == 0)
 				outputColorIndex = spriteColorIndex;
 		}
 		else
@@ -781,4 +785,19 @@ bool PPU::SpriteFifo::clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uin
 	}
 
 	return spriteFound;
+}
+
+void PPU::SpriteFifo::clockFifo(uint8_t fetcherX)
+{
+	if (m_outputSprites.isEmpty())
+		return;
+
+	for (uint8_t i = 0; i < m_outputSprites.length(); ++i)
+	{
+		if (fetcherX >= m_outputSprites[i].xPosition && fetcherX < m_outputSprites[i].xPosition + 8)
+		{
+			m_outputSprites[i].patternTileLoShifter <<= 1;
+			m_outputSprites[i].patternTileHiShifter <<= 1;
+		}
+	}
 }
