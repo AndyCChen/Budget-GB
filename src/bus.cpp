@@ -239,6 +239,14 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		m_ppu.r_bgPaletteData = data;
 		break;
 
+	case IORegisters::OBP0:
+		m_ppu.r_objPaletteData0 = data;
+		break;
+
+	case IORegisters::OBP1:
+		m_ppu.r_objPaletteData1 = data;
+		break;
+
 	case IORegisters::BOOT_ROM_ENABLE:
 		m_cpu.m_bootRomDisable = data;
 		break;
@@ -307,6 +315,12 @@ uint8_t Bus::readIO(uint16_t position)
 
 	case IORegisters::BGP:
 		return m_ppu.r_bgPaletteData;
+
+	case IORegisters::OBP0:
+		return m_ppu.r_objPaletteData0;
+
+	case IORegisters::OBP1:
+		return m_ppu.r_objPaletteData1;
 
 	case IORegisters::BOOT_ROM_ENABLE:
 		return m_cpu.m_bootRomDisable;

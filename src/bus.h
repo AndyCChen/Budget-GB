@@ -111,7 +111,9 @@ class Bus
 
 		OAM_DMA = 0xFF46,
 
-		BGP = 0xFF47, // bg color palette
+		BGP  = 0xFF47, // bg color palette
+		OBP0 = 0xFF48, // obj color palette 0
+		OBP1 = 0xFF49, // obj color palette 1
 
 		BOOT_ROM_ENABLE = 0xFF50, // non zero unmaps boot rom
 

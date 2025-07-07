@@ -93,12 +93,12 @@ void PPU::tick()
 
 		case OamScanState::CYCLE_1:
 
-			if (m_spriteScanner.spriteCount < m_spriteScanner.secondaryOAM.size())
+			if (m_spriteScanner.secondaryOAM.length() < m_spriteScanner.secondaryOAM.size())
 			{
 				uint8_t yPos = m_oamRam[m_spriteScanner.oamScanIndex].yPosition;
 
 				if ((r_lcdY + 16 >= yPos) && (r_lcdY + 16 < yPos + 8))
-					m_spriteScanner.secondaryOAM[m_spriteScanner.spriteCount++] = m_spriteScanner.oamScanIndex;
+					m_spriteScanner.secondaryOAM.push(m_spriteScanner.oamScanIndex);
 			}
 
 			++m_spriteScanner.oamScanIndex;
@@ -202,25 +202,15 @@ void PPU::tick()
 			else
 				processSpriteFetching();
 
-			m_pixelRenderState = PixelRenderState::PREFETCH_PUSH_FIFO_0;
+			m_pixelRenderState = PixelRenderState::PREFETCH_PUSH_FIFO;
 			break;
 
-		case PixelRenderState::PREFETCH_PUSH_FIFO_0:
+		case PixelRenderState::PREFETCH_PUSH_FIFO:
 
-			if (!spritePresentCheck())
-				m_bgFetcher.fetcherX += 1;
-			else
-				processSpriteFetching();
-
-			m_pixelRenderState = PixelRenderState::PREFETCH_PUSH_FIFO_1;
-
-			break;
-
-		case PixelRenderState::PREFETCH_PUSH_FIFO_1:
-
-			if (m_spriteFetcher.spriteFetchRequested || spritePresentCheck())
+			if (spritePresentCheck())
 			{
-				processSpriteFetching();
+				if (!processSpriteFetching())
+					m_pixelRenderState = PixelRenderState::PREFETCH_EXIT_SPRITE_FETCH;
 			}
 			else
 			{
@@ -231,6 +221,19 @@ void PPU::tick()
 					m_pixelRenderState            = PixelRenderState::SHIFT_PIXELS_NAMETABLE_0;
 				}
 			}
+
+			break;
+
+		case PixelRenderState::PREFETCH_EXIT_SPRITE_FETCH:
+
+			if ((m_bgFetcher.fetcherX++ & 0x7) == 7)
+			{
+				m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
+				m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
+				m_pixelRenderState            = PixelRenderState::SHIFT_PIXELS_NAMETABLE_0;
+			}
+			else
+				m_pixelRenderState = PixelRenderState::PREFETCH_PUSH_FIFO;
 
 			break;
 
@@ -298,7 +301,7 @@ void PPU::tick()
 			fetchTileHi();
 
 			if ((r_scrollX & 7) == 6)
-				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_0;
+				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
 			else
 				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0;
 
@@ -306,7 +309,7 @@ void PPU::tick()
 
 		case PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0:
 			m_bgFifo.shiftFifo();
-			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
+			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
 
 			break;
 
@@ -363,24 +366,15 @@ void PPU::tick()
 			else
 				processSpriteFetching();
 
-			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_0;
+			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
 			break;
 
-		case PixelRenderState::B01S_PUSH_FIFO_0:
+		case PixelRenderState::B01S_PUSH_FIFO:
 
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-			else
-				processSpriteFetching();
-
-			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO_1;
-			break;
-
-		case PixelRenderState::B01S_PUSH_FIFO_1:
-
-			if (m_spriteFetcher.spriteFetchRequested)
+			if (spritePresentCheck())
 			{
-				processSpriteFetching();
+				if (!processSpriteFetching())
+					m_pixelRenderState = PixelRenderState::B01S_EXIT_SPRITE_FETCH;
 			}
 			else
 			{
@@ -392,9 +386,24 @@ void PPU::tick()
 					m_pixelRenderState            = PixelRenderState::B01S_NAMETABLE_0;
 				}
 				else
-				{
 					pushPixelToLCD();
-				}
+			}
+
+			break;
+
+		case PixelRenderState::B01S_EXIT_SPRITE_FETCH:
+
+			if (((r_scrollX + m_bgFetcher.fetcherX) & 0x7) == 7)
+			{
+				pushPixelToLCD();
+				m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
+				m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
+				m_pixelRenderState            = PixelRenderState::B01S_NAMETABLE_0;
+			}
+			else
+			{
+				pushPixelToLCD();
+				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
 			}
 
 			break;
@@ -529,34 +538,40 @@ void PPU::writeOamDMA(uint16_t position, uint8_t data)
 
 void PPU::pushPixelToLCD()
 {
-	uint8_t colorIndex = (m_bgFifo.patternTileHiShifter & 0x80) | ((m_bgFifo.patternTileLoShifter & 0x80) >> 1);
-	colorIndex >>= 6;
+	uint8_t outputColorIndex = 0;
+
+	uint8_t bgColorIndex = (m_bgFifo.patternTileHiShifter & 0x80) | ((m_bgFifo.patternTileLoShifter & 0x80) >> 1);
+	bgColorIndex >>= 6;
+	bgColorIndex = (r_bgPaletteData >> (bgColorIndex * 2)) & 0x3;
 	m_bgFifo.shiftFifo();
 
-	colorIndex = (r_bgPaletteData >> (colorIndex * 2)) & 0x3;
+	outputColorIndex = bgColorIndex;
 
-	if (!m_spriteFifo.outputSprite.isEmpty())
+	uint8_t spriteColorIndex = 0, attributes = 0;
+
+	if (m_spriteFifo.clockFifo(m_bgFetcher.fetcherX, spriteColorIndex, attributes))
 	{
-		const OutputSprite &outSprite = m_spriteFifo.outputSprite.get();
+		if (attributes & SPRITE_ATTRIBUTES::DMG_PALETTE)
+			spriteColorIndex = (r_objPaletteData1 >> (spriteColorIndex * 2)) & 0x3;
+		else
+			spriteColorIndex = (r_objPaletteData0 >> (spriteColorIndex * 2)) & 0x3;
 
-		uint8_t spriteColorIndex = (outSprite.patternTileHiShifter & 0x80) | ((outSprite.patternTileLoShifter & 0x80) >> 1);
-		spriteColorIndex >>= 6;
-
-		//if ((outSprite.attributes & SPRITE_ATTRIBUTES::PRIORITY) == 0)
+		if (attributes & SPRITE_ATTRIBUTES::PRIORITY)
 		{
-			colorIndex = spriteColorIndex;
+			if (bgColorIndex == 0)
+				outputColorIndex = spriteColorIndex;
 		}
-
-		m_spriteFifo.shiftFifo(m_bgFetcher.fetcherX);
+		else
+			outputColorIndex = spriteColorIndex;
 	}
 
 	uint16_t lcdPixelIndex = (160 * (143 - r_lcdY)) + (m_bgFetcher.fetcherX - 8);
 	m_bgFetcher.fetcherX += 1;
 
-	m_lcdPixelBuffer[lcdPixelIndex][0] = m_colorPallete[colorIndex][0]; // r
-	m_lcdPixelBuffer[lcdPixelIndex][1] = m_colorPallete[colorIndex][1]; // g
-	m_lcdPixelBuffer[lcdPixelIndex][2] = m_colorPallete[colorIndex][2]; // b
-	m_lcdPixelBuffer[lcdPixelIndex][3] = 0xFF;                          // a
+	m_lcdPixelBuffer[lcdPixelIndex][0] = m_colorPallete[outputColorIndex][0]; // r
+	m_lcdPixelBuffer[lcdPixelIndex][1] = m_colorPallete[outputColorIndex][1]; // g
+	m_lcdPixelBuffer[lcdPixelIndex][2] = m_colorPallete[outputColorIndex][2]; // b
+	m_lcdPixelBuffer[lcdPixelIndex][3] = 0xFF;                                // a
 
 	// enter H-blank once 160 pixels are drawn
 	if (m_bgFetcher.fetcherX == 160 + 8)
@@ -617,10 +632,11 @@ void PPU::fetchTileHi()
 
 bool PPU::spritePresentCheck()
 {
+	// abort check if sprite fetch is already previously requested
 	if (m_spriteFetcher.spriteFetchRequested)
 		return m_spriteFetcher.spriteFetchRequested;
 
-	for (uint8_t i = 0; (m_spriteScanner.outputSpriteCount < m_spriteScanner.spriteCount) && (i < m_spriteScanner.spriteCount); ++i)
+	for (uint8_t i = 0; (m_spriteScanner.outputSpriteCount < m_spriteScanner.secondaryOAM.length()) && (i < m_spriteScanner.secondaryOAM.length()); ++i)
 	{
 		uint8_t spriteIndex = m_spriteScanner.secondaryOAM[i];
 
@@ -635,10 +651,11 @@ bool PPU::spritePresentCheck()
 	return m_spriteFetcher.spriteFetchRequested;
 }
 
-void PPU::processSpriteFetching()
+bool PPU::processSpriteFetching()
 {
 	switch (m_spriteFetchState)
 	{
+
 	case PPU::SpriteFetchState::CYCLE_0:
 		m_spriteFetchState = SpriteFetchState::CYCLE_1;
 		break;
@@ -653,11 +670,8 @@ void PPU::processSpriteFetching()
 
 	case PPU::SpriteFetchState::CYCLE_3: // pattern tile lo fetch
 	{
-		uint8_t spriteIndex = m_spriteFetcher.fetchQueue.get();
+		uint8_t spriteIndex = m_spriteFetcher.fetchQueue.peak();
 		uint8_t tileIndex   = m_oamRam[spriteIndex].tileIndex;
-
-		// todo handle y flip with attribute
-		// uint8_t attributes  = m_oamRam[spriteIndex].attributes;
 
 		// 8 by 8 sprites
 		if ((r_lcdControl & LCD_CONTROLS::OBJ_SIZE) == 0)
@@ -682,7 +696,9 @@ void PPU::processSpriteFetching()
 
 	case PPU::SpriteFetchState::CYCLE_5: // pattern tile hi fetch
 	{
-		uint8_t spriteIndex = m_spriteFetcher.fetchQueue.get();
+		uint8_t spriteIndex = m_spriteFetcher.fetchQueue.peak();
+		// todo handle y flip with attribute
+		// uint8_t attributes  = m_oamRam[spriteIndex].attributes;
 
 		OutputSprite outSprite{};
 
@@ -691,7 +707,7 @@ void PPU::processSpriteFetching()
 		outSprite.patternTileLoShifter = m_spriteFetcher.patternTileLoLatch;
 		outSprite.patternTileHiShifter = m_vram[++m_spriteFetcher.patternTileAddress & 0x1FFF];
 
-		m_spriteFifo.outputSprite.push(outSprite);
+		m_spriteFifo.m_outputSprites.push(outSprite);
 
 		m_spriteFetcher.fetchQueue.pop();
 		if (m_spriteFetcher.fetchQueue.isEmpty())
@@ -701,6 +717,8 @@ void PPU::processSpriteFetching()
 		break;
 	}
 	}
+
+	return m_spriteFetcher.spriteFetchRequested;
 }
 
 void PPU::init(bool useBootrom)
@@ -712,6 +730,8 @@ void PPU::init(bool useBootrom)
 	r_windowX            = 0;
 	r_windowY            = 0;
 	r_bgPaletteData      = 0;
+	r_objPaletteData0    = 0;
+	r_objPaletteData1    = 0;
 	r_lcdY               = 0;
 	r_lcdStatus          = 0;
 	m_scanlineDotCounter = 0;
@@ -734,24 +754,31 @@ void PPU::init(bool useBootrom)
 	m_spriteFetcher.reset();
 }
 
-void PPU::SpriteFifo::shiftFifo(uint8_t fetcherX)
+bool PPU::SpriteFifo::clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uint8_t &attributes)
 {
-	OutputSprite &outSprite = outputSprite.get();
+	if (m_outputSprites.isEmpty())
+		return false;
 
-	outSprite.patternTileLoShifter <<= 1;
-	outSprite.patternTileHiShifter <<= 1;
+	bool spriteFound = false;
 
-	// pop sprite from queue once 8 pixels are shifted
-	if ((fetcherX - outSprite.xPosition) + 1 == 8)
+	for (uint8_t i = 0; i < m_outputSprites.length(); ++i)
 	{
-		outputSprite.pop();
-
-		/*if (!outputSprite.isEmpty())
+		if (fetcherX >= m_outputSprites[i].xPosition && fetcherX < m_outputSprites[i].xPosition + 8)
 		{
-		    uint8_t      offset     = ((fetcherX + 1) - outSprite.xPosition) + 1;
-		    OutputSprite nextSprite = outputSprite.get();
-		    nextSprite.patternTileLoShifter <<= offset;
-		    nextSprite.patternTileHiShifter <<= offset;
-		}*/
+			if (!spriteFound)
+			{
+				attributes       = m_outputSprites[i].attributes;
+				spriteColorIndex = (m_outputSprites[i].patternTileHiShifter & 0x80) | ((m_outputSprites[i].patternTileLoShifter & 0x80) >> 1);
+				spriteColorIndex >>= 6;
+
+				if (spriteColorIndex != 0)
+					spriteFound = true;
+			}
+
+			m_outputSprites[i].patternTileLoShifter <<= 1;
+			m_outputSprites[i].patternTileHiShifter <<= 1;
+		}
 	}
+
+	return spriteFound;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils/fixedQueue.h"
+#include "utils/ppuArray.h"
 #include "utils/vec.h"
 #include <array>
 #include <cstdint>
@@ -30,14 +30,16 @@ class PPU
 	// 5: window enable
 	// 6: select 0x9800 or 0x9C00 to use for window tile map
 	// 7: enable/disable lcd (ppu)
-	uint8_t r_lcdControl    = 0;
-	uint8_t r_LYC           = 0; // value to compare against the current scanline (lcdY)
-	uint8_t r_scrollX       = 0;
-	uint8_t r_scrollY       = 0;
-	uint8_t r_windowX       = 0;
-	uint8_t r_windowY       = 0;
-	uint8_t r_oamStart      = 0;
-	uint8_t r_bgPaletteData = 0;
+	uint8_t r_lcdControl      = 0;
+	uint8_t r_LYC             = 0; // value to compare against the current scanline (lcdY)
+	uint8_t r_scrollX         = 0;
+	uint8_t r_scrollY         = 0;
+	uint8_t r_windowX         = 0;
+	uint8_t r_windowY         = 0;
+	uint8_t r_oamStart        = 0;
+	uint8_t r_bgPaletteData   = 0;
+	uint8_t r_objPaletteData0 = 0;
+	uint8_t r_objPaletteData1 = 0;
 
   private:
 	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
@@ -68,7 +70,7 @@ class PPU
 		uint16_t patternTileAddress = 0;
 		uint8_t  patternTileLoLatch = 0;
 
-		Utils::FixedQueue<uint8_t, 10> fetchQueue; // sprites queued up for fetching once bg tile fetches are complete
+		Utils::PPUArray<uint8_t, 10> fetchQueue; // sprites queued up for fetching once bg tile fetches are complete
 
 		void reset()
 		{
@@ -117,31 +119,32 @@ class PPU
 	class SpriteFifo
 	{
 	  public:
-		Utils::FixedQueue<OutputSprite, 10> outputSprite;
+		Utils::PPUArray<OutputSprite, 10> m_outputSprites;
 
 		void reset()
 		{
-			outputSprite.clear();
+			m_outputSprites.clear();
+			m_outputSprites.fill({0xFF, 0xFF, 0xFF, 0xFF});
 		}
 
-		void shiftFifo(uint8_t fetcherX);
+		// search through array of output sprites and shifts any sprites that are in range
+		// return true when sprite is found for outputing to lcd display
+		bool clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uint8_t &attributes);
 	};
 
 	class SpriteScanner
 	{
 	  public:
 		uint8_t oamScanIndex      = 0; // scan position of oam ram (indices: 0-39)
-		uint8_t spriteCount       = 0; // number of sprites select by oam scan
 		uint8_t outputSpriteCount = 0; // running total of sprites that have been queued up for fetching on current scanline
 
-		std::array<uint8_t, 10> secondaryOAM; // hold selected sprites from oam scan process
+		Utils::PPUArray<uint8_t, 10> secondaryOAM; // hold selected sprites from oam scan process
 
 		void reset()
 		{
 			oamScanIndex      = 0;
-			spriteCount       = 0;
 			outputSpriteCount = 0;
-			secondaryOAM.fill(static_cast<uint8_t>(0xFF));
+			secondaryOAM.clear();
 		}
 	};
 
@@ -174,7 +177,7 @@ class PPU
 		DMG_PALETTE = 1 << 4,
 		X_FLIP      = 1 << 5,
 		Y_FLIP      = 1 << 6,
-		PRIORITY    = 1 << 7, // 1: bg and window is drawn over this sprite
+		PRIORITY    = 1 << 7, // 1: bg and window color indices 1-3 are drawn over this sprite
 	};
 
 	enum LCD_STATS
@@ -226,8 +229,8 @@ class PPU
 		PREFETCH_TILE_LO_1,
 		PREFETCH_TILE_HI_0,
 		PREFETCH_TILE_HI_1,
-		PREFETCH_PUSH_FIFO_0,
-		PREFETCH_PUSH_FIFO_1,
+		PREFETCH_PUSH_FIFO,
+		PREFETCH_EXIT_SPRITE_FETCH,
 
 		// first tile to be rendered can be paused for r_scrollX % 8 cycles to shift out pixels that should be offscreen
 
@@ -247,8 +250,8 @@ class PPU
 		B01S_TILE_LO_1,
 		B01S_TILE_HI_0,
 		B01S_TILE_HI_1,
-		B01S_PUSH_FIFO_0,
-		B01S_PUSH_FIFO_1,
+		B01S_PUSH_FIFO,
+		B01S_EXIT_SPRITE_FETCH,
 	};
 
 	enum class SpriteFetchState
@@ -308,7 +311,8 @@ class PPU
 	bool spritePresentCheck();
 
 	// 6 cycle sprite fetch
-	void processSpriteFetching();
+	// returns status for is sprite fetch being requested
+	bool processSpriteFetching();
 
   public:
 	PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags);
