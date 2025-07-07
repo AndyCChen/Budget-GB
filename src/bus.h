@@ -81,7 +81,7 @@ class Bus
   private:
 	Cartridge &m_cartridge;
 	Sm83      &m_cpu;
-	PPU        m_ppu;
+	PPU m_ppu;
 
 	std::size_t m_tCycles        = 0; // track total elapsed gameboy cycles
 	std::size_t m_tCyclePerFrame = 0; // track elasped cycles in a frame (1/60 of a second), decremented after frame ends

@@ -166,7 +166,7 @@ class PPU
 	{
 		BG_WINDOW_ENABLE            = 1 << 0,
 		OBJ_ENABLE                  = 1 << 1,
-		OBJ_SIZE                    = 1 << 2,
+		OBJ_SIZE                    = 1 << 2, // 0: 8x8 sprites, 1: 8x16 sprites
 		BG_TILEMAP                  = 1 << 3,
 		BG_WINDOW_PATTERN_DATA_AREA = 1 << 4,
 		WINDOW_ENABLE               = 1 << 5,
@@ -315,6 +315,7 @@ class PPU
 	// 6 cycle sprite fetch
 	// returns status for is sprite fetch being requested
 	bool processSpriteFetching();
+	void pushPixelToLCD();
 
   public:
 	PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags);
@@ -363,6 +364,4 @@ class PPU
 		// bits 0-2 are read only
 		r_lcdStatus = (in & 0xF8) | (r_lcdStatus & 0x7);
 	}
-
-	void pushPixelToLCD();
 };

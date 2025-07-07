@@ -184,7 +184,7 @@ void Bus::tickM()
 void Bus::onUpdate()
 {
 	// number of ticks that should pass per 1/60 of a second
-	constexpr unsigned int TICKS_PER_FRAME = BudgetGB::CLOCK_RATE_T / 60;
+	constexpr unsigned int TICKS_PER_FRAME = static_cast<unsigned int>(BudgetGB::CLOCK_RATE_T / 59.7275);
 
 	while (m_tCyclePerFrame < TICKS_PER_FRAME)
 		m_cpu.instructionStep();

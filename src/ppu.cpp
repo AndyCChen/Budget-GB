@@ -157,7 +157,6 @@ void PPU::tick()
 			if (!spritePresentCheck())
 				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 
-
 			m_pixelRenderState = PixelRenderState::PREFETCH_NAMETABLE_1;
 			break;
 
@@ -680,8 +679,17 @@ bool PPU::processSpriteFetching()
 		// 8 by 8 sprites
 		if ((r_lcdControl & LCD_CONTROLS::OBJ_SIZE) == 0)
 		{
-			uint8_t fineY                      = ((r_lcdY + 16) - m_oamRam[spriteIndex].yPosition) & 0x7;
-			m_spriteFetcher.patternTileAddress = 0x8000 | (tileIndex << 4) | (fineY << 1);
+			uint8_t fineY = ((r_lcdY + 16) - m_oamRam[spriteIndex].yPosition) & 0x7;
+
+			if (m_oamRam[spriteIndex].attributes & SPRITE_ATTRIBUTES::Y_FLIP)
+			{
+				fineY = 7 - fineY;
+				m_spriteFetcher.patternTileAddress = 0x8000 | (tileIndex << 4) | (fineY << 1);
+			}
+			else
+			{
+				m_spriteFetcher.patternTileAddress = 0x8000 | (tileIndex << 4) | (fineY << 1);
+			}
 		}
 		// 8 by 16 sprites
 		else
@@ -701,8 +709,6 @@ bool PPU::processSpriteFetching()
 	case PPU::SpriteFetchState::CYCLE_5: // pattern tile hi fetch
 	{
 		uint8_t spriteIndex = m_spriteFetcher.fetchQueue.peak();
-		// todo handle y flip with attribute
-		// uint8_t attributes  = m_oamRam[spriteIndex].attributes;
 
 		OutputSprite outSprite{};
 
@@ -710,6 +716,17 @@ bool PPU::processSpriteFetching()
 		outSprite.attributes           = m_oamRam[spriteIndex].attributes;
 		outSprite.patternTileLoShifter = m_spriteFetcher.patternTileLoLatch;
 		outSprite.patternTileHiShifter = m_vram[++m_spriteFetcher.patternTileAddress & 0x1FFF];
+
+		if (outSprite.attributes & SPRITE_ATTRIBUTES::X_FLIP)
+		{
+			outSprite.patternTileLoShifter = ((outSprite.patternTileLoShifter & 0xF0) >> 4) | ((outSprite.patternTileLoShifter & 0x0F) << 4);
+			outSprite.patternTileLoShifter = ((outSprite.patternTileLoShifter & 0xCC) >> 2) | ((outSprite.patternTileLoShifter & 0x33) << 2);
+			outSprite.patternTileLoShifter = ((outSprite.patternTileLoShifter & 0xAA) >> 1) | ((outSprite.patternTileLoShifter & 0x55) << 1);
+
+			outSprite.patternTileHiShifter = ((outSprite.patternTileHiShifter & 0xF0) >> 4) | ((outSprite.patternTileHiShifter & 0x0F) << 4);
+			outSprite.patternTileHiShifter = ((outSprite.patternTileHiShifter & 0xCC) >> 2) | ((outSprite.patternTileHiShifter & 0x33) << 2);
+			outSprite.patternTileHiShifter = ((outSprite.patternTileHiShifter & 0xAA) >> 1) | ((outSprite.patternTileHiShifter & 0x55) << 1);
+		}
 
 		m_spriteFifo.m_outputSprites.push(outSprite);
 
