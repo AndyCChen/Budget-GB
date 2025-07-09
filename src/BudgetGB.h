@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -7,17 +8,12 @@
 #include "SDL3/SDL.h"
 #include "bus.h"
 #include "cartridge.h"
+#include "config.h"
 #include "disassembler.h"
 #include "imgui.h"
 #include "renderer.h"
 #include "sm83.h"
 #include "utils/vec.h"
-
-struct BudgetGbConfig
-{
-	bool        useBootrom;
-	std::string bootromPath;
-};
 
 class BudgetGB
 {
@@ -48,15 +44,6 @@ class BudgetGB
 	bool loadCartridge(const std::string &cartridgePath);
 
   private:
-	enum class WindowScale
-	{
-		WindowScale_1x1 = 1,
-		WindowScale_1x2,
-		WindowScale_1x3,
-		WindowScale_1x4,
-		WindowScale_1x5,
-		WindowScale_1x6,
-	};
 
 	enum GuiContextFlags
 	{
@@ -69,7 +56,7 @@ class BudgetGB
 		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 5,
 
 		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
-		GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
+		//GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
 	};
 
 	struct GuiContext
@@ -77,11 +64,9 @@ class BudgetGB
 		GuiContext()
 		{
 			flags              = GuiContextFlags_PAUSE;
-			windowSizeSelector = 1 << BudgetGB::INITIAL_WINDOW_SCALE;
 		}
 
 		uint32_t flags = 0;
-		uint32_t windowSizeSelector;
 	};
 
 	Cartridge    m_cartridge;
@@ -89,8 +74,8 @@ class BudgetGB
 	Sm83         m_cpu;
 	Disassembler m_disassembler;
 
-	GuiContext     m_guiContext;
-	BudgetGbConfig m_config;
+	GuiContext             m_guiContext;
+	BudgetGbConfig::Config m_config;
 
 	float m_accumulatedDeltaTime = 0.0f;
 
@@ -130,7 +115,7 @@ class BudgetGB
 	/**
 	 * @brief Resize window with prefined fixed scales.
 	 */
-	void resizeWindowFixed(WindowScale scale);
+	void resizeWindowFixed(BudgetGbConfig::WindowScale scale);
 
 	// gui draw functions
 
@@ -139,4 +124,7 @@ class BudgetGB
 	 */
 	void guiMain();
 	void guiCpuViewer(bool *toggle);
+
+	void saveConfig();
+	void loadConfig();
 };

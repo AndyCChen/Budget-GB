@@ -1,9 +1,10 @@
+#include "cartridge.h"
 #include "fmt/base.h"
+
+#include <algorithm>
 #include <fstream>
 
-#include "cartridge.h"
-
-bool Cartridge::loadCartridgeFromPath(const std::string &path)
+bool Cartridge::loadCartridgeFromPath(const std::string &path, std::vector<std::string> &recentRoms)
 {
 	std::ifstream romFile(path, std::ios::binary);
 	if (!romFile.is_open())
@@ -23,6 +24,16 @@ bool Cartridge::loadCartridgeFromPath(const std::string &path)
 
 	fmt::println("Rom loaded: {}", path);
 	fmt::println("Cartridge rom size: {:d} bytes", romSize);
+
+	auto iter = std::find(recentRoms.begin(), recentRoms.end(), path);
+
+	if (iter != recentRoms.end())
+		recentRoms.erase(iter);
+
+	if (recentRoms.size() == BudgetGbConfig::MAX_RECENT_ROMS)
+		recentRoms.pop_back();
+
+	recentRoms.insert(recentRoms.begin(), path);
 
 	m_cartridgeLoaded = true;
 	return m_cartridgeLoaded;

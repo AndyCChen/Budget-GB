@@ -8,3 +8,4 @@ testRoms/
 imgui.ini
 .vscode
 .DS_Store
+config.json

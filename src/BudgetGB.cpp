@@ -1,9 +1,13 @@
+#include <fstream>
 #include <stdexcept>
+#include <string>
 
-#include "BudgetGB.h"
 #include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
+#include "nlohmann/json.hpp"
+
+#include "BudgetGB.h"
 #include "misc/cpp/imgui_stdlib.h"
 
 constexpr static SDL_DialogFileFilter romFileFilter[] = {
@@ -20,24 +24,22 @@ static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
 	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus)
 {
+	loadConfig();
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 
-	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, INITIAL_WINDOW_SCALE))
+	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, static_cast<uint32_t>(m_config.windowScale)))
 	{
 		throw std::runtime_error("Failed to initialize window with renderer!");
 	}
 
 	if (cartridgePath != "")
 	{
-		if (m_cartridge.loadCartridgeFromPath(cartridgePath))
+		if (m_cartridge.loadCartridgeFromPath(cartridgePath, m_config.recentRoms))
 		{
 			m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 			m_disassembler.step();
 		}
 	}
-
-	m_config.useBootrom  = false;
-	m_config.bootromPath = "dmg_boot.bin";
 
 	if (m_config.useBootrom)
 	{
@@ -64,6 +66,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 BudgetGB::~BudgetGB()
 {
 	RendererGB::freeWindowWithRenderer(m_window, m_renderContext);
+	saveConfig();
 }
 
 void BudgetGB::onUpdate(float deltaTime)
@@ -89,7 +92,9 @@ void BudgetGB::onUpdate(float deltaTime)
 SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 {
 	ImGui_ImplSDL3_ProcessEvent(event);
-	m_cpu.m_joypad.processEvent(event);
+
+	if (!ImGui::GetIO().WantTextInput)
+		m_cpu.m_joypad.processEvent(event);
 
 	if (event->type == SDL_EVENT_QUIT)
 		return SDL_APP_SUCCESS;
@@ -101,7 +106,7 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 		else if (event->type == SDL_EVENT_WINDOW_RESIZED)
 		{
-			if (m_guiContext.flags & GuiContextFlags_FULLSCREEN_FIT)
+			if (m_config.fullscreenMode == BudgetGbConfig::FullscreenMode::FIT)
 				resizeViewportFit();
 			else
 				resizeViewportStretched();
@@ -130,12 +135,17 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 			break;
 
 		case SDL_SCANCODE_P:
-			m_guiContext.flags ^= GuiContextFlags_PAUSE;
-			if (m_guiContext.flags & GuiContextFlags_PAUSE && m_cartridge.isLoaded())
+
+			if (!ImGui::GetIO().WantTextInput)
 			{
-				m_disassembler.setProgramCounter(m_cpu.m_programCounter);
-				m_disassembler.step();
+				m_guiContext.flags ^= GuiContextFlags_PAUSE;
+				if (m_guiContext.flags & GuiContextFlags_PAUSE && m_cartridge.isLoaded())
+				{
+					m_disassembler.setProgramCounter(m_cpu.m_programCounter);
+					m_disassembler.step();
+				}
 			}
+
 			break;
 
 		default:
@@ -148,7 +158,7 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 
 bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 {
-	if (m_cartridge.loadCartridgeFromPath(cartridgePath))
+	if (m_cartridge.loadCartridgeFromPath(cartridgePath, m_config.recentRoms))
 	{
 		resetBudgetGB();
 		return true;
@@ -210,7 +220,7 @@ void BudgetGB::resizeViewportFit()
 	RendererGB::setMainViewportSize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
 }
 
-void BudgetGB::resizeWindowFixed(WindowScale scale)
+void BudgetGB::resizeWindowFixed(BudgetGbConfig::WindowScale scale)
 {
 	if (m_guiContext.flags & GuiContextFlags_FULLSCREEN)
 	{
@@ -220,10 +230,10 @@ void BudgetGB::resizeWindowFixed(WindowScale scale)
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // re-enable viewports when exiting fullscreen
 	}
 
-	m_guiContext.windowSizeSelector = 0;
-	m_guiContext.windowSizeSelector |= 1 << static_cast<uint32_t>(scale);
+	m_config.windowScale = scale;
+	int scaleFactor      = static_cast<uint32_t>(m_config.windowScale);
 
-	SDL_SetWindowSize(m_window, static_cast<int>(scale) * BudgetGB::LCD_WIDTH, static_cast<int>(scale) * BudgetGB::LCD_HEIGHT);
+	SDL_SetWindowSize(m_window, scaleFactor * BudgetGB::LCD_WIDTH, scaleFactor * BudgetGB::LCD_HEIGHT);
 
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
@@ -273,18 +283,19 @@ void BudgetGB::guiMain()
 
 		if (ImGui::BeginMenu("Window Sizes"))
 		{
+			using namespace BudgetGbConfig;
 
-			if (ImGui::MenuItem("1x1", "", m_guiContext.windowSizeSelector & 0x2))
+			if (ImGui::MenuItem("1x1", "", m_config.windowScale == WindowScale::WindowScale_1x1))
 				resizeWindowFixed(WindowScale::WindowScale_1x1);
-			if (ImGui::MenuItem("1x2", "", m_guiContext.windowSizeSelector & 0x4))
+			if (ImGui::MenuItem("1x2", "", m_config.windowScale == WindowScale::WindowScale_1x2))
 				resizeWindowFixed(WindowScale::WindowScale_1x2);
-			if (ImGui::MenuItem("1x3", "", m_guiContext.windowSizeSelector & 0x8))
+			if (ImGui::MenuItem("1x3", "", m_config.windowScale == WindowScale::WindowScale_1x3))
 				resizeWindowFixed(WindowScale::WindowScale_1x3);
-			if (ImGui::MenuItem("1x4", "", m_guiContext.windowSizeSelector & 0x10))
+			if (ImGui::MenuItem("1x4", "", m_config.windowScale == WindowScale::WindowScale_1x4))
 				resizeWindowFixed(WindowScale::WindowScale_1x4);
-			if (ImGui::MenuItem("1x5", "", m_guiContext.windowSizeSelector & 0x20))
+			if (ImGui::MenuItem("1x5", "", m_config.windowScale == WindowScale::WindowScale_1x5))
 				resizeWindowFixed(WindowScale::WindowScale_1x5);
-			if (ImGui::MenuItem("1x6", "", m_guiContext.windowSizeSelector & 0x40))
+			if (ImGui::MenuItem("1x6", "", m_config.windowScale == WindowScale::WindowScale_1x6))
 				resizeWindowFixed(WindowScale::WindowScale_1x6);
 
 			if (ImGui::MenuItem("Fullscreen", "F11", m_guiContext.flags & GuiContextFlags_FULLSCREEN))
@@ -301,15 +312,15 @@ void BudgetGB::guiMain()
 
 			ImGui::BeginDisabled(!(m_guiContext.flags & GuiContextFlags_FULLSCREEN));
 
-			if (ImGui::MenuItem("Fullscreen Fit", "", m_guiContext.flags & GuiContextFlags_FULLSCREEN_FIT))
+			if (ImGui::MenuItem("Fullscreen Fit", "", m_config.fullscreenMode == BudgetGbConfig::FullscreenMode::FIT))
 			{
-				m_guiContext.flags |= GuiContextFlags_FULLSCREEN_FIT;
+				m_config.fullscreenMode = BudgetGbConfig::FullscreenMode::FIT;
 				resizeViewportFit();
 			}
 
-			if (ImGui::MenuItem("Fullscreen Stretched", "", !(m_guiContext.flags & GuiContextFlags_FULLSCREEN_FIT)))
+			if (ImGui::MenuItem("Fullscreen Stretched", "", m_config.fullscreenMode == BudgetGbConfig::FullscreenMode::STRETCHED))
 			{
-				m_guiContext.flags &= ~GuiContextFlags_FULLSCREEN_FIT;
+				m_config.fullscreenMode = BudgetGbConfig::FullscreenMode::STRETCHED;
 				resizeViewportStretched();
 			}
 
@@ -326,6 +337,19 @@ void BudgetGB::guiMain()
 
 		if (ImGui::Selectable("Bootrom"))
 			showBootromModal = true;
+
+		if (ImGui::BeginMenu("Recent roms", !m_config.recentRoms.empty()))
+		{
+			for (auto &item : m_config.recentRoms)
+			{
+				if (ImGui::MenuItem(item.c_str()))
+				{
+					fmt::println("{:s}", item);
+				}
+			}
+
+			ImGui::EndMenu();
+		}
 
 		ImGui::Separator();
 		if (ImGui::Selectable("Quit"))
@@ -551,6 +575,79 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 	ImGui::End();
 }
 
+void BudgetGB::saveConfig()
+{
+	nlohmann::json config;
+
+	config["bootrom"]["useBootrom"] = m_config.useBootrom;
+	config["bootrom"]["path"]       = m_config.bootromPath;
+	config["recent roms"]           = m_config.recentRoms;
+	config["window size"]           = m_config.windowScale;
+	config["fullscreen mode"]       = m_config.fullscreenMode;
+
+	std::ofstream configFile(BudgetGbConfig::CONFIG_FILE_NAME);
+	if (configFile.is_open())
+	{
+		configFile << config.dump(3);
+		configFile.close();
+	}
+}
+
+void BudgetGB::loadConfig()
+{
+	std::ifstream configFile(BudgetGbConfig::CONFIG_FILE_NAME);
+	if (configFile.is_open())
+	{
+		using namespace BudgetGbConfig;
+
+		nlohmann::json config = nlohmann::json::parse(configFile);
+
+		m_config.useBootrom  = config["bootrom"]["useBootrom"];
+		m_config.bootromPath = config["bootrom"]["path"];
+
+		for (std::size_t i = 0; i < config["recent roms"].size() && i < BudgetGbConfig::MAX_RECENT_ROMS; ++i)
+			m_config.recentRoms.push_back(std::string(config["recent roms"][i]));
+
+		switch (static_cast<WindowScale>(config["window size"]))
+		{
+		case WindowScale::WindowScale_1x1:
+			m_config.windowScale = WindowScale::WindowScale_1x1;
+			break;
+		case WindowScale::WindowScale_1x2:
+			m_config.windowScale = WindowScale::WindowScale_1x2;
+			break;
+		case WindowScale::WindowScale_1x3:
+			m_config.windowScale = WindowScale::WindowScale_1x3;
+			break;
+		case WindowScale::WindowScale_1x4:
+			m_config.windowScale = WindowScale::WindowScale_1x4;
+			break;
+		case WindowScale::WindowScale_1x5:
+			m_config.windowScale = WindowScale::WindowScale_1x5;
+			break;
+		case WindowScale::WindowScale_1x6:
+			m_config.windowScale = WindowScale::WindowScale_1x6;
+			break;
+		default:
+			break;
+		}
+
+		switch (static_cast<FullscreenMode>(config["fullscreen mode"]))
+		{
+		case FullscreenMode::FIT:
+			m_config.fullscreenMode = FullscreenMode::FIT;
+			break;
+		case FullscreenMode::STRETCHED:
+			m_config.fullscreenMode = FullscreenMode::STRETCHED;
+			break;
+		default:
+			break;
+		}
+
+		configFile.close();
+	}
+}
+
 static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *filelist, int filter)
 {
 	(void)filter;
@@ -571,7 +668,7 @@ static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *fil
 static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const *filelist, int filter)
 {
 	(void)filter;
-	BudgetGbConfig *config = (BudgetGbConfig *)userdata;
+	BudgetGbConfig::Config *config = (BudgetGbConfig::Config *)userdata;
 
 	if (!filelist)
 	{

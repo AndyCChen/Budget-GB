@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "config.h"
+
 class Cartridge
 {
   public:
@@ -12,7 +14,7 @@ class Cartridge
 		m_cartridgeLoaded = false;
 	}
 
-	bool    loadCartridgeFromPath(const std::string &path);
+	bool    loadCartridgeFromPath(const std::string &path, std::vector<std::string> &recentRoms);
 	uint8_t cartridgeRead(uint16_t position);
 	bool    isLoaded() const
 	{
