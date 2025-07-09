@@ -56,7 +56,6 @@ class BudgetGB
 		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 5,
 
 		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
-		//GuiContextFlags_FULLSCREEN_FIT         = 1 << 7,
 	};
 
 	struct GuiContext

@@ -25,10 +25,7 @@ bool Cartridge::loadCartridgeFromPath(const std::string &path, std::vector<std::
 	fmt::println("Rom loaded: {}", path);
 	fmt::println("Cartridge rom size: {:d} bytes", romSize);
 
-	auto iter = std::find(recentRoms.begin(), recentRoms.end(), path);
-
-	if (iter != recentRoms.end())
-		recentRoms.erase(iter);
+	recentRoms.erase(std::remove(recentRoms.begin(), recentRoms.end(), path), recentRoms.end());
 
 	if (recentRoms.size() == BudgetGbConfig::MAX_RECENT_ROMS)
 		recentRoms.pop_back();

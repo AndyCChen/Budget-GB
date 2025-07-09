@@ -200,12 +200,6 @@ class PPU
 		MODE_3,     // pixel rendering
 	};
 
-	enum class OamScanState
-	{
-		CYCLE_0 = 0,
-		CYCLE_1,
-	};
-
 	// B01: initial dummy fetch to fill shift registers, takes total of 6 dots
 	// B01S: remaining fetches of mode 3
 	// B = nametable fetches, aka the tile index is fetched
@@ -298,7 +292,6 @@ class PPU
 	uint16_t m_scanlineDotCounter = 0;
 
 	Mode             m_ppuMode          = Mode::MODE_2;
-	OamScanState     m_oamScanState     = OamScanState::CYCLE_0;
 	PixelRenderState m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
 	SpriteFetchState m_spriteFetchState = SpriteFetchState::CYCLE_0;
 

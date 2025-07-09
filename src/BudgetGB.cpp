@@ -135,7 +135,6 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 			break;
 
 		case SDL_SCANCODE_P:
-
 			if (!ImGui::GetIO().WantTextInput)
 			{
 				m_guiContext.flags ^= GuiContextFlags_PAUSE;
@@ -146,6 +145,10 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 				}
 			}
 
+			break;
+
+		case SDL_SCANCODE_KP_MULTIPLY:
+			resetBudgetGB();
 			break;
 
 		default:
@@ -340,12 +343,18 @@ void BudgetGB::guiMain()
 
 		if (ImGui::BeginMenu("Recent roms", !m_config.recentRoms.empty()))
 		{
-			for (auto &item : m_config.recentRoms)
+			std::array<std::string, BudgetGbConfig::MAX_RECENT_ROMS> buffer;
+
+			std::size_t length = m_config.recentRoms.size();
+			for (uint8_t i = 0; i < length; ++i)
+				buffer[i] = m_config.recentRoms[i];
+
+			for (uint8_t i = 0; i < length; ++i)
 			{
-				if (ImGui::MenuItem(item.c_str()))
-				{
-					fmt::println("{:s}", item);
-				}
+				ImGui::PushID(i);
+				if (ImGui::MenuItem(buffer[i].c_str()))
+					loadCartridge(buffer[i]);
+				ImGui::PopID();
 			}
 
 			ImGui::EndMenu();

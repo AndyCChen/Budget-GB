@@ -85,14 +85,19 @@ void PPU::tick()
 			m_statInterruptSources |= 0x4;
 		}
 
-		switch (m_oamScanState)
+		/*switch (m_oamScanState)
 		{
 		case OamScanState::CYCLE_0:
-			m_oamScanState = OamScanState::CYCLE_1;
-			break;
+		    m_oamScanState = OamScanState::CYCLE_1;
+		    break;
 
 		case OamScanState::CYCLE_1:
+		    m_oamScanState = OamScanState::CYCLE_0;
+		    break;
+		}*/
 
+		if (m_scanlineDotCounter & 1)
+		{
 			if (m_spriteScanner.secondaryOAM.length() < m_spriteScanner.secondaryOAM.size())
 			{
 				uint8_t yPos = m_oamRam[m_spriteScanner.oamScanIndex].yPosition;
@@ -102,15 +107,12 @@ void PPU::tick()
 			}
 
 			++m_spriteScanner.oamScanIndex;
-			m_oamScanState = OamScanState::CYCLE_0;
-			break;
 		}
 
 		if (m_scanlineDotCounter == MODE_2_DURATION)
 		{
 			m_spriteScanner.oamScanIndex = 0;
 			m_ppuMode                    = Mode::MODE_3;
-			m_oamScanState               = OamScanState::CYCLE_0;
 			m_pixelRenderState           = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
 		}
 
@@ -483,6 +485,9 @@ uint8_t PPU::readOam(uint16_t position)
 
 		case 3:
 			return m_oamRam[spriteIndex].attributes;
+
+		default:
+			return 0xFF;
 		}
 	}
 	else
@@ -683,7 +688,7 @@ bool PPU::processSpriteFetching()
 
 			if (m_oamRam[spriteIndex].attributes & SPRITE_ATTRIBUTES::Y_FLIP)
 			{
-				fineY = 7 - fineY;
+				fineY                              = 7 - fineY;
 				m_spriteFetcher.patternTileAddress = 0x8000 | (tileIndex << 4) | (fineY << 1);
 			}
 			else
@@ -759,7 +764,6 @@ void PPU::init(bool useBootrom)
 	r_oamStart           = 0;
 
 	m_ppuMode          = Mode::MODE_2;
-	m_oamScanState     = OamScanState::CYCLE_0;
 	m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
 
 	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
