@@ -10,12 +10,12 @@ Sm83::Sm83(Bus &bus)
 
 void Sm83::instructionStep()
 {
-	if (m_logEnable)
-		m_opcodeLogger.next(m_programCounter, m_stackPointer, m_registerAF.get_u16(), m_registerBC.get_u16(), m_registerDE.get_u16(), m_registerHL.get_u16());
-
 	// normal execution when cpu is not halted from HALT instructions
 	if (!m_isHalted)
 	{
+		if (m_logEnable)
+			m_opcodeLogger.next(m_programCounter, m_stackPointer, m_registerAF.get_u16(), m_registerBC.get_u16(), m_registerDE.get_u16(), m_registerHL.get_u16());
+
 		uint8_t opcode = cpuFetch_u8();
 		decodeExecute(opcode);
 
