@@ -93,8 +93,10 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 {
 	ImGui_ImplSDL3_ProcessEvent(event);
 
-	if (!ImGui::GetIO().WantTextInput)
+	if (!m_guiContext.isGuiFocused)
 		m_cpu.m_joypad.processEvent(event);
+	else
+		m_cpu.m_joypad.clear();
 
 	if (event->type == SDL_EVENT_QUIT)
 		return SDL_APP_SUCCESS;
@@ -243,6 +245,8 @@ void BudgetGB::resizeWindowFixed(BudgetGbConfig::WindowScale scale)
 
 void BudgetGB::guiMain()
 {
+	m_guiContext.isGuiFocused = false;
+
 	// imgui demo window
 	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
 	{
@@ -344,11 +348,9 @@ void BudgetGB::guiMain()
 		if (ImGui::BeginMenu("Recent roms", !m_config.recentRoms.empty()))
 		{
 			std::array<std::string, BudgetGbConfig::MAX_RECENT_ROMS> buffer;
+			std::copy(m_config.recentRoms.begin(), m_config.recentRoms.end(), buffer.begin());
 
 			std::size_t length = m_config.recentRoms.size();
-			for (uint8_t i = 0; i < length; ++i)
-				buffer[i] = m_config.recentRoms[i];
-
 			for (uint8_t i = 0; i < length; ++i)
 			{
 				ImGui::PushID(i);
@@ -376,6 +378,8 @@ void BudgetGB::guiMain()
 	ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.9411f, 0.9411f, 0.9411f, 1.0f));
 	if (ImGui::BeginPopupModal("DMG bootrom", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
+		m_guiContext.isGuiFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
 		ImGui::InputText("##Bootrom path", &m_config.bootromPath);
 		ImGui::SameLine();
 
@@ -399,6 +403,8 @@ void BudgetGB::guiMain()
 
 	if (ImGui::BeginPopupModal("Bootrom load error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
+		m_guiContext.isGuiFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
 		ImGui::Text("%s", m_cpu.m_bootrom.getErrorMsg().c_str());
 
 		if (ImGui::Button("Ok", ImVec2(80, 0)))
@@ -414,6 +420,8 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 
 	if (ImGui::Begin("CPU Viewer", toggle))
 	{
+		m_guiContext.isGuiFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
 		if (ImGui::BeginTable("CPU Viewer Table", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable))
 		{
 			ImGui::TableNextRow();

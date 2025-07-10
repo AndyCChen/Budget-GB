@@ -66,6 +66,7 @@ class BudgetGB
 		}
 
 		uint32_t flags = 0;
+		bool isGuiFocused = false;
 	};
 
 	Cartridge    m_cartridge;

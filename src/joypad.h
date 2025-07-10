@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include "SDL3/SDL.h"
+#include <cstdint>
 
 class Joypad
 {
@@ -24,6 +24,15 @@ class Joypad
   public:
 	Joypad()
 	{
+		clear();
+	}
+
+	uint8_t readJoypad() const;
+	void    writeJoypad(uint8_t data);
+	void    processEvent(SDL_Event *event);
+
+	void clear()
+	{
 		m_joypad.selectButtons = 1;
 		m_joypad.a             = 1;
 		m_joypad.b             = 1;
@@ -36,8 +45,4 @@ class Joypad
 		m_joypad.up         = 1;
 		m_joypad.down       = 1;
 	}
-
-	uint8_t readJoypad() const;
-	void    writeJoypad(uint8_t data);
-	void    processEvent(SDL_Event *event);
 };
