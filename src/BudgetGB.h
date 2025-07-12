@@ -44,7 +44,6 @@ class BudgetGB
 	bool loadCartridge(const std::string &cartridgePath);
 
   private:
-
 	enum GuiContextFlags
 	{
 		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
@@ -52,21 +51,21 @@ class BudgetGB
 		GuiContextFlags_PAUSE           = 1 << 2,
 		GuiContextFlags_FULLSCREEN      = 1 << 3,
 		GuiContextFlags_SHOW_CPU_VIEWER = 1 << 4,
+		GuiContextFlags_SHOW_PALETTES   = 1 << 5,
 
-		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 5,
+		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 6,
 
-		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 6,
+		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 7,
 	};
 
 	struct GuiContext
 	{
-		GuiContext()
-		{
-			flags              = GuiContextFlags_PAUSE;
-		}
+		uint32_t flags             = 0;
+		bool     blockJoypadInputs = false;
 
-		uint32_t flags = 0;
-		bool isGuiFocused = false;
+		int         guiPalettes_selectedPalette = 0;
+		int         guiPalettes_activePalette   = 0;
+		std::string guiPalettes_renameBuffer;
 	};
 
 	Cartridge    m_cartridge;
@@ -123,8 +122,6 @@ class BudgetGB
 	 * @brief Top level entry point for gui.
 	 */
 	void guiMain();
-	void guiCpuViewer(bool *toggle);
-
-	void saveConfig();
-	void loadConfig();
+	void guiCpuViewer();
+	void guiPalettes();
 };

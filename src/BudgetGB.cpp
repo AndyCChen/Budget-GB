@@ -1,11 +1,9 @@
-#include <fstream>
 #include <stdexcept>
 #include <string>
 
 #include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
-#include "nlohmann/json.hpp"
 
 #include "BudgetGB.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -24,7 +22,6 @@ static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
 	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus)
 {
-	loadConfig();
 	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
 
 	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, static_cast<uint32_t>(m_config.windowScale)))
@@ -66,7 +63,6 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 BudgetGB::~BudgetGB()
 {
 	RendererGB::freeWindowWithRenderer(m_window, m_renderContext);
-	saveConfig();
 }
 
 void BudgetGB::onUpdate(float deltaTime)
@@ -93,7 +89,7 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 {
 	ImGui_ImplSDL3_ProcessEvent(event);
 
-	if (!m_guiContext.isGuiFocused)
+	if (!m_guiContext.blockJoypadInputs)
 		m_cpu.m_joypad.processEvent(event);
 	else
 		m_cpu.m_joypad.clear();
@@ -245,7 +241,7 @@ void BudgetGB::resizeWindowFixed(BudgetGbConfig::WindowScale scale)
 
 void BudgetGB::guiMain()
 {
-	m_guiContext.isGuiFocused = false;
+	m_guiContext.blockJoypadInputs = false;
 
 	// imgui demo window
 	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
@@ -256,14 +252,11 @@ void BudgetGB::guiMain()
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 	}
 
-	// cpu viewer window
 	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
-	{
-		bool toggle = true;
-		guiCpuViewer(&toggle);
-		if (!toggle)
-			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;
-	}
+		guiCpuViewer();
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_PALETTES)
+		guiPalettes();
 
 	if (m_guiContext.flags & GuiContextFlags_SHOW_MAIN_MENU)
 	{
@@ -339,8 +332,14 @@ void BudgetGB::guiMain()
 		if (ImGui::MenuItem("Toggle Imgui Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 
+		if (ImGui::MenuItem("Palettes", "", m_guiContext.flags & GuiContextFlags_SHOW_PALETTES))
+			m_guiContext.flags ^= GuiContextFlags_SHOW_PALETTES;
+
 		if (ImGui::MenuItem("CPU Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;
+
+		if (ImGui::MenuItem("Reset", "*"))
+			resetBudgetGB();
 
 		if (ImGui::Selectable("Bootrom"))
 			showBootromModal = true;
@@ -378,7 +377,7 @@ void BudgetGB::guiMain()
 	ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.9411f, 0.9411f, 0.9411f, 1.0f));
 	if (ImGui::BeginPopupModal("DMG bootrom", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		m_guiContext.isGuiFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		m_guiContext.blockJoypadInputs |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
 		ImGui::InputText("##Bootrom path", &m_config.bootromPath);
 		ImGui::SameLine();
@@ -403,7 +402,7 @@ void BudgetGB::guiMain()
 
 	if (ImGui::BeginPopupModal("Bootrom load error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		m_guiContext.isGuiFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		m_guiContext.blockJoypadInputs |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
 		ImGui::Text("%s", m_cpu.m_bootrom.getErrorMsg().c_str());
 
@@ -414,13 +413,15 @@ void BudgetGB::guiMain()
 	}
 }
 
-void BudgetGB::guiCpuViewer(bool *toggle)
+void BudgetGB::guiCpuViewer()
 {
 	static bool snapInstructionScrollY = false;
 
-	if (ImGui::Begin("CPU Viewer", toggle))
+	bool toggle = m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER;
+
+	if (ImGui::Begin("CPU Viewer", &toggle))
 	{
-		m_guiContext.isGuiFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		m_guiContext.blockJoypadInputs |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
 		if (ImGui::BeginTable("CPU Viewer Table", 2, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable))
 		{
@@ -590,79 +591,205 @@ void BudgetGB::guiCpuViewer(bool *toggle)
 		}
 	}
 	ImGui::End();
+
+	m_guiContext.flags = toggle ? (m_guiContext.flags | GuiContextFlags_SHOW_CPU_VIEWER) : (m_guiContext.flags & ~GuiContextFlags_SHOW_CPU_VIEWER);
 }
 
-void BudgetGB::saveConfig()
+void BudgetGB::guiPalettes()
 {
-	nlohmann::json config;
+	bool toggle = m_guiContext.flags & GuiContextFlags_SHOW_PALETTES;
 
-	config["bootrom"]["useBootrom"] = m_config.useBootrom;
-	config["bootrom"]["path"]       = m_config.bootromPath;
-	config["recent roms"]           = m_config.recentRoms;
-	config["window size"]           = m_config.windowScale;
-	config["fullscreen mode"]       = m_config.fullscreenMode;
-
-	std::ofstream configFile(BudgetGbConfig::CONFIG_FILE_NAME);
-	if (configFile.is_open())
+	if (ImGui::Begin("Palettes", &toggle))
 	{
-		configFile << config.dump(3);
-		configFile.close();
-	}
-}
+		m_guiContext.blockJoypadInputs |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
-void BudgetGB::loadConfig()
-{
-	std::ifstream configFile(BudgetGbConfig::CONFIG_FILE_NAME);
-	if (configFile.is_open())
-	{
-		using namespace BudgetGbConfig;
-
-		nlohmann::json config = nlohmann::json::parse(configFile);
-
-		m_config.useBootrom  = config["bootrom"]["useBootrom"];
-		m_config.bootromPath = config["bootrom"]["path"];
-
-		for (std::size_t i = 0; i < config["recent roms"].size() && i < BudgetGbConfig::MAX_RECENT_ROMS; ++i)
-			m_config.recentRoms.push_back(std::string(config["recent roms"][i]));
-
-		switch (static_cast<WindowScale>(config["window size"]))
+		ImGui::BeginDisabled(m_config.palettes.size() >= BudgetGbConfig::MAX_PALETTES);
+		if (ImGui::Button("Add Palette"))
 		{
-		case WindowScale::WindowScale_1x1:
-			m_config.windowScale = WindowScale::WindowScale_1x1;
-			break;
-		case WindowScale::WindowScale_1x2:
-			m_config.windowScale = WindowScale::WindowScale_1x2;
-			break;
-		case WindowScale::WindowScale_1x3:
-			m_config.windowScale = WindowScale::WindowScale_1x3;
-			break;
-		case WindowScale::WindowScale_1x4:
-			m_config.windowScale = WindowScale::WindowScale_1x4;
-			break;
-		case WindowScale::WindowScale_1x5:
-			m_config.windowScale = WindowScale::WindowScale_1x5;
-			break;
-		case WindowScale::WindowScale_1x6:
-			m_config.windowScale = WindowScale::WindowScale_1x6;
-			break;
-		default:
-			break;
-		}
+			using namespace BudgetGbConfig;
+			m_config.palettes.insert(m_config.palettes.begin(), {"New Palette", DEFAULT_PALETTE[0], DEFAULT_PALETTE[1], DEFAULT_PALETTE[2], DEFAULT_PALETTE[3]});
 
-		switch (static_cast<FullscreenMode>(config["fullscreen mode"]))
+			if (m_guiContext.guiPalettes_activePalette != -1)
+				m_guiContext.guiPalettes_activePalette += 1;
+
+			if (m_guiContext.guiPalettes_selectedPalette != -1)
+				m_guiContext.guiPalettes_selectedPalette += 1;
+		}
+		ImGui::EndDisabled();
+
+		ImGui::SameLine();
+
+		std::array<char, 16> paletteCountText{};
+		fmt::format_to_n(paletteCountText.data(), paletteCountText.size(), "{}/{}", m_config.palettes.size(), BudgetGbConfig::MAX_PALETTES);
+		ImGui::Text(paletteCountText.data());
+
+		ImGui::BeginChild("Palette List", ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
 		{
-		case FullscreenMode::FIT:
-			m_config.fullscreenMode = FullscreenMode::FIT;
-			break;
-		case FullscreenMode::STRETCHED:
-			m_config.fullscreenMode = FullscreenMode::STRETCHED;
-			break;
-		default:
-			break;
-		}
 
-		configFile.close();
+			ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_DisplayHex | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoInputs;
+
+			ImGui::ColorEdit3("Default C0", m_config.defaultPalette[0].data(), flags);
+			ImGui::SameLine();
+			ImGui::ColorEdit3("Default C1", m_config.defaultPalette[1].data(), flags);
+			ImGui::SameLine();
+			ImGui::ColorEdit3("Default C2", m_config.defaultPalette[2].data(), flags);
+			ImGui::SameLine();
+			ImGui::ColorEdit3("Default C3", m_config.defaultPalette[3].data(), flags);
+			ImGui::SameLine();
+
+			if (ImGui::Selectable("Default", m_guiContext.guiPalettes_activePalette == -1, ImGuiSelectableFlags_AllowDoubleClick))
+			{
+				m_guiContext.guiPalettes_selectedPalette = -1;
+				if (ImGui::IsMouseDoubleClicked(0))
+				{
+					m_guiContext.guiPalettes_activePalette = -1;
+				}
+			}
+
+			for (int i = 0; i < m_config.palettes.size(); ++i)
+			{
+				ImGui::PushID(i);
+
+				ImGui::ColorEdit3("C0", m_config.palettes[i].color0.data(), flags);
+				ImGui::SameLine();
+				ImGui::ColorEdit3("C1", m_config.palettes[i].color1.data(), flags);
+				ImGui::SameLine();
+				ImGui::ColorEdit3("C2", m_config.palettes[i].color2.data(), flags);
+				ImGui::SameLine();
+				ImGui::ColorEdit3("C3", m_config.palettes[i].color3.data(), flags);
+				ImGui::SameLine();
+
+				if (ImGui::Selectable(m_config.palettes[i].name.c_str(), m_guiContext.guiPalettes_activePalette == i, ImGuiSelectableFlags_AllowDoubleClick))
+				{
+					m_guiContext.guiPalettes_selectedPalette = i;
+					if (ImGui::IsMouseDoubleClicked(0))
+					{
+						m_guiContext.guiPalettes_activePalette = i;
+					}
+				}
+
+				if (ImGui::BeginDragDropSource())
+				{
+					ImGui::SetDragDropPayload("Palette Dropzone", &i, sizeof(int));
+					ImGui::Text("%s", m_config.palettes[i].name.c_str());
+					ImGui::EndDragDropSource();
+				}
+
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("Palette Dropzone"))
+					{
+						IM_ASSERT(payload->DataSize == sizeof(int));
+						int payload_i = *(const int *)payload->Data;
+						std::swap(m_config.palettes[i], m_config.palettes[payload_i]);
+
+						if (payload_i == m_guiContext.guiPalettes_activePalette)
+							m_guiContext.guiPalettes_activePalette = i;
+
+						if (payload_i == m_guiContext.guiPalettes_selectedPalette)
+							m_guiContext.guiPalettes_selectedPalette = i;
+					}
+
+					ImGui::EndDragDropTarget();
+				}
+
+				bool toggleRenamePopup = false;
+
+				if (ImGui::BeginPopupContextItem())
+				{
+					if ((toggleRenamePopup = ImGui::Selectable("Rename")))
+					{
+						m_guiContext.guiPalettes_renameBuffer = m_config.palettes[i].name;
+					}
+
+					if (ImGui::Selectable("Delete"))
+					{
+						m_config.palettes.erase(m_config.palettes.begin() + i);
+
+						if (m_config.palettes.size() == 0)
+						{
+							m_guiContext.guiPalettes_selectedPalette = -1;
+							m_guiContext.guiPalettes_activePalette   = -1;
+						}
+						else
+						{
+							if (m_guiContext.guiPalettes_selectedPalette == m_config.palettes.size() || m_guiContext.guiPalettes_selectedPalette > i)
+							{
+								m_guiContext.guiPalettes_selectedPalette -= 1;
+							}
+
+							if (m_guiContext.guiPalettes_activePalette == m_config.palettes.size() || m_guiContext.guiPalettes_activePalette > i)
+							{
+								m_guiContext.guiPalettes_activePalette -= 1;
+							}
+						}
+					}
+
+					ImGui::EndPopup();
+				}
+
+				if (toggleRenamePopup)
+					ImGui::OpenPopup("Rename Palette");
+
+				ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.9411f, 0.9411f, 0.9411f, 1.0f));
+				if (ImGui::BeginPopupModal("Rename Palette", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+
+					ImGui::InputText("##New Palette Name", &m_guiContext.guiPalettes_renameBuffer);
+
+					if (ImGui::Button("Ok"))
+					{
+						m_config.palettes[i].name = m_guiContext.guiPalettes_renameBuffer;
+						m_guiContext.guiPalettes_renameBuffer.clear();
+
+						ImGui::CloseCurrentPopup();
+					}
+
+					ImGui::SameLine();
+
+					if (ImGui::Button("Cancel"))
+						ImGui::CloseCurrentPopup();
+
+					ImGui::EndPopup();
+				}
+				ImGui::PopStyleColor(1);
+
+				ImGui::PopID();
+			}
+		}
+		ImGui::EndChild();
+
+		ImGui::SameLine();
+
+		ImGui::BeginChild("Color Picker", ImVec2(0, 0));
+		{
+			ImGuiColorEditFlags flags = ImGuiColorEditFlags_DisplayHex;
+
+			if (m_guiContext.guiPalettes_selectedPalette == -1)
+			{
+				ImGui::Text("Default Palette");
+				ImGui::ColorEdit3("Default C0", m_config.defaultPalette[0].data(), flags);
+				ImGui::ColorEdit3("Default C1", m_config.defaultPalette[1].data(), flags);
+				ImGui::ColorEdit3("Default C2", m_config.defaultPalette[2].data(), flags);
+				ImGui::ColorEdit3("Default C3", m_config.defaultPalette[3].data(), flags);
+
+				if (ImGui::Button("Reset Defaults"))
+					m_config.defaultPalette = BudgetGbConfig::DEFAULT_PALETTE;
+			}
+			else
+			{
+				ImGui::Text(m_config.palettes[m_guiContext.guiPalettes_selectedPalette].name.c_str());
+				ImGui::ColorEdit3("C0", m_config.palettes[m_guiContext.guiPalettes_selectedPalette].color0.data(), flags);
+				ImGui::ColorEdit3("C1", m_config.palettes[m_guiContext.guiPalettes_selectedPalette].color1.data(), flags);
+				ImGui::ColorEdit3("C2", m_config.palettes[m_guiContext.guiPalettes_selectedPalette].color2.data(), flags);
+				ImGui::ColorEdit3("C3", m_config.palettes[m_guiContext.guiPalettes_selectedPalette].color3.data(), flags);
+			}
+		}
+		ImGui::EndChild();
 	}
+	ImGui::End();
+
+	m_guiContext.flags = toggle ? (m_guiContext.flags | GuiContextFlags_SHOW_PALETTES) : (m_guiContext.flags & ~GuiContextFlags_SHOW_PALETTES);
 }
 
 static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *filelist, int filter)

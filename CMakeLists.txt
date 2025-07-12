@@ -90,6 +90,8 @@ set(SOURCE_FILES
 	src/dmgBootrom.h
 	src/joypad.cpp
 	src/joypad.h
+	src/config.cpp
+	src/config.h
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)
