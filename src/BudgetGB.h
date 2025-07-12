@@ -66,6 +66,8 @@ class BudgetGB
 		int         guiPalettes_selectedPalette = 0;
 		int         guiPalettes_activePalette   = 0;
 		std::string guiPalettes_renameBuffer;
+
+		bool guiCpuViewer_snapInstructionScrollY = false;
 	};
 
 	Cartridge    m_cartridge;

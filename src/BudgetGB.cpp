@@ -415,8 +415,6 @@ void BudgetGB::guiMain()
 
 void BudgetGB::guiCpuViewer()
 {
-	static bool snapInstructionScrollY = false;
-
 	bool toggle = m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER;
 
 	if (ImGui::Begin("CPU Viewer", &toggle))
@@ -434,10 +432,10 @@ void BudgetGB::guiCpuViewer()
 				std::size_t position   = m_cpu.m_opcodeLogger.bufferPosition();
 				std::size_t bufferSize = m_cpu.m_opcodeLogger.bufferSize();
 
-				if (snapInstructionScrollY)
+				if (m_guiContext.guiCpuViewer_snapInstructionScrollY)
 				{
 					ImGui::SetScrollFromPosY(ImGui::GetTextLineHeightWithSpacing() * bufferSize);
-					snapInstructionScrollY = false;
+					m_guiContext.guiCpuViewer_snapInstructionScrollY = false;
 				}
 
 				ImGui::TableSetupScrollFreeze(0, 1);
@@ -558,7 +556,7 @@ void BudgetGB::guiCpuViewer()
 			}
 			else if (ImGui::Button("Start Logging"))
 			{
-				snapInstructionScrollY = true;
+				m_guiContext.guiCpuViewer_snapInstructionScrollY = true;
 				m_guiContext.flags |= GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
 				m_cpu.m_opcodeLogger.startLog();
 				m_cpu.m_logEnable = m_guiContext.flags & GuiContextFlags_TOGGLE_INSTRUCTION_LOG;
