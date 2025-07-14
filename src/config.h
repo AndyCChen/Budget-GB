@@ -1,15 +1,16 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace BudgetGbConfig
 {
 
-static constexpr char    *CONFIG_FILE_NAME = "config.json";
-static constexpr uint32_t MAX_RECENT_ROMS  = 10;
-static constexpr uint32_t MAX_PALETTES     = 5;
+static constexpr const char *CONFIG_FILE_NAME = "config.json";
+static constexpr uint32_t    MAX_RECENT_ROMS  = 10;
+static constexpr uint32_t    MAX_PALETTES     = 5;
 
 static constexpr std::array<std::array<float, 3>, 4> DEFAULT_GB_PALETTE = {{
 	{232.0f / 255.0f, 252.0f / 255.0f, 204.0f / 255.0f},
