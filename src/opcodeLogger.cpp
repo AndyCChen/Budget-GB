@@ -33,12 +33,13 @@ void OpcodeLogger::appendOpcodeByte(const uint8_t opByte)
 
 void OpcodeLogger::setOpcodeFormat(const std::string &format)
 {
-	m_buffer[m_bufferPosition].m_opcodeFormat = format;
+	format.copy(m_buffer[m_bufferPosition].m_opcodeFormat.data(), m_buffer[m_bufferPosition].m_opcodeFormat.size() - 1);
+	//m_buffer[m_bufferPosition].m_opcodeFormat = format;
 }
 
 void OpcodeLogger::setOpcodeFormat(const std::string &format, const uint16_t arg)
 {
-	m_buffer[m_bufferPosition].m_opcodeFormat = format;
+	format.copy(m_buffer[m_bufferPosition].m_opcodeFormat.data(), m_buffer[m_bufferPosition].m_opcodeFormat.size() - 1);
 	m_buffer[m_bufferPosition].m_arg          = arg;
 }
 
@@ -57,7 +58,7 @@ const char *OpcodeLogger::getLogAt(std::size_t index)
 	Sm83Instruction &item = m_buffer[index];
 	if (item.m_opcodeAddress.has_value())
 	{
-		item.m_buffer.clear();
+		item.m_buffer.fill(0);
 
 		char addressBuffer[5]{};
 		char opcodeBytesBuffer[9]{};
@@ -74,15 +75,15 @@ const char *OpcodeLogger::getLogAt(std::size_t index)
 			fmt::format_to_n(opcodeBytesBuffer, sizeof(opcodeBytesBuffer), "{:02X} {:02X} {:02X}", item.m_opcodeBytes[0], item.m_opcodeBytes[1], item.m_opcodeBytes[2]);
 
 		if (!item.m_arg.has_value())
-			fmt::format_to_n(opcodeBuffer, sizeof(opcodeBuffer), item.m_opcodeFormat);
+			fmt::format_to_n(opcodeBuffer, sizeof(opcodeBuffer), item.m_opcodeFormat.data());
 		else
-			fmt::format_to_n(opcodeBuffer, sizeof(opcodeBuffer), item.m_opcodeFormat, item.m_arg.value());
+			fmt::format_to_n(opcodeBuffer, sizeof(opcodeBuffer), item.m_opcodeFormat.data(), item.m_arg.value());
 
 		fmt::format_to_n(registerBuffer, sizeof(registerBuffer), "SP:{:04X} AF:{:04X} BC:{:04X} DE:{:04X} HL:{:04X}", item.m_stackPointer, item.m_registerAF, item.m_registerBC, item.m_registerDE, item.m_registerHL);
 
-		fmt::format_to(std::back_inserter(item.m_buffer), "{:s}   {:>8s}   {:20s} {:s}  {:s}{:s}{:s}{:s}", addressBuffer, opcodeBytesBuffer, opcodeBuffer, registerBuffer, (item.m_registerAF & 0x80) ? "Z" : "z", (item.m_registerAF & 0x40) ? "N" : "n", (item.m_registerAF & 0x20) ? "H" : "h", (item.m_registerAF & 0x10) ? "C" : "c");
+		fmt::format_to_n(item.m_buffer.data(), sizeof(item.m_buffer), "{:s}   {:>8s}   {:20s} {:s}  {:s}{:s}{:s}{:s}", addressBuffer, opcodeBytesBuffer, opcodeBuffer, registerBuffer, (item.m_registerAF & 0x80) ? "Z" : "z", (item.m_registerAF & 0x40) ? "N" : "n", (item.m_registerAF & 0x20) ? "H" : "h", (item.m_registerAF & 0x10) ? "C" : "c");
 
-		return item.m_buffer.c_str();
+		return item.m_buffer.data();
 	}
 	else
 	{

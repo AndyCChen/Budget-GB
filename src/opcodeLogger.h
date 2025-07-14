@@ -24,8 +24,8 @@ class OpcodeLogger
 		uint8_t                 m_opcodeLength  = 0;            // opcodes are 1-3 bytes long
 		std::optional<uint16_t> m_opcodeAddress = std::nullopt; // starting address of instruction
 		std::array<uint8_t, 3>  m_opcodeBytes   = {0, 0, 0};    // store an array of bytes representing it's opcode and any operands if any
-		std::string             m_opcodeFormat  = "";
-		std::optional<uint16_t> m_arg           = std::nullopt; // stores either a 1-2 immediate bytes of a opcode or a computed jump address for JR instructions
+		std::array<char, 64>    m_opcodeFormat;
+		std::optional<uint16_t> m_arg = std::nullopt; // stores either a 1-2 immediate bytes of a opcode or a computed jump address for JR instructions
 
 		uint16_t m_stackPointer = 0;
 		uint16_t m_registerAF   = 0;
@@ -33,14 +33,14 @@ class OpcodeLogger
 		uint16_t m_registerDE   = 0;
 		uint16_t m_registerHL   = 0;
 
-		std::string m_buffer = ""; // intermediate buffer to hold full string formated instruction log
+		std::array<char, 128> m_buffer; // intermediate buffer to hold full string formated instruction log
 
 		void clear()
 		{
 			m_opcodeAddress = std::nullopt;
 			m_arg           = std::nullopt;
 			m_opcodeLength  = 0;
-			m_opcodeFormat.clear();
+			m_opcodeFormat.fill(0);
 		}
 	};
 
