@@ -7,6 +7,7 @@
 #include "cartridge.h"
 #include "ppu.h"
 #include "utils/vec.h"
+#include "emulatorConstants.h"
 
 class Sm83; // forward declare Sm83
 class Bus
@@ -31,7 +32,7 @@ class Bus
 	static constexpr uint16_t IO_REGISTERS_END  = 0xFF80;
 	static constexpr uint16_t HRAM_END          = 0xFFFF;
 
-	Bus(Cartridge &cartridge, Sm83 &cpu, std::vector<Utils::array_u8Vec4> &lcdPixelBuffer);
+	Bus(Cartridge &cartridge, Sm83 &cpu, BudgetGbConstants::LcdColorBuffer &lcdColorBuffer);
 
 	void clearWram();
 

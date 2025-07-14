@@ -2,9 +2,10 @@
 #include "BudgetGB.h"
 #include "fmt/base.h"
 #include "sm83.h"
+#include "emulatorConstants.h"
 
-Bus::Bus(Cartridge &cartridge, Sm83 &cpu, std::vector<Utils::array_u8Vec4> &lcdPixelBuffer)
-	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(lcdPixelBuffer, m_cpu.m_interrupts.m_interruptFlags)
+Bus::Bus(Cartridge &cartridge, Sm83 &cpu, BudgetGbConstants::LcdColorBuffer &lcdColorBuffer)
+	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(lcdColorBuffer, m_cpu.m_interrupts.m_interruptFlags)
 {
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 	std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));
@@ -184,7 +185,7 @@ void Bus::tickM()
 void Bus::onUpdate()
 {
 	// number of ticks that should pass per 1/60 of a second
-	constexpr unsigned int TICKS_PER_FRAME = static_cast<unsigned int>(BudgetGB::CLOCK_RATE_T / 59.7275);
+	constexpr unsigned int TICKS_PER_FRAME = static_cast<unsigned int>(BudgetGbConstants::CLOCK_RATE_T / 59.7275);
 
 	while (m_tCyclePerFrame < TICKS_PER_FRAME)
 		m_cpu.instructionStep();

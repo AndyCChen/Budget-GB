@@ -20,14 +20,14 @@ static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *fil
 static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const *filelist, int filter);
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdPixelBuffer), m_cpu(m_bus), m_disassembler(m_bus)
+	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdColorBuffer), m_cpu(m_bus), m_disassembler(m_bus)
 {
-	m_lcdPixelBuffer.resize(LCD_WIDTH * LCD_HEIGHT);
-
 	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, static_cast<uint32_t>(m_config.windowScale)))
 	{
 		throw std::runtime_error("Failed to initialize window with renderer!");
 	}
+
+	m_guiContext.guiPalettes_activePalette = m_config.activePalette;
 
 	if (cartridgePath != "")
 	{
@@ -46,18 +46,6 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 	m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 	m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
-
-	unsigned char colorPallete[][3] = {
-		{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}
-	};
-
-	for (std::size_t i = 0; i < m_lcdPixelBuffer.size(); ++i)
-	{
-		m_lcdPixelBuffer[i][0] = colorPallete[3][0];
-		m_lcdPixelBuffer[i][1] = colorPallete[3][1];
-		m_lcdPixelBuffer[i][2] = colorPallete[3][2];
-		m_lcdPixelBuffer[i][3] = 255;
-	}
 }
 
 BudgetGB::~BudgetGB()
@@ -79,7 +67,8 @@ void BudgetGB::onUpdate(float deltaTime)
 	}
 
 	guiMain();
-	RendererGB::drawMainViewport(m_lcdPixelBuffer, m_renderContext, m_window);
+	RendererGB::setViewportPalette(m_renderContext, m_guiContext.guiPalettes_activePalette < 0 ? m_config.defaultPalette : m_config.palettes[m_guiContext.guiPalettes_activePalette]);
+	RendererGB::drawMainViewport(m_lcdColorBuffer, m_renderContext, m_window);
 
 	RendererGB::endFrame(m_window, m_renderContext);
 	RendererGB::newFrame(); // begin new frame at end of this game loop
@@ -178,7 +167,7 @@ void BudgetGB::resizeViewportStretched()
 	float widthRatio  = (float)resizedWidth / 10.0f;
 	float heightRatio = (float)resizedHeight / 9.0f;
 
-	Utils::struct_Vec2<uint32_t> viewportSize;
+	Utils::Vec2<uint32_t> viewportSize;
 
 	if (widthRatio < heightRatio)
 	{
@@ -202,16 +191,16 @@ void BudgetGB::resizeViewportFit()
 	int resizedWidth, resizedHeight;
 	SDL_GetWindowSize(m_window, &resizedWidth, &resizedHeight);
 
-	Utils::struct_Vec2<uint32_t> viewportSize;
+	Utils::Vec2<uint32_t> viewportSize;
 
 	if (resizedHeight < resizedWidth)
 	{
-		viewportSize.y = BudgetGB::LCD_HEIGHT * (resizedHeight / BudgetGB::LCD_HEIGHT);
+		viewportSize.y = BudgetGbConstants::LCD_HEIGHT * (resizedHeight / BudgetGbConstants::LCD_HEIGHT);
 		viewportSize.x = static_cast<uint32_t>(10 * (viewportSize.y / 9.0f));
 	}
 	else
 	{
-		viewportSize.x = BudgetGB::LCD_WIDTH * (resizedWidth / BudgetGB::LCD_WIDTH);
+		viewportSize.x = BudgetGbConstants::LCD_WIDTH * (resizedWidth / BudgetGbConstants::LCD_WIDTH);
 		viewportSize.y = static_cast<uint32_t>(9 * (viewportSize.x / 10.0f));
 	}
 
@@ -234,7 +223,7 @@ void BudgetGB::resizeWindowFixed(BudgetGbConfig::WindowScale scale)
 	m_config.windowScale = scale;
 	int scaleFactor      = static_cast<uint32_t>(m_config.windowScale);
 
-	SDL_SetWindowSize(m_window, scaleFactor * BudgetGB::LCD_WIDTH, scaleFactor * BudgetGB::LCD_HEIGHT);
+	SDL_SetWindowSize(m_window, scaleFactor * BudgetGbConstants::LCD_WIDTH, scaleFactor * BudgetGbConstants::LCD_HEIGHT);
 
 	SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
@@ -605,7 +594,7 @@ void BudgetGB::guiPalettes()
 		if (ImGui::Button("Add Palette"))
 		{
 			using namespace BudgetGbConfig;
-			m_config.palettes.insert(m_config.palettes.begin(), {"New Palette", DEFAULT_PALETTE[0], DEFAULT_PALETTE[1], DEFAULT_PALETTE[2], DEFAULT_PALETTE[3]});
+			m_config.palettes.insert(m_config.palettes.begin(), {"New Palette", DEFAULT_GB_PALETTE[0], DEFAULT_GB_PALETTE[1], DEFAULT_GB_PALETTE[2], DEFAULT_GB_PALETTE[3]});
 
 			if (m_guiContext.guiPalettes_activePalette != -1)
 				m_guiContext.guiPalettes_activePalette += 1;
@@ -623,19 +612,20 @@ void BudgetGB::guiPalettes()
 
 		ImGui::BeginChild("Palette List", ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_ResizeX);
 		{
+			ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_DisplayHex | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoInputs;
 
-			ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_DisplayHex | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoInputs;
+			// default palette
 
-			ImGui::ColorEdit3("Default C0", m_config.defaultPalette[0].data(), flags);
+			ImGui::ColorEdit3("Default C0", m_config.defaultPalette.color0.data(), flags);
 			ImGui::SameLine();
-			ImGui::ColorEdit3("Default C1", m_config.defaultPalette[1].data(), flags);
+			ImGui::ColorEdit3("Default C1", m_config.defaultPalette.color1.data(), flags);
 			ImGui::SameLine();
-			ImGui::ColorEdit3("Default C2", m_config.defaultPalette[2].data(), flags);
+			ImGui::ColorEdit3("Default C2", m_config.defaultPalette.color2.data(), flags);
 			ImGui::SameLine();
-			ImGui::ColorEdit3("Default C3", m_config.defaultPalette[3].data(), flags);
+			ImGui::ColorEdit3("Default C3", m_config.defaultPalette.color3.data(), flags);
 			ImGui::SameLine();
 
-			if (ImGui::Selectable("Default", m_guiContext.guiPalettes_activePalette == -1, ImGuiSelectableFlags_AllowDoubleClick))
+			if (ImGui::Selectable(m_config.defaultPalette.name.c_str(), m_guiContext.guiPalettes_activePalette == -1, ImGuiSelectableFlags_AllowDoubleClick))
 			{
 				m_guiContext.guiPalettes_selectedPalette = -1;
 				if (ImGui::IsMouseDoubleClicked(0))
@@ -643,6 +633,8 @@ void BudgetGB::guiPalettes()
 					m_guiContext.guiPalettes_activePalette = -1;
 				}
 			}
+
+			// rest of user palettes
 
 			for (int i = 0; i < m_config.palettes.size(); ++i)
 			{
@@ -683,6 +675,8 @@ void BudgetGB::guiPalettes()
 
 						if (payload_i == m_guiContext.guiPalettes_activePalette)
 							m_guiContext.guiPalettes_activePalette = i;
+						else if (i == m_guiContext.guiPalettes_activePalette)
+							m_guiContext.guiPalettes_activePalette = payload_i;
 
 						if (payload_i == m_guiContext.guiPalettes_selectedPalette)
 							m_guiContext.guiPalettes_selectedPalette = i;
@@ -765,14 +759,19 @@ void BudgetGB::guiPalettes()
 
 			if (m_guiContext.guiPalettes_selectedPalette == -1)
 			{
-				ImGui::Text("Default Palette");
-				ImGui::ColorEdit3("Default C0", m_config.defaultPalette[0].data(), flags);
-				ImGui::ColorEdit3("Default C1", m_config.defaultPalette[1].data(), flags);
-				ImGui::ColorEdit3("Default C2", m_config.defaultPalette[2].data(), flags);
-				ImGui::ColorEdit3("Default C3", m_config.defaultPalette[3].data(), flags);
+				ImGui::Text(m_config.defaultPalette.name.c_str());
+				ImGui::ColorEdit3("Default C0", m_config.defaultPalette.color0.data(), flags);
+				ImGui::ColorEdit3("Default C1", m_config.defaultPalette.color1.data(), flags);
+				ImGui::ColorEdit3("Default C2", m_config.defaultPalette.color2.data(), flags);
+				ImGui::ColorEdit3("Default C3", m_config.defaultPalette.color3.data(), flags);
 
 				if (ImGui::Button("Reset Defaults"))
-					m_config.defaultPalette = BudgetGbConfig::DEFAULT_PALETTE;
+				{
+					m_config.defaultPalette.color0 = BudgetGbConfig::DEFAULT_GB_PALETTE[0];
+					m_config.defaultPalette.color1 = BudgetGbConfig::DEFAULT_GB_PALETTE[1];
+					m_config.defaultPalette.color2 = BudgetGbConfig::DEFAULT_GB_PALETTE[2];
+					m_config.defaultPalette.color3 = BudgetGbConfig::DEFAULT_GB_PALETTE[3];
+				}
 			}
 			else
 			{

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "utils/vec.h"
+#include "emulatorConstants.h"
+#include "config.h"
+
 #include <SDL3/SDL.h>
 
 #include <cstdint>
@@ -22,7 +24,8 @@ bool initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, 
 
 void newFrame();
 void setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height);
-void drawMainViewport(const std::vector<Utils::array_u8Vec4> &pixelBuffer, RenderContext *renderContext, SDL_Window *window);
+void drawMainViewport(const BudgetGbConstants::LcdColorBuffer &pixelBuffer, RenderContext *renderContext, SDL_Window *window);
+void setViewportPalette(RenderContext *renderContext, const BudgetGbConfig::Palette &palette);
 void endFrame(SDL_Window *window, RenderContext *renderContext);
 
 /**

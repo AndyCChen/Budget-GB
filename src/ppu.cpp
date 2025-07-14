@@ -1,8 +1,8 @@
 #include "ppu.h"
 #include "sm83.h"
 
-PPU::PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags)
-	: m_lcdPixelBuffer(lcdPixelBuffer), m_interruptLine(interruptFlags)
+PPU::PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFlags)
+	: lcdColorBuffer(lcdColorBuffer), m_interruptLine(interruptFlags)
 {
 }
 
@@ -576,10 +576,7 @@ void PPU::pushPixelToLCD()
 	uint16_t lcdPixelIndex = (160 * (143 - r_lcdY)) + (m_bgFetcher.fetcherX - 8);
 	m_bgFetcher.fetcherX += 1;
 
-	m_lcdPixelBuffer[lcdPixelIndex][0] = m_colorPallete[outputColorIndex][0]; // r
-	m_lcdPixelBuffer[lcdPixelIndex][1] = m_colorPallete[outputColorIndex][1]; // g
-	m_lcdPixelBuffer[lcdPixelIndex][2] = m_colorPallete[outputColorIndex][2]; // b
-	m_lcdPixelBuffer[lcdPixelIndex][3] = 0xFF;                                // a
+	lcdColorBuffer[lcdPixelIndex] = outputColorIndex;
 
 	// enter H-blank once 160 pixels are drawn
 	if (m_bgFetcher.fetcherX == 160 + 8)

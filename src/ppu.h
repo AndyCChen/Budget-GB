@@ -2,6 +2,8 @@
 
 #include "utils/ppuArray.h"
 #include "utils/vec.h"
+#include "emulatorConstants.h"
+
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -277,7 +279,7 @@ class PPU
 	BackgroundFetcher m_bgFetcher;
 	BackgroundFifo    m_bgFifo;
 
-	std::vector<Utils::array_u8Vec4> &m_lcdPixelBuffer;
+	BudgetGbConstants::LcdColorBuffer &lcdColorBuffer;
 
 	// bits
 	// 0, 1: Holds ppu's current mode status
@@ -311,7 +313,7 @@ class PPU
 	void pushPixelToLCD();
 
   public:
-	PPU(std::vector<Utils::array_u8Vec4> &lcdPixelBuffer, uint8_t &interruptFlags);
+	PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFlags);
 
 	OamDmaController m_oamDmaController;
 

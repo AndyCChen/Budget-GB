@@ -4,8 +4,11 @@
 
 #include "BudgetGB.h"
 #include "renderer.h"
+#include "utils/vec.h"
 
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <d3d11.h>
@@ -27,6 +30,7 @@ struct GbMainViewport
 {
 	mwrl::ComPtr<ID3D11Buffer> m_vertexBuffer;
 	mwrl::ComPtr<ID3D11Buffer> m_indexBuffer;
+	mwrl::ComPtr<ID3D11Buffer> m_constantBuffer;
 
 	mwrl::ComPtr<ID3D11VertexShader> m_vertexShader;
 	mwrl::ComPtr<ID3D11PixelShader>  m_pixelShader;
@@ -36,8 +40,8 @@ struct GbMainViewport
 	mwrl::ComPtr<ID3D11ShaderResourceView> m_viewportShaderResourceView;
 	mwrl::ComPtr<ID3D11SamplerState>       m_textureSampler;
 
-	Utils::struct_Vec2<uint32_t> m_viewportSize;
-	Utils::struct_Vec2<uint32_t> m_viewportXY;
+	Utils::Vec2<uint32_t> m_viewportSize;
+	Utils::Vec2<uint32_t> m_viewportXY;
 
 	/**
 	 * @brief Set up vertex buffers and shaders for rendering the main viewport
@@ -61,17 +65,22 @@ struct RendererGB::RenderContext
 	RenderContext(HWND hwnd);
 };
 
+struct Vertex
+{
+	float position[3];
+	float textureCoord[2];
+};
+
 bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale)
 {
-
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 	{
 		SDL_LogError(0, "Failed to init SDL video! SDL error: %s", SDL_GetError());
 		return false;
 	}
 
-	window = SDL_CreateWindow("Budget Gameboy", BudgetGB::LCD_WIDTH * windowScale, BudgetGB::LCD_HEIGHT * windowScale, 0);
-	SDL_SetWindowMinimumSize(window, BudgetGB::LCD_WIDTH, BudgetGB::LCD_HEIGHT);
+	window = SDL_CreateWindow("Budget Gameboy", BudgetGbConstants::LCD_WIDTH * windowScale, BudgetGbConstants::LCD_HEIGHT * windowScale, 0);
+	SDL_SetWindowMinimumSize(window, BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT);
 
 	if (!window)
 	{
@@ -120,7 +129,7 @@ void RendererGB::newFrame()
 
 void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
 {
-	renderContext->m_deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	// renderContext->m_deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
 	renderContext->m_renderTargetView.Reset();
 
 	HRESULT result = renderContext->m_swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
@@ -141,26 +150,40 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 	mainViewport.m_viewportSize.y = height;
 }
 
-void RendererGB::drawMainViewport(const std::vector<Utils::array_u8Vec4> &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
+void RendererGB::setViewportPalette(RenderContext *renderContext, const BudgetGbConfig::Palette &palette)
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource{};
+	renderContext->m_deviceContext->Map(renderContext->m_mainViewport.m_constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+	const std::array<std::array<float, 4>, 4> newPalette{{
+		{palette.color0[0], palette.color0[1], palette.color0[2], 1.0f},
+		{palette.color1[0], palette.color1[1], palette.color1[2], 1.0f},
+		{palette.color2[0], palette.color2[1], palette.color2[2], 1.0f},
+		{palette.color3[0], palette.color3[1], palette.color3[2], 1.0f},
+	}};
+
+	std::memcpy(mappedResource.pData, newPalette[0].data(), sizeof(newPalette));
+	renderContext->m_deviceContext->Unmap(renderContext->m_mainViewport.m_constantBuffer.Get(), 0);
+}
+
+void RendererGB::drawMainViewport(const BudgetGbConstants::LcdColorBuffer &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
 {
 	(void)window;
 	GbMainViewport &mainViewport = renderContext->m_mainViewport;
 
-	/*renderContext->m_deviceContext->UpdateSubresource(
-	    mainViewport.m_viewportTexture.Get(),
-	    0,
-	    nullptr,
-	    pixelBuffer.data(),
-	    BudgetGB::LCD_WIDTH * sizeof(Utils::array_u8Vec4),
-	    pixelBuffer.size() * sizeof(Utils::array_u8Vec4)
-	);*/
-
 	D3D11_MAPPED_SUBRESOURCE mappedResource{};
 	renderContext->m_deviceContext->Map(mainViewport.m_viewportTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	std::memcpy(mappedResource.pData, pixelBuffer.data(), pixelBuffer.size() * sizeof(Utils::array_u8Vec4));
+
+	// a row of texture bytes is aligned to 256 bytes so we can't do a direct memcpy
+	for (uint8_t row = 0; row < BudgetGbConstants::LCD_HEIGHT; ++row)
+	{
+		for (uint8_t col = 0; col < BudgetGbConstants::LCD_WIDTH; ++col)
+			static_cast<uint8_t *>(mappedResource.pData)[row * mappedResource.RowPitch + col] = pixelBuffer[row * BudgetGbConstants::LCD_WIDTH + col];
+	}
+
 	renderContext->m_deviceContext->Unmap(mainViewport.m_viewportTexture.Get(), 0);
 
-	constexpr float colors[] = {0 / 255.0f, 0 / 255.0f, 0 / 255.0f, 1.0f};
+	constexpr float colors[4]{};
 	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_renderTargetView.Get(), colors);
 
 	D3D11_VIEWPORT vp{};
@@ -173,21 +196,23 @@ void RendererGB::drawMainViewport(const std::vector<Utils::array_u8Vec4> &pixelB
 	renderContext->m_deviceContext->RSSetViewports(1, &vp);
 
 	UINT vertexOffset = 0;
-	UINT vertexStride = 8 * sizeof(float);
+	UINT vertexStride = sizeof(Vertex);
 	renderContext->m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	renderContext->m_deviceContext->IASetInputLayout(mainViewport.m_inputLayout.Get());
 	renderContext->m_deviceContext->IASetVertexBuffers(0, 1, mainViewport.m_vertexBuffer.GetAddressOf(), &vertexStride, &vertexOffset);
 	renderContext->m_deviceContext->IASetIndexBuffer(mainViewport.m_indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 	renderContext->m_deviceContext->VSSetShader(mainViewport.m_vertexShader.Get(), nullptr, 0);
+	renderContext->m_deviceContext->VSSetConstantBuffers(0, 1, mainViewport.m_constantBuffer.GetAddressOf());
 
 	renderContext->m_deviceContext->PSSetShader(mainViewport.m_pixelShader.Get(), nullptr, 0);
 	renderContext->m_deviceContext->PSSetShaderResources(0, 1, mainViewport.m_viewportShaderResourceView.GetAddressOf());
-	renderContext->m_deviceContext->PSSetSamplers(0, 1, mainViewport.m_textureSampler.GetAddressOf());
+	renderContext->m_deviceContext->PSSetConstantBuffers(0, 1, mainViewport.m_constantBuffer.GetAddressOf());
 
 	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_renderTargetView.GetAddressOf(), nullptr);
 	renderContext->m_deviceContext->DrawIndexed(6, 0, 0);
 }
+
 void RendererGB::endFrame(SDL_Window *window, RenderContext *renderContext)
 {
 	(void)window;
@@ -273,12 +298,12 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	HRESULT result;
 
 	// clang-format off
-	float vertices[] = 
+	Vertex vertices[] = 
 	{
-		-1.0f, -1.0f, 0.0f,  8/255.0f,    24/255.0f,  32/255.0f,   0.0f, 0.0f,
-		-1.0f,  1.0f, 0.0f,  224/255.0f,  248/255.0f, 208/255.0f,  0.0f, 1.0f,
-		 1.0f,  1.0f, 0.0f,  136/ 255.0f, 192/255.0f, 122/255.0f,  1.0f, 1.0f,
-		 1.0f, -1.0f, 0.0f,  52/255.0f,   104/255.0f, 86/255.0f,   1.0f, 0.0f,
+		{ {-1.0f, -1.0f, 0.0f},  {0.0f,   0.0f} },
+		{ {-1.0f,  1.0f, 0.0f},  {0.0f,   144.0f} },
+		{ { 1.0f,  1.0f, 0.0f},  {160.0f, 144.0f} },
+		{ { 1.0f, -1.0f, 0.0f},  {160.0f, 0.0f} },
 	};
 
 	unsigned int indices[] = 
@@ -294,7 +319,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	vertexBufferDesc.ByteWidth           = sizeof(vertices);
 	vertexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
 	vertexBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
-	vertexBufferDesc.StructureByteStride = 8 * sizeof(vertices[0]);
+	vertexBufferDesc.StructureByteStride = sizeof(Vertex);
 
 	D3D11_SUBRESOURCE_DATA subResourceData{};
 	subResourceData.pSysMem = vertices;
@@ -314,6 +339,24 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	subResourceData.pSysMem = indices;
 
 	result = device->CreateBuffer(&indexBufferDesc, &subResourceData, &m_indexBuffer);
+	CHECK_HR(result);
+
+	// create constant buffer
+
+	std::array<float, (BudgetGbConfig::DEFAULT_GB_PALETTE[0].size() + 1) * 4> cbufferInit{};
+	cbufferInit.fill(1.0f);
+
+	D3D11_BUFFER_DESC constantBufferDesc{};
+	constantBufferDesc.ByteWidth           = sizeof(cbufferInit); // width must be in 16 byte aligned
+	constantBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
+	constantBufferDesc.BindFlags           = D3D11_BIND_CONSTANT_BUFFER;
+	constantBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+	constantBufferDesc.StructureByteStride = 0;
+
+	SDL_zero(subResourceData);
+	subResourceData.pSysMem = cbufferInit.data();
+
+	result = device->CreateBuffer(&constantBufferDesc, &subResourceData, &m_constantBuffer);
 	CHECK_HR(result);
 
 	// compile, create shaders
@@ -374,7 +417,6 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 
 	D3D11_INPUT_ELEMENT_DESC inputElemDesc[] = {
 		{"Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"Color", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"TextureCoord", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
@@ -384,28 +426,25 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	// set up texture
 
 	D3D11_TEXTURE2D_DESC textureDesc{};
-	textureDesc.Width            = BudgetGB::LCD_WIDTH;
-	textureDesc.Height           = BudgetGB::LCD_HEIGHT;
+	textureDesc.Width            = BudgetGbConstants::LCD_WIDTH;
+	textureDesc.Height           = BudgetGbConstants::LCD_HEIGHT;
 	textureDesc.MipLevels        = 1;
 	textureDesc.ArraySize        = 1;
-	textureDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.Format           = DXGI_FORMAT_R8_UINT;
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.Usage            = D3D11_USAGE_DYNAMIC;
 	textureDesc.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
 	textureDesc.CPUAccessFlags   = D3D11_CPU_ACCESS_WRITE;
 	textureDesc.MiscFlags        = 0;
 
-	unsigned char colorPallete[][3] = {
-		{8, 24, 32}, {52, 104, 86}, {136, 192, 112}, {224, 248, 208}, {255, 255, 255}
-	};
-
-	std::vector<Utils::array_u8Vec4> pixels(BudgetGB::LCD_WIDTH * BudgetGB::LCD_HEIGHT);
+	std::vector<uint8_t> pixels(BudgetGbConstants::LCD_WIDTH * BudgetGbConstants::LCD_HEIGHT);
+	std::fill(pixels.begin(), pixels.end(), static_cast<uint8_t>(0));
 
 	SDL_zero(subResourceData);
 	subResourceData.pSysMem     = pixels.data();
-	subResourceData.SysMemPitch = BudgetGB::LCD_WIDTH * sizeof(Utils::array_u8Vec4);
+	subResourceData.SysMemPitch = BudgetGbConstants::LCD_WIDTH;
 
-	result = device->CreateTexture2D(&textureDesc, nullptr, &m_viewportTexture);
+	result = device->CreateTexture2D(&textureDesc, &subResourceData, &m_viewportTexture);
 	CHECK_HR(result);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResViewDesc{};
@@ -415,15 +454,6 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	shaderResViewDesc.Texture2D.MipLevels       = 1;
 
 	result = device->CreateShaderResourceView(m_viewportTexture.Get(), &shaderResViewDesc, &m_viewportShaderResourceView);
-	CHECK_HR(result);
-
-	D3D11_SAMPLER_DESC samplerDesc{};
-	samplerDesc.Filter   = D3D11_FILTER_MIN_MAG_MIP_POINT;
-	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-
-	result = device->CreateSamplerState(&samplerDesc, &m_textureSampler);
 	CHECK_HR(result);
 
 	// set rasterizer state

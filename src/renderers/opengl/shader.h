@@ -19,8 +19,14 @@ class Shader
 		glUseProgram(m_shaderProgramID);
 	}
 
+	GLuint ID() const
+	{
+		return m_shaderProgramID;
+	}
+
   private:
 	GLuint m_shaderProgramID;
 
 	bool compileShader(GLuint shaderID, const std::string &pathToShader);
+
 };

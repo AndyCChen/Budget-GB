@@ -10,6 +10,7 @@
 #include "cartridge.h"
 #include "config.h"
 #include "disassembler.h"
+#include "emulatorConstants.h"
 #include "imgui.h"
 #include "renderer.h"
 #include "sm83.h"
@@ -18,11 +19,6 @@
 class BudgetGB
 {
   public:
-	static constexpr uint32_t LCD_WIDTH            = 160;
-	static constexpr uint32_t LCD_HEIGHT           = 144;
-	static constexpr uint32_t INITIAL_WINDOW_SCALE = 4;       // value should be 1-6 only!
-	static constexpr uint32_t CLOCK_RATE_T         = 4194304; // gameboy clock frequency
-
 	/**
 	 * @brief Initialize gameboy instance with a optional path to a cartridge.
 	 * @param cartridgePath
@@ -80,9 +76,9 @@ class BudgetGB
 
 	float m_accumulatedDeltaTime = 0.0f;
 
-	SDL_Window                      *m_window;
-	RendererGB::RenderContext       *m_renderContext;
-	std::vector<Utils::array_u8Vec4> m_lcdPixelBuffer;
+	SDL_Window                       *m_window;
+	RendererGB::RenderContext        *m_renderContext;
+	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer;
 
 	/*std::random_device              m_rd;
 	std::mt19937                    m_gen;
