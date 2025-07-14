@@ -1,7 +1,29 @@
 #include "config.h"
+#include "fmt/core.h"
 #include "nlohmann/json.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 #include <fstream>
+
+static std::string rgbFloatToHex(std::array<float, 3> colors)
+{
+	uint8_t r = static_cast<uint8_t>(std::round(colors[0] * 255.0f));
+	uint8_t g = static_cast<uint8_t>(std::round(colors[1] * 255.0f));
+	uint8_t b = static_cast<uint8_t>(std::round(colors[2] * 255.0f));
+
+	return fmt::format("#{:02X}{:02X}{:02X}", r, g, b);
+}
+
+static std::array<float, 3> HexToRgbFloat(std::string &&hex)
+{
+	hex.erase(std::remove_if(hex.begin(), hex.end(), [](unsigned char c) { return c == '#' || std::isspace(c); }), hex.end());
+
+	unsigned int r = 0, g = 0, b = 0;
+	int          w = std::sscanf(hex.c_str(), "%02X%02X%02X", &r, &g, &b);
+	return std::array<float, 3>{r / 255.0f, g / 255.0f, b / 255.0f};
+}
 
 void BudgetGbConfig::Config::saveConfig()
 {
@@ -12,6 +34,19 @@ void BudgetGbConfig::Config::saveConfig()
 	config["recent roms"]           = recentRoms;
 	config["window size"]           = windowScale;
 	config["fullscreen mode"]       = fullscreenMode;
+
+	for (const auto &item : palettes)
+	{
+		config["palettes"].push_back({
+			{"name", item.name},
+			{"color0", rgbFloatToHex(item.color0)},
+			{"color1", rgbFloatToHex(item.color1)},
+			{"color2", rgbFloatToHex(item.color2)},
+			{"color3", rgbFloatToHex(item.color3)},
+		});
+	}
+
+	config["active palette"] = activePalette;
 
 	std::ofstream configFile(CONFIG_FILE_NAME);
 	if (configFile.is_open())
@@ -70,6 +105,34 @@ void BudgetGbConfig::Config::loadConfig()
 			break;
 		default:
 			break;
+		}
+
+		for (std::size_t i = 0; i < config["palettes"].size() && i < MAX_PALETTES; ++i)
+		{
+			auto &item = config["palettes"][i];
+
+			std::array<float, 3> color0{};
+			std::array<float, 3> color1{};
+			std::array<float, 3> color2{};
+			std::array<float, 3> color3{};
+
+			// clang-format off
+			palettes.emplace_back(
+				Palette {
+					std::string(item["name"]), 
+					HexToRgbFloat(std::string(item["color0"])), 
+					HexToRgbFloat(std::string(item["color1"])), 
+					HexToRgbFloat(std::string(item["color2"])), 
+					HexToRgbFloat(std::string(item["color3"]))
+				}
+			);
+			// clang-format on
+		}
+
+		int selectedPalette = config["active palette"];
+		if (selectedPalette >= 0 && selectedPalette < palettes.size())
+		{
+			activePalette = selectedPalette;
 		}
 
 		configFile.close();

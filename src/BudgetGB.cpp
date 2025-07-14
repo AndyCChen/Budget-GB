@@ -27,7 +27,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 		throw std::runtime_error("Failed to initialize window with renderer!");
 	}
 
-	m_guiContext.guiPalettes_activePalette = m_config.activePalette;
+	m_guiContext.guiPalettes_activePalette = m_guiContext.guiPalettes_selectedPalette = m_config.activePalette;
 
 	if (cartridgePath != "")
 	{
@@ -50,6 +50,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 BudgetGB::~BudgetGB()
 {
+	m_config.activePalette = m_guiContext.guiPalettes_activePalette;
 	RendererGB::freeWindowWithRenderer(m_window, m_renderContext);
 }
 
@@ -625,7 +626,7 @@ void BudgetGB::guiPalettes()
 			ImGui::ColorEdit3("Default C3", m_config.defaultPalette.color3.data(), flags);
 			ImGui::SameLine();
 
-			if (ImGui::Selectable(m_config.defaultPalette.name.c_str(), m_guiContext.guiPalettes_activePalette == -1, ImGuiSelectableFlags_AllowDoubleClick))
+			if (ImGui::Selectable(m_config.defaultPalette.name.c_str(), m_guiContext.guiPalettes_activePalette < 0, ImGuiSelectableFlags_AllowDoubleClick))
 			{
 				m_guiContext.guiPalettes_selectedPalette = -1;
 				if (ImGui::IsMouseDoubleClicked(0))
@@ -757,7 +758,7 @@ void BudgetGB::guiPalettes()
 		{
 			ImGuiColorEditFlags flags = ImGuiColorEditFlags_DisplayHex;
 
-			if (m_guiContext.guiPalettes_selectedPalette == -1)
+			if (m_guiContext.guiPalettes_selectedPalette < 0)
 			{
 				ImGui::Text(m_config.defaultPalette.name.c_str());
 				ImGui::ColorEdit3("Default C0", m_config.defaultPalette.color0.data(), flags);

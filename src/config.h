@@ -5,12 +5,14 @@
 #include <string>
 #include <vector>
 
+static constexpr int DEFAULT_ACTIVE_PALETTE = -1;
+
 namespace BudgetGbConfig
 {
 
 static constexpr const char *CONFIG_FILE_NAME = "config.json";
 static constexpr uint32_t    MAX_RECENT_ROMS  = 10;
-static constexpr uint32_t    MAX_PALETTES     = 5;
+static constexpr uint32_t    MAX_PALETTES     = 10;
 
 static constexpr std::array<std::array<float, 3>, 4> DEFAULT_GB_PALETTE = {{
 	{232.0f / 255.0f, 252.0f / 255.0f, 204.0f / 255.0f},
@@ -50,11 +52,11 @@ struct Config
 	{
 		loadConfig();
 
-		palettes.push_back({"Budget Palette 1", {0.914f, 0.937f, 0.925f}, {0.627f, 0.627f, 0.545f}, {0.333f, 0.333f, 0.408f}, {0.129f, 0.118f, 0.125f}});
-		palettes.push_back({"Budget Palette 1", {0.2f, 0.1f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.7f, 0.6f}, {0.2f, 0.5f, 0.6f}});
-		palettes.push_back({"Budget Palette 3", {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}});
-		palettes.push_back({"Budget Palette 4", {0.2f, 0.5f, 0.6f}, {0.2f, 0.9f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}});
-		palettes.push_back({"Budget Palette 5", {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.5f, 0.5f, 0.6f}});
+		//palettes.push_back({"Budget Palette 1", {0.914f, 0.937f, 0.925f}, {0.627f, 0.627f, 0.545f}, {0.333f, 0.333f, 0.408f}, {0.129f, 0.118f, 0.125f}});
+		//palettes.push_back({"Budget Palette 1", {0.2f, 0.1f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.7f, 0.6f}, {0.2f, 0.5f, 0.6f}});
+		//palettes.push_back({"Budget Palette 3", {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}});
+		//palettes.push_back({"Budget Palette 4", {0.2f, 0.5f, 0.6f}, {0.2f, 0.9f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}});
+		//palettes.push_back({"Budget Palette 5", {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.2f, 0.5f, 0.6f}, {0.5f, 0.5f, 0.6f}});
 
 		defaultPalette.name   = "Default";
 		defaultPalette.color0 = DEFAULT_GB_PALETTE[0];
@@ -75,7 +77,7 @@ struct Config
 	FullscreenMode           fullscreenMode = FullscreenMode::STRETCHED;
 	std::vector<Palette>     palettes;
 	Palette                  defaultPalette;
-	int                      activePalette = -1;
+	int                      activePalette = DEFAULT_ACTIVE_PALETTE;
 
 	void loadConfig();
 	void saveConfig();
