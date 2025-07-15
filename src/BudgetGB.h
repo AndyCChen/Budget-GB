@@ -78,7 +78,7 @@ class BudgetGB
 
 	SDL_Window                       *m_window;
 	RendererGB::RenderContext        *m_renderContext;
-	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer;
+	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer{};
 
 	/*std::random_device              m_rd;
 	std::mt19937                    m_gen;
