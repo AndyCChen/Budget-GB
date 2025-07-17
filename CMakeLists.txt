@@ -92,6 +92,14 @@ set(SOURCE_FILES
 	src/joypad.h
 	src/config.cpp
 	src/config.h
+	src/emulatorConstants.h
+
+	src/mappers/mapper.cpp
+	src/mappers/mapper.h
+	src/mappers/noMBC.cpp
+	src/mappers/noMBC.h
+	src/mappers/MBC1.cpp
+	src/mappers/MBC1.h
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)

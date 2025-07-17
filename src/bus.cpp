@@ -39,7 +39,7 @@ uint8_t Bus::busReadRaw(uint16_t position)
 	}
 	else if (position < EXTERNAL_RAM_END)
 	{
-		return 0;
+		return m_cartridge.cartridgeRead(position);
 	}
 	else if (position < ECHO_RAM_END)
 	{
@@ -93,7 +93,7 @@ uint8_t Bus::cpuRead(uint16_t position)
 	}
 	else if (position < EXTERNAL_RAM_END)
 	{
-		out = 0;
+		out = m_cartridge.cartridgeRead(position);
 	}
 	else if (position < ECHO_RAM_END)
 	{
@@ -129,6 +129,7 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 {
 	if (position < CARTRIDGE_ROM_END)
 	{
+		m_cartridge.cartridgeWrite(position, data);
 	}
 	else if (position < VRAM_END)
 	{
@@ -136,6 +137,7 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	}
 	else if (position < EXTERNAL_RAM_END)
 	{
+		m_cartridge.cartridgeWrite(position, data);
 	}
 	else if (position < ECHO_RAM_END)
 	{
@@ -249,7 +251,7 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		break;
 
 	case IORegisters::BOOT_ROM_ENABLE:
-		m_cpu.m_bootRomDisable = data;
+		m_cpu.m_bootRomDisable |= data;
 		break;
 
 	case IORegisters::LCD_SCX:

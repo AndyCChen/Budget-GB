@@ -1,10 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "config.h"
+#include "mappers/mapper.h"
 
 class Cartridge
 {
@@ -14,15 +16,37 @@ class Cartridge
 		m_cartridgeLoaded = false;
 	}
 
-	bool    loadCartridgeFromPath(const std::string &path, std::vector<std::string> &recentRoms);
-	uint8_t cartridgeRead(uint16_t position);
-	bool    isLoaded() const
+	bool loadCartridgeFromPath(const std::string &path, std::vector<std::string> &recentRoms);
+
+	bool isLoaded() const
 	{
 		return m_cartridgeLoaded;
 	}
 
+	uint8_t cartridgeRead(uint16_t position)
+	{
+		return m_mapper->read(position);
+	}
+
+	void cartridgeWrite(uint16_t position, uint8_t data)
+	{
+		m_mapper->write(position, data);
+	}
+
+	// Retrieves cartridge info that is valid assuming the cartridge is loaded.
+	const Mapper::CartInfo& getCartInfo() const
+	{
+		return m_mapper->m_cartInfo;
+	}
+
+	const char *getCartridgeErrorMsg()
+	{
+		return m_errorMsg.c_str();
+	}
+
   private:
-	std::vector<uint8_t> m_cartridgeRom;
-	std::vector<uint8_t> m_externalRam;
-	bool                 m_cartridgeLoaded;
+	std::unique_ptr<Mapper::IMapper> m_mapper;
+
+	std::string m_errorMsg;
+	bool        m_cartridgeLoaded;
 };
