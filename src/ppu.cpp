@@ -162,14 +162,18 @@ void PPU::tick()
 			m_pixelRenderState = PixelRenderState::PREFETCH_NAMETABLE_1;
 			break;
 
-		case PixelRenderState::PREFETCH_NAMETABLE_1:
-
+		case PixelRenderState::PREFETCH_NAMETABLE_1: {
 			if (!spritePresentCheck())
 				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
 
+			uint8_t temp         = m_bgFetcher.fetcherX;
+			m_bgFetcher.fetcherX = 0;
 			fetchNametable();
+			m_bgFetcher.fetcherX = temp;
+
 			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_LO_0;
 			break;
+		}
 
 		case PixelRenderState::PREFETCH_TILE_LO_0:
 
