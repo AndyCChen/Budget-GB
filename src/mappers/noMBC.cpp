@@ -20,6 +20,5 @@ uint8_t NoMBC::read(uint16_t position)
 
 void NoMBC::write(uint16_t position, uint8_t data)
 {
-	if (position < m_rom.size())
-		m_rom[position] = data;
+	return;	
 }
