@@ -3,18 +3,19 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <algorithm>
 
 namespace Utils
 {
 
-template <typename T, uint8_t n>
+template <typename T, uint32_t n>
 class PPUArray
 {
   private:
-	std::array<T, n> m_array;
+	std::array<T, n> m_array{};
 
-	uint8_t m_head = 0;
-	uint8_t m_tail = 0;
+	uint32_t m_head = 0;
+	uint32_t m_tail = 0;
 
   public:
 	// Push item to end of array, only n pushes are allowed before needing to call clear()
@@ -25,7 +26,7 @@ class PPUArray
 		m_array[m_tail++] = value;
 	}
 
-	// remove item from array head
+	// remove item from array head by simply incrementing the head, no shifting
 	void pop()
 	{
 		assert((m_tail != 0) && "Popping from empty array!");
@@ -51,13 +52,13 @@ class PPUArray
 	}
 
 	// return max capacity of array
-	constexpr uint8_t size() const
+	constexpr std::size_t size() const
 	{
-		return static_cast<uint8_t>(m_array.size());
+		return m_array.size();
 	}
 
 	// return number of items currenty in array
-	uint8_t length() const
+	uint32_t length() const
 	{
 		return m_tail - m_head;
 	}
@@ -72,9 +73,19 @@ class PPUArray
 		return m_array[index];
 	}
 
-	void fill(const T& value)
+	void fill(const T &value)
 	{
 		m_array.fill(value);
+	}
+
+	// removes items in range of head and tail by shifting items towards head. Tail is decremented afterwards
+	// if the size changed
+	template <typename Predicate>
+	void remove(Predicate pr)
+	{
+		auto newEnd = std::remove_if(m_array.begin() + m_head, m_array.begin() + m_tail, pr);
+		auto dist = std::distance(m_array.begin() + m_head, newEnd);
+		m_tail -= static_cast<uint32_t>(length() - dist);
 	}
 };
 

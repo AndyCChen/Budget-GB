@@ -85,35 +85,21 @@ void PPU::tick()
 			m_statInterruptSources |= 0x4;
 		}
 
-		/*switch (m_oamScanState)
-		{
-		case OamScanState::CYCLE_0:
-		    m_oamScanState = OamScanState::CYCLE_1;
-		    break;
-
-		case OamScanState::CYCLE_1:
-		    m_oamScanState = OamScanState::CYCLE_0;
-		    break;
-		}*/
-
 		if (m_scanlineDotCounter & 1)
 		{
 			if (m_spriteScanner.secondaryOAM.length() < m_spriteScanner.secondaryOAM.size())
 			{
-				uint8_t yPos = m_oamRam[m_spriteScanner.oamScanIndex].yPosition;
+				uint8_t yPos = m_oamRam[m_scanlineDotCounter >> 1].yPosition;
 
 				if ((r_lcdY + 16 >= yPos) && (r_lcdY + 16 < yPos + 8))
-					m_spriteScanner.secondaryOAM.push(m_spriteScanner.oamScanIndex);
+					m_spriteScanner.secondaryOAM.push(static_cast<uint8_t>(m_scanlineDotCounter >> 1));
 			}
-
-			++m_spriteScanner.oamScanIndex;
 		}
 
 		if (m_scanlineDotCounter == MODE_2_DURATION)
 		{
-			m_spriteScanner.oamScanIndex = 0;
-			m_ppuMode                    = Mode::MODE_3;
-			m_pixelRenderState           = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
+			m_ppuMode          = Mode::MODE_3;
+			m_pixelRenderState = PixelRenderState::B01_FETCH;
 		}
 
 		break;
@@ -125,293 +111,71 @@ void PPU::tick()
 
 		switch (m_pixelRenderState)
 		{
+		// 6 cycle fetch to fill shift registers
+		case PixelRenderState::B01_FETCH:
 
-			// ----------------------- 6 cycle dummy fetch --------------------
+			bgFetchStep();
 
-		case PixelRenderState::DUMMY_FETCH_NAMETABLE_0:
-			m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_1;
+			if (m_bgFetcher.fetchComplete)
+			{
+				loadBgFifo();
+				m_pixelRenderState = PixelRenderState::FIRST_B01S;
+			}
+
 			break;
 
-		case PixelRenderState::DUMMY_FETCH_NAMETABLE_1:
-			m_pixelRenderState = PixelRenderState::DUMMY_FETCH_TILE_LO_0;
-			break;
+		case PixelRenderState::FIRST_B01S:
 
-		case PixelRenderState::DUMMY_FETCH_TILE_LO_0:
-			m_pixelRenderState = PixelRenderState::DUMMY_FETCH_TILE_LO_1;
-			break;
+			bgFetchStep();
 
-		case PixelRenderState::DUMMY_FETCH_TILE_LO_1:
-			m_pixelRenderState = PixelRenderState::DUMMY_FETCH_TILE_HI_0;
-			break;
-
-		case PixelRenderState::DUMMY_FETCH_TILE_HI_0:
-			m_pixelRenderState = PixelRenderState::DUMMY_FETCH_TILE_HI_1;
-			break;
-
-		case PixelRenderState::DUMMY_FETCH_TILE_HI_1:
-			m_pixelRenderState = PixelRenderState::PREFETCH_NAMETABLE_0;
-			break;
-
-			// ------------------ 8 cycle prefetch ---------------------------
-
-		case PixelRenderState::PREFETCH_NAMETABLE_0:
-
-			if (!spritePresentCheck())
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
-
-			m_pixelRenderState = PixelRenderState::PREFETCH_NAMETABLE_1;
-			break;
-
-		case PixelRenderState::PREFETCH_NAMETABLE_1: {
-			if (!spritePresentCheck())
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
-
-			uint8_t temp         = m_bgFetcher.fetcherX;
-			m_bgFetcher.fetcherX = 0;
-			fetchNametable();
-			m_bgFetcher.fetcherX = temp;
-
-			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_LO_0;
-			break;
-		}
-
-		case PixelRenderState::PREFETCH_TILE_LO_0:
-
-			if (!spritePresentCheck())
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
-
-			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_LO_1;
-			break;
-
-		case PixelRenderState::PREFETCH_TILE_LO_1:
-
-			if (!spritePresentCheck())
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
-
-			fetchTileLo();
-			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_HI_0;
-			break;
-
-		case PixelRenderState::PREFETCH_TILE_HI_0:
-
-			if (!spritePresentCheck())
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
-
-			m_pixelRenderState = PixelRenderState::PREFETCH_TILE_HI_1;
-			break;
-
-		case PixelRenderState::PREFETCH_TILE_HI_1:
-
-			fetchTileHi();
-			if (!spritePresentCheck())
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX++);
-			else
-				processSpriteFetching();
-
-			m_pixelRenderState = PixelRenderState::PREFETCH_PUSH_FIFO;
-			break;
-
-		case PixelRenderState::PREFETCH_PUSH_FIFO:
-
+			// sprite fetch pending needs to be handled
 			if (spritePresentCheck())
 			{
-				if (!processSpriteFetching())
-					m_pixelRenderState = PixelRenderState::PREFETCH_EXIT_SPRITE_FETCH;
+				if (m_bgFetcher.fetchComplete)
+					processSpriteFetching();
 			}
+			// halt clocking fifos if a sprite fetch is pending
 			else
 			{
-				m_spriteFifo.clockFifo(m_bgFetcher.fetcherX);
-				if ((m_bgFetcher.fetcherX++ & 0x7) == 7)
+				if (m_bgFifo.shiftCounter >= (r_scrollX & 7))
+					++m_pixelX;
+
+				m_bgFifo.clockFifo();
+				m_spriteFifo.clockFifo(m_pixelX);
+
+				if (m_bgFifo.isEmpty())
 				{
-					m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
-					m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
-					m_pixelRenderState            = PixelRenderState::SHIFT_PIXELS_NAMETABLE_0;
+					loadBgFifo();
+					m_pixelRenderState = PixelRenderState::B01S;
 				}
 			}
 
 			break;
 
-		case PixelRenderState::PREFETCH_EXIT_SPRITE_FETCH:
+		case PixelRenderState::B01S:
 
-			m_spriteFifo.clockFifo(m_bgFetcher.fetcherX);
-			if ((m_bgFetcher.fetcherX++ & 0x7) == 7)
-			{
-				m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
-				m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
-				m_pixelRenderState            = PixelRenderState::SHIFT_PIXELS_NAMETABLE_0;
-			}
-			else
-				m_pixelRenderState = PixelRenderState::PREFETCH_PUSH_FIFO;
-
-			break;
-
-			// ------- shift out any offscreen pixels on first leftmost tile ----------
-
-		case PixelRenderState::SHIFT_PIXELS_NAMETABLE_0:
-
-			if ((r_scrollX & 7) == 0)
-			{
-				m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_0;
-				goto EXIT_PIXEL_SHIFT;
-			}
-			else if ((r_scrollX & 7) == 1)
-				m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_1;
-			else
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_NAMETABLE_1;
-
-			m_bgFifo.shiftFifo();
-			break;
-
-		case PixelRenderState::SHIFT_PIXELS_NAMETABLE_1:
-			m_bgFifo.shiftFifo();
-			fetchNametable();
-
-			if ((r_scrollX & 7) == 2)
-				m_pixelRenderState = PixelRenderState::B01S_TILE_LO_0;
-			else
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_0;
-
-			break;
-
-		case PixelRenderState::SHIFT_PIXELS_TILE_LO_0:
-			m_bgFifo.shiftFifo();
-
-			if ((r_scrollX & 7) == 3)
-				m_pixelRenderState = PixelRenderState::B01S_TILE_LO_1;
-			else
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_LO_1;
-
-			break;
-
-		case PixelRenderState::SHIFT_PIXELS_TILE_LO_1:
-			m_bgFifo.shiftFifo();
-			fetchTileLo();
-
-			if ((r_scrollX & 7) == 4)
-				m_pixelRenderState = PixelRenderState::B01S_TILE_HI_0;
-			else
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_0;
-
-			break;
-
-		case PixelRenderState::SHIFT_PIXELS_TILE_HI_0:
-			m_bgFifo.shiftFifo();
-
-			if ((r_scrollX & 7) == 5)
-				m_pixelRenderState = PixelRenderState::B01S_TILE_HI_1;
-			else
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_TILE_HI_1;
-
-			break;
-
-		case PixelRenderState::SHIFT_PIXELS_TILE_HI_1:
-			m_bgFifo.shiftFifo();
-			fetchTileHi();
-
-			if ((r_scrollX & 7) == 6)
-				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
-			else
-				m_pixelRenderState = PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0;
-
-			break;
-
-		case PixelRenderState::SHIFT_PIXELS_PUSH_FIFO_0:
-			m_bgFifo.shiftFifo();
-			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
-
-			break;
-
-			// ---------------- start rendering pixels for entire scanline ------------------
-
-		EXIT_PIXEL_SHIFT:
-		case PixelRenderState::B01S_NAMETABLE_0:
-
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-
-			m_pixelRenderState = PixelRenderState::B01S_NAMETABLE_1;
-			break;
-
-		case PixelRenderState::B01S_NAMETABLE_1:
-
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-
-			fetchNametable();
-			m_pixelRenderState = PixelRenderState::B01S_TILE_LO_0;
-			break;
-
-		case PixelRenderState::B01S_TILE_LO_0:
-
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-
-			m_pixelRenderState = PixelRenderState::B01S_TILE_LO_1;
-			break;
-
-		case PixelRenderState::B01S_TILE_LO_1:
-
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-
-			fetchTileLo();
-			m_pixelRenderState = PixelRenderState::B01S_TILE_HI_0;
-			break;
-
-		case PixelRenderState::B01S_TILE_HI_0:
-
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-
-			m_pixelRenderState = PixelRenderState::B01S_TILE_HI_1;
-			break;
-
-		case PixelRenderState::B01S_TILE_HI_1:
-
-			fetchTileHi();
-			if (!spritePresentCheck())
-				pushPixelToLCD();
-			else
-				processSpriteFetching();
-
-			m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
-			break;
-
-		case PixelRenderState::B01S_PUSH_FIFO:
+			bgFetchStep();
 
 			if (spritePresentCheck())
 			{
-				if (!processSpriteFetching())
-					m_pixelRenderState = PixelRenderState::B01S_EXIT_SPRITE_FETCH;
+				if (m_bgFetcher.fetchComplete)
+					processSpriteFetching();
 			}
 			else
 			{
-				if (((r_scrollX + m_bgFetcher.fetcherX) & 0x7) == 7)
-				{
+				if (m_pixelX >= 8)
 					pushPixelToLCD();
-					m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
-					m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
-					m_pixelRenderState            = PixelRenderState::B01S_NAMETABLE_0;
-				}
 				else
-					pushPixelToLCD();
-			}
+				{
+					m_bgFifo.clockFifo();
+					m_spriteFifo.clockFifo(m_pixelX);
+					++m_pixelX;
+				}
 
-			break;
-
-		case PixelRenderState::B01S_EXIT_SPRITE_FETCH:
-
-			if (((r_scrollX + m_bgFetcher.fetcherX) & 0x7) == 7)
-			{
-				pushPixelToLCD();
-				m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
-				m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
-				m_pixelRenderState            = PixelRenderState::B01S_NAMETABLE_0;
-			}
-			else
-			{
-				pushPixelToLCD();
-				m_pixelRenderState = PixelRenderState::B01S_PUSH_FIFO;
+				if (m_bgFifo.isEmpty())
+				{
+					loadBgFifo();
+				}
 			}
 
 			break;
@@ -547,6 +311,33 @@ void PPU::writeOamDMA(uint16_t position, uint8_t data)
 	}
 }
 
+void PPU::bgFetchStep()
+{
+	if (m_bgFetcher.fetchCounter <= 5)
+	{
+		++m_bgFetcher.fetchCounter;
+
+		switch (m_bgFetcher.fetchCounter)
+		{
+		case 1:
+			fetchNametable();
+			break;
+
+		case 3:
+			fetchTileLo();
+			break;
+
+		case 5:
+			fetchTileHi();
+			m_bgFetcher.fetchComplete = true;
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
 void PPU::pushPixelToLCD()
 {
 	uint8_t outputColorIndex = 0;
@@ -555,13 +346,13 @@ void PPU::pushPixelToLCD()
 	bool    isBgZero     = bgColorIndex;
 	bgColorIndex >>= 6;
 	bgColorIndex = (r_bgPaletteData >> (bgColorIndex * 2)) & 0x3;
-	m_bgFifo.shiftFifo();
+	m_bgFifo.clockFifo();
 
 	outputColorIndex = bgColorIndex;
 
 	uint8_t spriteColorIndex = 0, attributes = 0;
 
-	if (m_spriteFifo.clockFifo(m_bgFetcher.fetcherX, spriteColorIndex, attributes))
+	if (m_spriteFifo.clockFifo(m_pixelX, spriteColorIndex, attributes))
 	{
 		if (attributes & SPRITE_ATTRIBUTES::DMG_PALETTE)
 			spriteColorIndex = (r_objPaletteData1 >> (spriteColorIndex * 2)) & 0x3;
@@ -577,16 +368,16 @@ void PPU::pushPixelToLCD()
 			outputColorIndex = spriteColorIndex;
 	}
 
-	uint16_t lcdPixelIndex = (160 * (143 - r_lcdY)) + (m_bgFetcher.fetcherX - 8);
-	m_bgFetcher.fetcherX += 1;
+	uint16_t lcdPixelIndex = (160 * (143 - r_lcdY)) + (m_pixelX - 8);
+	m_pixelX += 1;
 
 	lcdColorBuffer[lcdPixelIndex] = outputColorIndex;
 
 	// enter H-blank once 160 pixels are drawn
-	if (m_bgFetcher.fetcherX == 160 + 8)
+	if (m_pixelX == 160 + 8)
 	{
-		m_bgFetcher.fetcherX = 0;
-		m_ppuMode            = Mode::MODE_0;
+		m_pixelX  = 0;
+		m_ppuMode = Mode::MODE_0;
 	}
 }
 
@@ -600,7 +391,7 @@ void PPU::fetchNametable()
 
 	uint16_t baseAddress = 0x9800 | ((r_lcdControl & LCD_CONTROLS::BG_TILEMAP) << 7);
 
-	uint8_t tileX = ((r_scrollX + m_bgFetcher.fetcherX) & 0xF8) >> 3;
+	uint8_t tileX = ((r_scrollX + m_pixelX) & 0xF8) >> 3;
 	uint8_t tileY = ((r_scrollY + r_lcdY) & 0xF8) >> 3;
 
 	uint16_t address = baseAddress | (tileY << 5) | tileX;
@@ -642,22 +433,25 @@ void PPU::fetchTileHi()
 bool PPU::spritePresentCheck()
 {
 	// abort check if sprite fetch is already previously requested
-	if (m_spriteFetcher.spriteFetchRequested)
-		return m_spriteFetcher.spriteFetchRequested;
+	if (m_spriteFetcher.spriteFetchPending)
+		return m_spriteFetcher.spriteFetchPending;
 
-	for (uint8_t i = 0; (m_spriteScanner.outputSpriteCount < m_spriteScanner.secondaryOAM.length()) && (i < m_spriteScanner.secondaryOAM.length()); ++i)
+	for (uint8_t i = 0; i < m_spriteScanner.secondaryOAM.length(); ++i)
 	{
 		uint8_t spriteIndex = m_spriteScanner.secondaryOAM[i];
 
-		if ((r_lcdControl & LCD_CONTROLS::OBJ_ENABLE) && (m_oamRam[spriteIndex].xPosition == m_bgFetcher.fetcherX))
+		if (spriteIndex != 0xFF && (r_lcdControl & LCD_CONTROLS::OBJ_ENABLE) && (m_oamRam[spriteIndex].xPosition == m_pixelX))
 		{
-			m_spriteFetcher.spriteFetchRequested = true;
+			m_spriteFetcher.spriteFetchPending = true;
 			m_spriteFetcher.fetchQueue.push(spriteIndex);
-			++m_spriteScanner.outputSpriteCount;
+			m_spriteScanner.secondaryOAM[i] = 0xFF; // mark as deleted
 		}
 	}
 
-	return m_spriteFetcher.spriteFetchRequested;
+	if (m_spriteFetcher.spriteFetchPending)
+		m_spriteScanner.secondaryOAM.remove([](uint8_t n) { return n == 0xFF; });
+
+	return m_spriteFetcher.spriteFetchPending;
 }
 
 bool PPU::processSpriteFetching()
@@ -738,14 +532,14 @@ bool PPU::processSpriteFetching()
 
 		m_spriteFetcher.fetchQueue.pop();
 		if (m_spriteFetcher.fetchQueue.isEmpty())
-			m_spriteFetcher.spriteFetchRequested = false;
+			m_spriteFetcher.spriteFetchPending = false;
 
 		m_spriteFetchState = SpriteFetchState::CYCLE_0;
 		break;
 	}
 	}
 
-	return m_spriteFetcher.spriteFetchRequested;
+	return m_spriteFetcher.spriteFetchPending;
 }
 
 void PPU::init(bool useBootrom)
@@ -765,7 +559,9 @@ void PPU::init(bool useBootrom)
 	r_oamStart           = 0;
 
 	m_ppuMode          = Mode::MODE_2;
-	m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
+	m_pixelRenderState = PixelRenderState::B01_FETCH;
+
+	m_pixelX = 0;
 
 	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 
@@ -785,7 +581,8 @@ bool PPU::SpriteFifo::clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uin
 	if (m_outputSprites.isEmpty())
 		return false;
 
-	bool spriteFound = false;
+	bool spriteFound       = false;
+	bool removeEmptySprite = false;
 
 	for (uint8_t i = 0; i < m_outputSprites.length(); ++i)
 	{
@@ -803,8 +600,18 @@ bool PPU::SpriteFifo::clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uin
 
 			m_outputSprites[i].patternTileLoShifter <<= 1;
 			m_outputSprites[i].patternTileHiShifter <<= 1;
+			++m_outputSprites[i].shiftCounter;
+
+			if (m_outputSprites[i].isEmpty())
+			{
+				m_outputSprites[i].xPosition = 0xFF;
+				removeEmptySprite            = true;
+			}
 		}
 	}
+
+	if (removeEmptySprite)
+		m_outputSprites.remove([](OutputSprite sprt) { return sprt.xPosition == 0xFF; });
 
 	return spriteFound;
 }
@@ -814,12 +621,24 @@ void PPU::SpriteFifo::clockFifo(uint8_t fetcherX)
 	if (m_outputSprites.isEmpty())
 		return;
 
+	bool removeEmptySprite = false;
+
 	for (uint8_t i = 0; i < m_outputSprites.length(); ++i)
 	{
 		if (fetcherX >= m_outputSprites[i].xPosition && fetcherX < m_outputSprites[i].xPosition + 8)
 		{
 			m_outputSprites[i].patternTileLoShifter <<= 1;
 			m_outputSprites[i].patternTileHiShifter <<= 1;
+			++m_outputSprites[i].shiftCounter;
+
+			if (m_outputSprites[i].isEmpty())
+			{
+				m_outputSprites[i].xPosition = 0xFF;
+				removeEmptySprite            = true;
+			}
 		}
 	}
+
+	if (removeEmptySprite)
+		m_outputSprites.remove([](OutputSprite sprt) { return sprt.xPosition == 0xFF; });
 }

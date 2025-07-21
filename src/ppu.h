@@ -1,8 +1,8 @@
 #pragma once
 
+#include "emulatorConstants.h"
 #include "utils/ppuArray.h"
 #include "utils/vec.h"
-#include "emulatorConstants.h"
 
 #include <array>
 #include <cstdint>
@@ -14,14 +14,6 @@ class PPU
 	static constexpr unsigned int VRAM_SIZE = 1024 * 8;
 
 	void init(bool useBootrom);
-
-	std::array<std::array<uint8_t, 3>, 4> m_colorPallete =
-		{{
-			{232, 252, 204},
-			{172, 212, 144},
-			{84, 140, 112},
-			{20, 44, 56},
-		}};
 
 	// Bits
 	// 0: enable/disable BG and window
@@ -44,41 +36,44 @@ class PPU
 	uint8_t r_objPaletteData1 = 0;
 
   private:
-	static constexpr unsigned int MODE_2_DURATION   = 80;  // oam scan lasts 80 dots
-	static constexpr unsigned int SCANLINE_DURATION = 456; // each scanline always lasts 456 dots
+	static constexpr unsigned int MODE_2_DURATION      = 80;  // oam scan lasts 80 dots
+	static constexpr unsigned int SCANLINE_DURATION    = 456; // each scanline always lasts 456 dots
+	static constexpr unsigned int SPRITES_PER_SCANLINE = 10;  // each scanline can only output max 10 sprites
 
 	struct BackgroundFetcher
 	{
-		uint8_t  fetcherX           = 0;
-		uint8_t  tileIndex          = 0;
 		uint16_t patternTileAddress = 0;
 		uint8_t  patternTileLoLatch = 0;
 		uint8_t  patternTileHiLatch = 0;
+		uint8_t  tileIndex          = 0;
+		uint8_t  fetchCounter       = 0;
+		bool     fetchComplete      = false;
 
 		void reset()
 		{
-			fetcherX           = 0;
-			tileIndex          = 0;
 			patternTileAddress = 0;
 			patternTileLoLatch = 0;
 			patternTileHiLatch = 0;
+			tileIndex          = 0;
+			fetchCounter       = 0;
+			fetchComplete      = false;
 		}
 	};
 
 	struct SpriteFetcher
 	{
-		bool spriteFetchRequested = false;
+		bool spriteFetchPending = false;
 
 		uint16_t patternTileAddress = 0;
 		uint8_t  patternTileLoLatch = 0;
 
-		Utils::PPUArray<uint8_t, 10> fetchQueue; // sprites queued up for fetching once bg tile fetches are complete
+		Utils::PPUArray<uint8_t, SPRITES_PER_SCANLINE> fetchQueue; // sprites queued up for fetching once bg tile fetches are complete
 
 		void reset()
 		{
-			spriteFetchRequested = false;
-			patternTileAddress   = 0;
-			patternTileLoLatch   = 0;
+			spriteFetchPending = false;
+			patternTileAddress = 0;
+			patternTileLoLatch = 0;
 			fetchQueue.clear();
 		}
 	};
@@ -97,6 +92,12 @@ class PPU
 		uint8_t patternTileLoShifter = 0;
 		uint8_t patternTileHiShifter = 0;
 		uint8_t attributes           = 0;
+		uint8_t shiftCounter         = 0; // incremented every time tiles are shifted, value of 8 means empty
+
+		bool isEmpty() const
+		{
+			return shiftCounter == 8;
+		}
 	};
 
 	class BackgroundFifo
@@ -104,29 +105,38 @@ class PPU
 	  public:
 		uint8_t patternTileLoShifter = 0;
 		uint8_t patternTileHiShifter = 0;
+		uint8_t shiftCounter         = 0;
 
-		void shiftFifo()
+		void clockFifo()
 		{
 			patternTileLoShifter <<= 1;
 			patternTileHiShifter <<= 1;
+			++shiftCounter;
+		}
+
+		// considered emtpy once 8 pixels have been shifted out
+		bool isEmpty() const
+		{
+			return shiftCounter == 8;
 		}
 
 		void reset()
 		{
 			patternTileLoShifter = 0;
 			patternTileHiShifter = 0;
+			shiftCounter         = 0;
 		}
 	};
 
 	class SpriteFifo
 	{
 	  public:
-		Utils::PPUArray<OutputSprite, 10> m_outputSprites;
+		Utils::PPUArray<OutputSprite, SPRITES_PER_SCANLINE> m_outputSprites;
 
 		void reset()
 		{
 			m_outputSprites.clear();
-			m_outputSprites.fill({0xFF, 0xFF, 0xFF, 0xFF});
+			m_outputSprites.fill({0xFF, 0xFF, 0xFF, 0xFF, 0});
 		}
 
 		// search through array of output sprites and shifts any sprites that are in range
@@ -139,15 +149,10 @@ class PPU
 	class SpriteScanner
 	{
 	  public:
-		uint8_t oamScanIndex      = 0; // scan position of oam ram (indices: 0-39)
-		uint8_t outputSpriteCount = 0; // running total of sprites that have been queued up for fetching on current scanline
-
-		Utils::PPUArray<uint8_t, 10> secondaryOAM; // hold selected sprites from oam scan process
+		Utils::PPUArray<uint8_t, SPRITES_PER_SCANLINE> secondaryOAM; // hold selected sprites from oam scan process
 
 		void reset()
 		{
-			oamScanIndex      = 0;
-			outputSpriteCount = 0;
 			secondaryOAM.clear();
 		}
 	};
@@ -210,46 +215,17 @@ class PPU
 
 	enum class PixelRenderState
 	{
-		// first fetch is discarded aka do nothing (6 cycles)
+		// first fetch fills shift registers
+		B01_FETCH,
 
-		DUMMY_FETCH_NAMETABLE_0,
-		DUMMY_FETCH_NAMETABLE_1,
-		DUMMY_FETCH_TILE_LO_0,
-		DUMMY_FETCH_TILE_LO_1,
-		DUMMY_FETCH_TILE_HI_0,
-		DUMMY_FETCH_TILE_HI_1,
+		// second fetch handles horizontal scrolling and any sprites that are partially off the left side of the screen
+		FIRST_B01S,
 
-		// prefetch to fill shift registers
+		// render bg and sprite pixels for the rest of the scanline
+		B01S,
 
-		PREFETCH_NAMETABLE_0,
-		PREFETCH_NAMETABLE_1,
-		PREFETCH_TILE_LO_0,
-		PREFETCH_TILE_LO_1,
-		PREFETCH_TILE_HI_0,
-		PREFETCH_TILE_HI_1,
-		PREFETCH_PUSH_FIFO,
-		PREFETCH_EXIT_SPRITE_FETCH,
-
-		// first tile to be rendered can be paused for r_scrollX % 8 cycles to shift out pixels that should be offscreen
-
-		SHIFT_PIXELS_NAMETABLE_0,
-		SHIFT_PIXELS_NAMETABLE_1,
-		SHIFT_PIXELS_TILE_LO_0,
-		SHIFT_PIXELS_TILE_LO_1,
-		SHIFT_PIXELS_TILE_HI_0,
-		SHIFT_PIXELS_TILE_HI_1,
-		SHIFT_PIXELS_PUSH_FIFO_0,
-
-		// render pixels for the rest of the scanline
-
-		B01S_NAMETABLE_0,
-		B01S_NAMETABLE_1,
-		B01S_TILE_LO_0,
-		B01S_TILE_LO_1,
-		B01S_TILE_HI_0,
-		B01S_TILE_HI_1,
-		B01S_PUSH_FIFO,
-		B01S_EXIT_SPRITE_FETCH,
+		// render window and sprite pixels for rest of the scanline
+		W01S,
 	};
 
 	enum class SpriteFetchState
@@ -294,8 +270,10 @@ class PPU
 	uint16_t m_scanlineDotCounter = 0;
 
 	Mode             m_ppuMode          = Mode::MODE_2;
-	PixelRenderState m_pixelRenderState = PixelRenderState::DUMMY_FETCH_NAMETABLE_0;
+	PixelRenderState m_pixelRenderState = PixelRenderState::B01_FETCH;
 	SpriteFetchState m_spriteFetchState = SpriteFetchState::CYCLE_0;
+
+	uint8_t m_pixelX = 0; // track the pixel that is the ppu is currently on, ranges (0 - 159 inclusive)
 
 	void fetchNametable();
 
@@ -329,6 +307,17 @@ class PPU
 	uint8_t readOam(uint16_t position);
 	void    writeOam(uint16_t position, uint8_t data);
 	void    writeOamDMA(uint16_t position, uint8_t data);
+
+	void bgFetchStep();
+
+	// load tile into reseted bg fifo shift regsiters, reset bg fetch state
+	void loadBgFifo()
+	{
+		m_bgFifo.reset();
+		m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
+		m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
+		m_bgFetcher.reset();
+	}
 
 	/**
 	 * @brief Should only be used by logger to read into vram for instruction logging.
