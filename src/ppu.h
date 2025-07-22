@@ -224,7 +224,10 @@ class PPU
 		// render bg and sprite pixels for the rest of the scanline
 		B01S,
 
-		// render window and sprite pixels for rest of the scanline
+		// set up first window tile
+		W01,
+
+		// continue rendering rest of window and sprite pixels
 		W01S,
 	};
 
@@ -275,10 +278,27 @@ class PPU
 
 	uint8_t m_pixelX = 0; // track the pixel that is the ppu is currently on, ranges (0 - 159 inclusive)
 
+	struct WindowRegisters
+	{
+		bool WxMatch = false;
+		bool WyMatch = false;
+
+		uint8_t TileX        = 0;
+		uint8_t LineCounterY = 0; // track Y line of window, base 1
+
+		void reset()
+		{
+			WxMatch      = false;
+			WyMatch      = false;
+			TileX        = 0;
+			LineCounterY = 0;
+		}
+
+	} m_window;
+
+	// tile fetches for background and window
+
 	void fetchNametable();
-
-	// lo/hi tile fetches for background and window
-
 	void fetchTileLo();
 	void fetchTileHi();
 
@@ -289,6 +309,18 @@ class PPU
 	// returns status for is sprite fetch being requested
 	bool processSpriteFetching();
 	void pushPixelToLCD();
+
+	// step through 6 cycle tile fetch sequence
+	void bgFetchStep();
+
+	// load tile into reseted bg fifo shift regsiters, reset bg fetch state
+	void loadBgFifo()
+	{
+		m_bgFifo.reset();
+		m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
+		m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
+		m_bgFetcher.reset();
+	}
 
   public:
 	PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFlags);
@@ -307,17 +339,6 @@ class PPU
 	uint8_t readOam(uint16_t position);
 	void    writeOam(uint16_t position, uint8_t data);
 	void    writeOamDMA(uint16_t position, uint8_t data);
-
-	void bgFetchStep();
-
-	// load tile into reseted bg fifo shift regsiters, reset bg fetch state
-	void loadBgFifo()
-	{
-		m_bgFifo.reset();
-		m_bgFifo.patternTileLoShifter = m_bgFetcher.patternTileLoLatch;
-		m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
-		m_bgFetcher.reset();
-	}
 
 	/**
 	 * @brief Should only be used by logger to read into vram for instruction logging.

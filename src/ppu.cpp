@@ -35,6 +35,7 @@ void PPU::tick()
 			if (++r_lcdY == 144)
 			{
 				m_interruptLine |= Sm83::InterruptFlags::InterruptFlags_VBLANK; // request regular vblank interrupt
+				m_window.reset();
 				m_ppuMode = Mode::MODE_1;
 			}
 			else
@@ -84,6 +85,10 @@ void PPU::tick()
 		{
 			m_statInterruptSources |= 0x4;
 		}
+
+		// check if lcdY matches the windowY at the start of mode 2
+		if (m_scanlineDotCounter == 1)
+			m_window.WyMatch |= r_windowY == r_lcdY;
 
 		if (m_scanlineDotCounter & 1)
 		{
@@ -137,13 +142,23 @@ void PPU::tick()
 			// halt clocking fifos if a sprite fetch is pending
 			else
 			{
+				m_window.WxMatch |= (r_windowX == m_pixelX) && m_window.WyMatch;
+
+				m_spriteFifo.clockFifo(m_pixelX);
+
 				if (m_bgFifo.shiftCounter >= (r_scrollX & 7))
 					++m_pixelX;
 
 				m_bgFifo.clockFifo();
-				m_spriteFifo.clockFifo(m_pixelX);
 
-				if (m_bgFifo.isEmpty())
+				// restart fetcher to set up windows on next cycle
+				if ((r_lcdControl & LCD_CONTROLS::WINDOW_ENABLE) && m_window.WxMatch)
+				{
+					m_bgFetcher.reset();
+					m_window.LineCounterY += 1;
+					m_pixelRenderState = PixelRenderState::W01;
+				}
+				else if (m_bgFifo.isEmpty())
 				{
 					loadBgFifo();
 					m_pixelRenderState = PixelRenderState::B01S;
@@ -153,6 +168,55 @@ void PPU::tick()
 			break;
 
 		case PixelRenderState::B01S:
+
+			bgFetchStep();
+
+			if (spritePresentCheck())
+			{
+				if (m_bgFetcher.fetchComplete)
+					processSpriteFetching();
+			}
+			else
+			{
+				m_window.WxMatch |= (r_windowX == m_pixelX) && m_window.WyMatch;
+
+				if (m_pixelX >= 8)
+					pushPixelToLCD();
+				else
+				{
+					m_bgFifo.clockFifo();
+					m_spriteFifo.clockFifo(m_pixelX);
+					++m_pixelX;
+				}
+
+				// restart fetcher to set up windows on next cycle
+				if ((r_lcdControl & LCD_CONTROLS::WINDOW_ENABLE) && m_window.WxMatch)
+				{
+					m_bgFetcher.reset();
+					m_window.LineCounterY += 1;
+					m_pixelRenderState = PixelRenderState::W01;
+				}
+				else if (m_bgFifo.isEmpty())
+				{
+					loadBgFifo();
+				}
+			}
+
+			break;
+
+		case PixelRenderState::W01:
+
+			bgFetchStep();
+
+			if (m_bgFetcher.fetchComplete)
+			{
+				loadBgFifo();
+				m_pixelRenderState = PixelRenderState::W01S;
+			}
+
+			break;
+
+		case PixelRenderState::W01S:
 
 			bgFetchStep();
 
@@ -313,6 +377,7 @@ void PPU::writeOamDMA(uint16_t position, uint8_t data)
 
 void PPU::bgFetchStep()
 {
+	// cycles 0 to 5, does nothing once fetch completes and is restarted either manually or when loading the bg fifo
 	if (m_bgFetcher.fetchCounter <= 5)
 	{
 		++m_bgFetcher.fetchCounter;
@@ -376,8 +441,10 @@ void PPU::pushPixelToLCD()
 	// enter H-blank once 160 pixels are drawn
 	if (m_pixelX == 160 + 8)
 	{
-		m_pixelX  = 0;
-		m_ppuMode = Mode::MODE_0;
+		m_window.WxMatch = false;
+		m_window.TileX   = 0;
+		m_pixelX         = 0;
+		m_ppuMode        = Mode::MODE_0;
 	}
 }
 
@@ -389,19 +456,37 @@ void PPU::fetchNametable()
 	// |||| |+------------------- B: (0) fetch nametable from tile map 0x9800, (1) fetch nametable from tile map 0x9C00
 	// ++++-+-------------- 1001 10: Tiles begin at adress 0x9800
 
-	uint16_t baseAddress = 0x9800 | ((r_lcdControl & LCD_CONTROLS::BG_TILEMAP) << 7);
+	if ((r_lcdControl & LCD_CONTROLS::WINDOW_ENABLE) && m_window.WxMatch)
+	{
+		uint16_t baseAddress = 0x9800 | ((r_lcdControl & LCD_CONTROLS::WINDOW_TILEMAP) << 4);
 
-	uint8_t tileX = ((r_scrollX + m_pixelX) & 0xF8) >> 3;
-	uint8_t tileY = ((r_scrollY + r_lcdY) & 0xF8) >> 3;
+		uint8_t tileY = ((m_window.LineCounterY - 1) & 0xF8) >> 3;
 
-	uint16_t address = baseAddress | (tileY << 5) | tileX;
+		uint16_t address = baseAddress | (tileY << 5) | m_window.TileX++;
 
-	m_bgFetcher.tileIndex = m_vram[address & 0x1FFF];
+		m_bgFetcher.tileIndex = m_vram[address & 0x1FFF];
+	}
+	else
+	{
+		uint16_t baseAddress = 0x9800 | ((r_lcdControl & LCD_CONTROLS::BG_TILEMAP) << 7);
+
+		uint8_t tileX = ((r_scrollX + m_pixelX) & 0xF8) >> 3;
+		uint8_t tileY = ((r_scrollY + r_lcdY) & 0xF8) >> 3;
+
+		uint16_t address = baseAddress | (tileY << 5) | tileX;
+
+		m_bgFetcher.tileIndex = m_vram[address & 0x1FFF];
+	}
 }
 
 void PPU::fetchTileLo()
 {
-	uint8_t fineY = (r_scrollY + r_lcdY) & 0x7;
+	uint8_t fineY = 0;
+
+	if ((r_lcdControl & LCD_CONTROLS::WINDOW_ENABLE) && m_window.WxMatch)
+		fineY = (m_window.LineCounterY - 1) & 0x7;
+	else
+		fineY = (r_scrollY + r_lcdY) & 0x7;
 
 	// 100A TTTT TTTT YYYP
 	//    | |||| |||| |||+- P: Bit plane selection
@@ -562,8 +647,9 @@ void PPU::init(bool useBootrom)
 	m_pixelRenderState = PixelRenderState::B01_FETCH;
 
 	m_pixelX = 0;
+	m_window.reset();
 
-	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
+	// std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 
 	m_statInterruptSources = 0;
 	m_sharedInterruptLine  = 0;
