@@ -637,7 +637,7 @@ void BudgetGB::guiPalettes()
 
 			// rest of user palettes
 
-			for (int i = 0; i < m_config.palettes.size(); ++i)
+			for (int i = 0; static_cast<unsigned long long>(i) < m_config.palettes.size(); ++i)
 			{
 				ImGui::PushID(i);
 
@@ -706,12 +706,12 @@ void BudgetGB::guiPalettes()
 						}
 						else
 						{
-							if (m_guiContext.guiPalettes_selectedPalette == m_config.palettes.size() || m_guiContext.guiPalettes_selectedPalette > i)
+							if (static_cast<unsigned long long>(m_guiContext.guiPalettes_selectedPalette) == m_config.palettes.size() || m_guiContext.guiPalettes_selectedPalette > i)
 							{
 								m_guiContext.guiPalettes_selectedPalette -= 1;
 							}
 
-							if (m_guiContext.guiPalettes_activePalette == m_config.palettes.size() || m_guiContext.guiPalettes_activePalette > i)
+							if (static_cast<unsigned long long>(m_guiContext.guiPalettes_activePalette) == m_config.palettes.size() || m_guiContext.guiPalettes_activePalette > i)
 							{
 								m_guiContext.guiPalettes_activePalette -= 1;
 							}

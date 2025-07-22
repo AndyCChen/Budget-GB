@@ -91,7 +91,8 @@ static bool readCartridgeHeader(std::ifstream &romFile, Mapper::CartInfo &cartIn
 
 bool Cartridge::loadCartridgeFromPath(const std::string &path, std::vector<std::string> &recentRoms)
 {
-	bool status = true;
+	bool             status = true;
+	Mapper::CartInfo cartInfo{};
 
 	std::ifstream romFile(path, std::ios::binary);
 	if (!romFile.is_open())
@@ -101,7 +102,6 @@ bool Cartridge::loadCartridgeFromPath(const std::string &path, std::vector<std::
 		goto EXIT;
 	}
 
-	Mapper::CartInfo cartInfo{};
 	if (!readCartridgeHeader(romFile, cartInfo, m_errorMsg))
 	{
 		fmt::println("{}", m_errorMsg);

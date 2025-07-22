@@ -241,6 +241,8 @@ class PPU
 		CYCLE_5,
 	};
 
+	BudgetGbConstants::LcdColorBuffer &lcdColorBuffer;
+
 	// 0: mode 0 state
 	// 1: mode 1 state
 	// 2: mode 2 state
@@ -257,8 +259,6 @@ class PPU
 	SpriteFifo        m_spriteFifo;
 	BackgroundFetcher m_bgFetcher;
 	BackgroundFifo    m_bgFifo;
-
-	BudgetGbConstants::LcdColorBuffer &lcdColorBuffer;
 
 	// bits
 	// 0, 1: Holds ppu's current mode status
