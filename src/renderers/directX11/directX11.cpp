@@ -137,7 +137,7 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 
 	mwrl::ComPtr<ID3D11Resource> backBuffer;
 
-	result = renderContext->m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), &backBuffer);
+	result = renderContext->m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void **)backBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	result = renderContext->m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, renderContext->m_renderTargetView.GetAddressOf());
@@ -284,10 +284,10 @@ RendererGB::RenderContext::RenderContext(HWND hwnd)
 
 	mwrl::ComPtr<ID3D11Resource> backBuffer;
 
-	result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), &backBuffer);
+	result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void **)backBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	result = m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, &m_renderTargetView);
+	result = m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	m_mainViewport.initMainViewport(m_device, m_deviceContext);
@@ -324,7 +324,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	D3D11_SUBRESOURCE_DATA subResourceData{};
 	subResourceData.pSysMem = vertices;
 
-	result = device->CreateBuffer(&vertexBufferDesc, &subResourceData, &m_vertexBuffer);
+	result = device->CreateBuffer(&vertexBufferDesc, &subResourceData, m_vertexBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// create index buffer
@@ -338,7 +338,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	SDL_zero(subResourceData);
 	subResourceData.pSysMem = indices;
 
-	result = device->CreateBuffer(&indexBufferDesc, &subResourceData, &m_indexBuffer);
+	result = device->CreateBuffer(&indexBufferDesc, &subResourceData, m_indexBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// create constant buffer
@@ -356,7 +356,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	SDL_zero(subResourceData);
 	subResourceData.pSysMem = cbufferInit.data();
 
-	result = device->CreateBuffer(&constantBufferDesc, &subResourceData, &m_constantBuffer);
+	result = device->CreateBuffer(&constantBufferDesc, &subResourceData, m_constantBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// compile, create shaders
@@ -373,8 +373,8 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 		"vs_5_0",
 		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
 		0,
-		&vertexBlob,
-		&errorBlob
+		vertexBlob.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf()
 	);
 
 	if (FAILED(result))
@@ -394,8 +394,8 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 		"ps_5_0",
 		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
 		0,
-		&pixelBlob,
-		&errorBlob
+		pixelBlob.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf()
 	);
 
 	if (FAILED(result))
@@ -407,10 +407,10 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 		CHECK_HR(result);
 	}
 
-	result = device->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &m_vertexShader);
+	result = device->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, m_vertexShader.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	result = device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, &m_pixelShader);
+	result = device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, m_pixelShader.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// set input layout
@@ -420,7 +420,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 		{"TextureCoord", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	result = device->CreateInputLayout(inputElemDesc, _countof(inputElemDesc), vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), &m_inputLayout);
+	result = device->CreateInputLayout(inputElemDesc, _countof(inputElemDesc), vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), m_inputLayout.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// set up texture
@@ -444,7 +444,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	subResourceData.pSysMem     = pixels.data();
 	subResourceData.SysMemPitch = BudgetGbConstants::LCD_WIDTH;
 
-	result = device->CreateTexture2D(&textureDesc, &subResourceData, &m_viewportTexture);
+	result = device->CreateTexture2D(&textureDesc, &subResourceData, m_viewportTexture.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResViewDesc{};
@@ -453,7 +453,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	shaderResViewDesc.Texture2D.MostDetailedMip = 0;
 	shaderResViewDesc.Texture2D.MipLevels       = 1;
 
-	result = device->CreateShaderResourceView(m_viewportTexture.Get(), &shaderResViewDesc, &m_viewportShaderResourceView);
+	result = device->CreateShaderResourceView(m_viewportTexture.Get(), &shaderResViewDesc, m_viewportShaderResourceView.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// set rasterizer state
@@ -466,6 +466,6 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	rasterizerDesc.FillMode              = D3D11_FILL_SOLID;
 	rasterizerDesc.CullMode              = D3D11_CULL_BACK;
 
-	device->CreateRasterizerState(&rasterizerDesc, &rasterizerState);
+	device->CreateRasterizerState(&rasterizerDesc, rasterizerState.ReleaseAndGetAddressOf());
 	deviceContext->RSSetState(rasterizerState.Get());
 }
