@@ -96,8 +96,18 @@ void PPU::tick()
 			{
 				uint8_t yPos = m_oamRam[m_scanlineDotCounter >> 1].yPosition;
 
-				if ((r_lcdY + 16 >= yPos) && (r_lcdY + 16 < yPos + 8))
-					m_spriteScanner.secondaryOAM.push(static_cast<uint8_t>(m_scanlineDotCounter >> 1));
+				// 8 by 16 sprites
+				if (r_lcdControl & LCD_CONTROLS::OBJ_SIZE)
+				{
+					if ((r_lcdY + 16 >= yPos) && (r_lcdY + 16 < yPos + 16))
+						m_spriteScanner.secondaryOAM.push(static_cast<uint8_t>(m_scanlineDotCounter >> 1));
+				}
+				// 8 by 8 sprites
+				else
+				{
+					if ((r_lcdY + 16 >= yPos) && (r_lcdY + 16 < yPos + 8))
+						m_spriteScanner.secondaryOAM.push(static_cast<uint8_t>(m_scanlineDotCounter >> 1));
+				}
 			}
 		}
 
@@ -579,7 +589,19 @@ bool PPU::processSpriteFetching()
 		// 8 by 16 sprites
 		else
 		{
-			assert(0 && "8 by 16 sprites not implemented!");
+			uint8_t fineY = (r_lcdY + 16) - m_oamRam[spriteIndex].yPosition;
+
+			if (m_oamRam[spriteIndex].attributes & SPRITE_ATTRIBUTES::Y_FLIP)
+			{
+				fineY = 15 - fineY;
+				tileIndex += (fineY & 0x8) ? 1 : 0;
+				m_spriteFetcher.patternTileAddress = 0x8000 | (tileIndex << 4) | ((fineY & 0x7) << 1);
+			}
+			else
+			{
+				tileIndex += (fineY & 0x8) ? 1 : 0;
+				m_spriteFetcher.patternTileAddress = 0x8000 | (tileIndex << 4) | ((fineY & 0x7) << 1);
+			}
 		}
 
 		m_spriteFetcher.patternTileLoLatch = m_vram[m_spriteFetcher.patternTileAddress & 0x1FFF];
