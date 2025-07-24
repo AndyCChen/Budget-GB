@@ -4,6 +4,10 @@ project(Budget_Gameboy_Emulator)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/)
 
+if (MSVC)
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif(MSVC)
+
 option(USE_DX11_ON_WINDOWS "Use directX11 graphics api on windows" OFF)
 
 # nlhomannJson parsing library
@@ -134,7 +138,7 @@ target_include_directories(BudgetGB PRIVATE
 	vendor/imgui/backends/
 )
 
-set(BUDGET_GB_LIBS 
+set(BudgetGbLibs 
 	Imgui
 	SDL3::SDL3 
 	NlohmannJson 
@@ -143,18 +147,17 @@ set(BUDGET_GB_LIBS
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)
 	message(STATUS "BudgetGB Graphics API: DirectX11")
-	list(APPEND BUDGET_GB_LIBS d3d11.lib d3dcompiler.lib)
+	list(APPEND BudgetGbLibs d3d11.lib d3dcompiler.lib)
 else()
 	message(STATUS "BudgetGB Graphics API: OpenGL")
-	list(APPEND BUDGET_GB_LIBS Glad)
+	list(APPEND BudgetGbLibs Glad)
 endif()
 
-target_link_libraries(BudgetGB PRIVATE ${BUDGET_GB_LIBS})
+target_link_libraries(BudgetGB PRIVATE ${BudgetGbLibs})
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	# statically link against msvc c runtime
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	target_compile_options(BudgetGB PRIVATE /W4)
+	target_compile_options(BudgetGB PUBLIC /W4 /MT$<$<CONFIG:Debug>:d>)
 	message(STATUS "MSVC COMPILER")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 	target_compile_options(BudgetGB PRIVATE -O3 -Wall -Wextra -Wpedantic)
