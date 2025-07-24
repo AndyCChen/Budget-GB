@@ -4,9 +4,9 @@
 #include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 #include "BudgetGB.h"
-#include "misc/cpp/imgui_stdlib.h"
 
 constexpr static SDL_DialogFileFilter romFileFilter[] = {
 	{"*.gb", "gb;gb"},
@@ -20,7 +20,7 @@ static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *fil
 static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const *filelist, int filter);
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_lcdColorBuffer), m_cpu(m_bus), m_disassembler(m_bus)
+	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_ppu), m_cpu(m_bus), m_ppu(m_lcdColorBuffer, m_cpu.m_interrupts.m_interruptFlags), m_disassembler(m_bus)
 {
 	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, static_cast<uint32_t>(m_config.windowScale)))
 	{
@@ -242,6 +242,15 @@ void BudgetGB::guiMain()
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 	}
 
+	if (m_guiContext.flags & GuiContextFlags_SHOW_TILES)
+	{
+		if (!m_patternTileViewport->drawViewportGui(m_renderContext))
+		{
+			m_patternTileViewport.reset();
+			m_guiContext.flags &= ~GuiContextFlags_SHOW_TILES;
+		}
+	}
+
 	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
 		guiCpuViewer();
 
@@ -324,6 +333,14 @@ void BudgetGB::guiMain()
 
 		if (ImGui::MenuItem("Palettes", "", m_guiContext.flags & GuiContextFlags_SHOW_PALETTES))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_PALETTES;
+
+		if (ImGui::MenuItem("Tile Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_TILES))
+		{
+			if (m_guiContext.flags ^= GuiContextFlags_SHOW_TILES)
+				m_patternTileViewport = std::make_unique<PatternTileView>(m_ppu, m_renderContext);
+			else
+				m_patternTileViewport.reset();
+		}
 
 		if (ImGui::MenuItem("CPU Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;

@@ -671,7 +671,7 @@ void PPU::init(bool useBootrom)
 	m_pixelX = 0;
 	m_window.reset();
 
-	// std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
+	std::fill(m_vram.begin(), m_vram.end(), static_cast<uint8_t>(0));
 
 	m_statInterruptSources = 0;
 	m_sharedInterruptLine  = 0;

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "disassembler.h"
 #include "emulatorConstants.h"
 #include "imgui.h"
+#include "patternTileView.h"
 #include "renderer.h"
 #include "sm83.h"
 #include "utils/vec.h"
@@ -46,12 +48,13 @@ class BudgetGB
 		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
 		GuiContextFlags_PAUSE           = 1 << 2,
 		GuiContextFlags_FULLSCREEN      = 1 << 3,
-		GuiContextFlags_SHOW_CPU_VIEWER = 1 << 4,
-		GuiContextFlags_SHOW_PALETTES   = 1 << 5,
+		GuiContextFlags_SHOW_TILES      = 1 << 5,
+		GuiContextFlags_SHOW_CPU_VIEWER = 1 << 6,
+		GuiContextFlags_SHOW_PALETTES   = 1 << 7,
 
-		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 6,
+		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 8,
 
-		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 7,
+		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 9,
 	};
 
 	struct GuiContext
@@ -69,6 +72,7 @@ class BudgetGB
 	Cartridge    m_cartridge;
 	Bus          m_bus;
 	Sm83         m_cpu;
+	PPU          m_ppu;
 	Disassembler m_disassembler;
 
 	GuiContext             m_guiContext;
@@ -79,6 +83,8 @@ class BudgetGB
 	SDL_Window                       *m_window;
 	RendererGB::RenderContext        *m_renderContext;
 	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer{};
+
+	std::unique_ptr<PatternTileView> m_patternTileViewport;
 
 	/*std::random_device              m_rd;
 	std::mt19937                    m_gen;

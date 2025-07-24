@@ -5,9 +5,9 @@
 #include <functional>
 
 #include "cartridge.h"
+#include "emulatorConstants.h"
 #include "ppu.h"
 #include "utils/vec.h"
-#include "emulatorConstants.h"
 
 class Sm83; // forward declare Sm83
 class Bus
@@ -32,7 +32,7 @@ class Bus
 	static constexpr uint16_t IO_REGISTERS_END  = 0xFF80;
 	static constexpr uint16_t HRAM_END          = 0xFFFF;
 
-	Bus(Cartridge &cartridge, Sm83 &cpu, BudgetGbConstants::LcdColorBuffer &lcdColorBuffer);
+	Bus(Cartridge &cartridge, Sm83 &cpu, PPU &ppu);
 
 	void clearWram();
 
@@ -82,7 +82,7 @@ class Bus
   private:
 	Cartridge &m_cartridge;
 	Sm83      &m_cpu;
-	PPU m_ppu;
+	PPU       &m_ppu;
 
 	std::size_t m_tCycles        = 0; // track total elapsed gameboy cycles
 	std::size_t m_tCyclePerFrame = 0; // track elasped cycles in a frame (1/60 of a second), decremented after frame ends

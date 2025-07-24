@@ -1,8 +1,8 @@
-#include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_sdl3.h"
 
 #include "BudgetGB.h"
+#include "patternTileView.h"
 #include "renderer.h"
 #include "utils/vec.h"
 
@@ -13,6 +13,7 @@
 #include <cstring>
 #include <d3d11.h>
 #include <d3dcompiler.h>
+#include <memory>
 #include <vector>
 #include <wrl.h>
 
@@ -23,22 +24,19 @@ namespace mwrl = Microsoft::WRL;
 		assert(SUCCEEDED(hr)); \
 	}
 
-namespace
+struct Vertex
 {
+	float position[3];
+	float textureCoord[2];
+};
 
 struct GbMainViewport
 {
-	mwrl::ComPtr<ID3D11Buffer> m_vertexBuffer;
-	mwrl::ComPtr<ID3D11Buffer> m_indexBuffer;
-	mwrl::ComPtr<ID3D11Buffer> m_constantBuffer;
+	mwrl::ComPtr<ID3D11Buffer> m_bufferVertex;
 
-	mwrl::ComPtr<ID3D11VertexShader> m_vertexShader;
-	mwrl::ComPtr<ID3D11PixelShader>  m_pixelShader;
-	mwrl::ComPtr<ID3D11InputLayout>  m_inputLayout;
-
-	mwrl::ComPtr<ID3D11Texture2D>          m_viewportTexture;
+	mwrl::ComPtr<ID3D11Texture2D>          m_colorIndexTexture;
 	mwrl::ComPtr<ID3D11ShaderResourceView> m_viewportShaderResourceView;
-	mwrl::ComPtr<ID3D11SamplerState>       m_textureSampler;
+	// mwrl::ComPtr<ID3D11SamplerState>       m_textureSampler;
 
 	Utils::Vec2<uint32_t> m_viewportSize;
 	Utils::Vec2<uint32_t> m_viewportXY;
@@ -48,27 +46,42 @@ struct GbMainViewport
 	 * @param device
 	 * @param deviceContext
 	 */
-	void initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, const mwrl::ComPtr<ID3D11DeviceContext> &deviceContext);
+	void initMainViewport(const mwrl::ComPtr<ID3D11Device> &device);
 };
 
-} // namespace
+struct RendererGB::PatternTileViewport
+{
+	PatternTileViewport(const mwrl::ComPtr<ID3D11Device> &device);
+	~PatternTileViewport();
+
+	mwrl::ComPtr<ID3D11Buffer> m_bufferVertex;
+
+	mwrl::ComPtr<ID3D11Texture2D>          m_colorIndexTexture;
+	mwrl::ComPtr<ID3D11ShaderResourceView> m_colorIndexShaderResourceView;
+
+	mwrl::ComPtr<ID3D11Texture2D>          m_renderTargetTexture;
+	mwrl::ComPtr<ID3D11ShaderResourceView> m_renderTargetShaderResourceView;
+
+	mwrl::ComPtr<ID3D11RenderTargetView> m_renderTargetView; // we render into this view (texture) to be displayed with imgui image
+};
 
 struct RendererGB::RenderContext
 {
+	RenderContext(HWND hwnd);
+
 	mwrl::ComPtr<ID3D11Device>           m_device;
 	mwrl::ComPtr<IDXGISwapChain>         m_swapChain;
 	mwrl::ComPtr<ID3D11DeviceContext>    m_deviceContext;
-	mwrl::ComPtr<ID3D11RenderTargetView> m_renderTargetView;
+	mwrl::ComPtr<ID3D11RenderTargetView> m_mainRenderTargetView; // main viewpport is rendered directly onto the main application window
+
+	mwrl::ComPtr<ID3D11VertexShader> m_shaderVertex;
+	mwrl::ComPtr<ID3D11PixelShader>  m_shaderPixel;
+	mwrl::ComPtr<ID3D11InputLayout>  m_inputLayout;
+
+	mwrl::ComPtr<ID3D11Buffer> m_bufferIndex;
+	mwrl::ComPtr<ID3D11Buffer> m_bufferConstantPalettes;
 
 	GbMainViewport m_mainViewport;
-
-	RenderContext(HWND hwnd);
-};
-
-struct Vertex
-{
-	float position[3];
-	float textureCoord[2];
 };
 
 bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale)
@@ -129,8 +142,7 @@ void RendererGB::newFrame()
 
 void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
 {
-	// renderContext->m_deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
-	renderContext->m_renderTargetView.Reset();
+	renderContext->m_mainRenderTargetView.Reset();
 
 	HRESULT result = renderContext->m_swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 	CHECK_HR(result);
@@ -140,7 +152,7 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 	result = renderContext->m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void **)backBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	result = renderContext->m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, renderContext->m_renderTargetView.GetAddressOf());
+	result = renderContext->m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, renderContext->m_mainRenderTargetView.GetAddressOf());
 	CHECK_HR(result);
 
 	GbMainViewport &mainViewport  = renderContext->m_mainViewport;
@@ -153,7 +165,7 @@ void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y,
 void RendererGB::setViewportPalette(RenderContext *renderContext, const BudgetGbConfig::Palette &palette)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedResource{};
-	renderContext->m_deviceContext->Map(renderContext->m_mainViewport.m_constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	renderContext->m_deviceContext->Map(renderContext->m_bufferConstantPalettes.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
 	const std::array<std::array<float, 4>, 4> newPalette{{
 		{palette.color0[0], palette.color0[1], palette.color0[2], 1.0f},
@@ -163,7 +175,98 @@ void RendererGB::setViewportPalette(RenderContext *renderContext, const BudgetGb
 	}};
 
 	std::memcpy(mappedResource.pData, newPalette[0].data(), sizeof(newPalette));
-	renderContext->m_deviceContext->Unmap(renderContext->m_mainViewport.m_constantBuffer.Get(), 0);
+	renderContext->m_deviceContext->Unmap(renderContext->m_bufferConstantPalettes.Get(), 0);
+}
+
+void RendererGB::tileViewResize(RenderContext *renderContext, PatternTileViewport *patternTileViewport, const Utils::Vec2<float> &size)
+{
+	D3D11_TEXTURE2D_DESC textureDesc{};
+	textureDesc.Width            = (UINT) size.x;
+	textureDesc.Height           = (UINT) size.y;
+	textureDesc.MipLevels        = 1;
+	textureDesc.ArraySize        = 1;
+	textureDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.Usage            = D3D11_USAGE_DEFAULT;
+	textureDesc.BindFlags        = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	textureDesc.CPUAccessFlags   = 0;
+	textureDesc.MiscFlags        = 0;
+
+	HRESULT result = renderContext->m_device->CreateTexture2D(&textureDesc, nullptr, patternTileViewport->m_renderTargetTexture.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResViewDesc{};
+	shaderResViewDesc.Format                    = textureDesc.Format;
+	shaderResViewDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+	shaderResViewDesc.Texture2D.MostDetailedMip = 0;
+	shaderResViewDesc.Texture2D.MipLevels       = 1;
+
+	result = renderContext->m_device->CreateShaderResourceView(patternTileViewport->m_renderTargetTexture.Get(), &shaderResViewDesc, patternTileViewport->m_renderTargetShaderResourceView.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc{};
+	renderTargetViewDesc.Format             = textureDesc.Format;
+	renderTargetViewDesc.ViewDimension      = D3D11_RTV_DIMENSION_TEXTURE2D;
+	renderTargetViewDesc.Texture2D.MipSlice = 0;
+
+	result = renderContext->m_device->CreateRenderTargetView(patternTileViewport->m_renderTargetTexture.Get(), &renderTargetViewDesc, patternTileViewport->m_renderTargetView.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+}
+
+void RendererGB::tileViewDraw(RenderContext *renderContext, PatternTileViewport *patternTileViewport, const BudgetGbConstants::TileColorBuffer &tileColorBuffer, const Utils::Vec2<float> &size)
+{
+	// update tile color index texture
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource{};
+	HRESULT                  result = renderContext->m_deviceContext->Map(patternTileViewport->m_colorIndexTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	CHECK_HR(result);
+
+	if (BudgetGbConstants::TILE_VIEW_WIDTH == mappedResource.RowPitch)
+		std::memcpy(mappedResource.pData, tileColorBuffer.data(), sizeof(BudgetGbConstants::TileColorBuffer));
+	else
+	{
+		for (uint32_t row = 0; row < BudgetGbConstants::TILE_VIEW_HEIGHT; ++row)
+		{
+			for (uint32_t col = 0; col < BudgetGbConstants::TILE_VIEW_WIDTH; ++col)
+				static_cast<uint8_t *>(mappedResource.pData)[row * mappedResource.RowPitch + col] = tileColorBuffer[row * BudgetGbConstants::TILE_VIEW_WIDTH + col];
+		}
+	}
+
+	renderContext->m_deviceContext->Unmap(patternTileViewport->m_colorIndexTexture.Get(), 0);
+
+	constexpr float clearColor[4]{};
+	renderContext->m_deviceContext->ClearRenderTargetView(patternTileViewport->m_renderTargetView.Get(), clearColor);
+
+	D3D11_VIEWPORT vp{};
+	vp.Width    = size.x;
+	vp.Height   = size.y;
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	vp.TopLeftX = 0.0f;
+	vp.TopLeftY = 0.0f;
+	renderContext->m_deviceContext->RSSetViewports(1, &vp);
+
+	UINT vertexOffset = 0;
+	UINT vertexStride = sizeof(Vertex);
+	renderContext->m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	renderContext->m_deviceContext->IASetInputLayout(renderContext->m_inputLayout.Get());
+	renderContext->m_deviceContext->IASetVertexBuffers(0, 1, patternTileViewport->m_bufferVertex.GetAddressOf(), &vertexStride, &vertexOffset);
+	renderContext->m_deviceContext->IASetIndexBuffer(renderContext->m_bufferIndex.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+	renderContext->m_deviceContext->VSSetShader(renderContext->m_shaderVertex.Get(), nullptr, 0);
+	renderContext->m_deviceContext->VSSetConstantBuffers(0, 1, renderContext->m_bufferConstantPalettes.GetAddressOf());
+
+	renderContext->m_deviceContext->PSSetShader(renderContext->m_shaderPixel.Get(), nullptr, 0);
+	renderContext->m_deviceContext->PSSetShaderResources(0, 1, patternTileViewport->m_colorIndexShaderResourceView.GetAddressOf());
+	renderContext->m_deviceContext->PSSetConstantBuffers(0, 1, renderContext->m_bufferConstantPalettes.GetAddressOf());
+
+	renderContext->m_deviceContext->OMSetRenderTargets(1, patternTileViewport->m_renderTargetView.GetAddressOf(), nullptr);
+	renderContext->m_deviceContext->DrawIndexed(6, 0, 0);
+}
+
+ImTextureID RendererGB::tileViewGetTextureID(PatternTileViewport *patternTileViewport)
+{
+	return (ImTextureID)(intptr_t)patternTileViewport->m_renderTargetShaderResourceView.Get();
 }
 
 void RendererGB::drawMainViewport(const BudgetGbConstants::LcdColorBuffer &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
@@ -172,19 +275,20 @@ void RendererGB::drawMainViewport(const BudgetGbConstants::LcdColorBuffer &pixel
 	GbMainViewport &mainViewport = renderContext->m_mainViewport;
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource{};
-	renderContext->m_deviceContext->Map(mainViewport.m_viewportTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	HRESULT                  result = renderContext->m_deviceContext->Map(mainViewport.m_colorIndexTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	CHECK_HR(result);
 
 	// a row of texture bytes is aligned to 256 bytes so we can't do a direct memcpy
-	for (uint8_t row = 0; row < BudgetGbConstants::LCD_HEIGHT; ++row)
+	for (uint32_t row = 0; row < BudgetGbConstants::LCD_HEIGHT; ++row)
 	{
-		for (uint8_t col = 0; col < BudgetGbConstants::LCD_WIDTH; ++col)
+		for (uint32_t col = 0; col < BudgetGbConstants::LCD_WIDTH; ++col)
 			static_cast<uint8_t *>(mappedResource.pData)[row * mappedResource.RowPitch + col] = pixelBuffer[row * BudgetGbConstants::LCD_WIDTH + col];
 	}
 
-	renderContext->m_deviceContext->Unmap(mainViewport.m_viewportTexture.Get(), 0);
+	renderContext->m_deviceContext->Unmap(mainViewport.m_colorIndexTexture.Get(), 0);
 
-	constexpr float colors[4]{};
-	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_renderTargetView.Get(), colors);
+	constexpr float clearColor[4]{};
+	renderContext->m_deviceContext->ClearRenderTargetView(renderContext->m_mainRenderTargetView.Get(), clearColor);
 
 	D3D11_VIEWPORT vp{};
 	vp.Width    = (FLOAT)mainViewport.m_viewportSize.x;
@@ -198,18 +302,18 @@ void RendererGB::drawMainViewport(const BudgetGbConstants::LcdColorBuffer &pixel
 	UINT vertexOffset = 0;
 	UINT vertexStride = sizeof(Vertex);
 	renderContext->m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	renderContext->m_deviceContext->IASetInputLayout(mainViewport.m_inputLayout.Get());
-	renderContext->m_deviceContext->IASetVertexBuffers(0, 1, mainViewport.m_vertexBuffer.GetAddressOf(), &vertexStride, &vertexOffset);
-	renderContext->m_deviceContext->IASetIndexBuffer(mainViewport.m_indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	renderContext->m_deviceContext->IASetInputLayout(renderContext->m_inputLayout.Get());
+	renderContext->m_deviceContext->IASetVertexBuffers(0, 1, mainViewport.m_bufferVertex.GetAddressOf(), &vertexStride, &vertexOffset);
+	renderContext->m_deviceContext->IASetIndexBuffer(renderContext->m_bufferIndex.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-	renderContext->m_deviceContext->VSSetShader(mainViewport.m_vertexShader.Get(), nullptr, 0);
-	renderContext->m_deviceContext->VSSetConstantBuffers(0, 1, mainViewport.m_constantBuffer.GetAddressOf());
+	renderContext->m_deviceContext->VSSetShader(renderContext->m_shaderVertex.Get(), nullptr, 0);
+	renderContext->m_deviceContext->VSSetConstantBuffers(0, 1, renderContext->m_bufferConstantPalettes.GetAddressOf());
 
-	renderContext->m_deviceContext->PSSetShader(mainViewport.m_pixelShader.Get(), nullptr, 0);
+	renderContext->m_deviceContext->PSSetShader(renderContext->m_shaderPixel.Get(), nullptr, 0);
 	renderContext->m_deviceContext->PSSetShaderResources(0, 1, mainViewport.m_viewportShaderResourceView.GetAddressOf());
-	renderContext->m_deviceContext->PSSetConstantBuffers(0, 1, mainViewport.m_constantBuffer.GetAddressOf());
+	renderContext->m_deviceContext->PSSetConstantBuffers(0, 1, renderContext->m_bufferConstantPalettes.GetAddressOf());
 
-	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_renderTargetView.GetAddressOf(), nullptr);
+	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_mainRenderTargetView.GetAddressOf(), nullptr);
 	renderContext->m_deviceContext->DrawIndexed(6, 0, 0);
 }
 
@@ -218,7 +322,7 @@ void RendererGB::endFrame(SDL_Window *window, RenderContext *renderContext)
 	(void)window;
 	ImGui::Render();
 
-	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_renderTargetView.GetAddressOf(), nullptr);
+	renderContext->m_deviceContext->OMSetRenderTargets(1, renderContext->m_mainRenderTargetView.GetAddressOf(), nullptr);
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -287,76 +391,7 @@ RendererGB::RenderContext::RenderContext(HWND hwnd)
 	result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Resource), (void **)backBuffer.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	result = m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf());
-	CHECK_HR(result);
-
-	m_mainViewport.initMainViewport(m_device, m_deviceContext);
-}
-
-void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, const mwrl::ComPtr<ID3D11DeviceContext> &deviceContext)
-{
-	HRESULT result;
-
-	// clang-format off
-	Vertex vertices[] = 
-	{
-		{ {-1.0f, -1.0f, 0.0f},  {0.0f,   0.0f} },
-		{ {-1.0f,  1.0f, 0.0f},  {0.0f,   144.0f} },
-		{ { 1.0f,  1.0f, 0.0f},  {160.0f, 144.0f} },
-		{ { 1.0f, -1.0f, 0.0f},  {160.0f, 0.0f} },
-	};
-
-	unsigned int indices[] = 
-	{
-		0, 1, 2,
-		2, 3, 0,
-	};
-	// clang-format on
-
-	// create vertex buffer
-
-	D3D11_BUFFER_DESC vertexBufferDesc{};
-	vertexBufferDesc.ByteWidth           = sizeof(vertices);
-	vertexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
-	vertexBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
-	vertexBufferDesc.StructureByteStride = sizeof(Vertex);
-
-	D3D11_SUBRESOURCE_DATA subResourceData{};
-	subResourceData.pSysMem = vertices;
-
-	result = device->CreateBuffer(&vertexBufferDesc, &subResourceData, m_vertexBuffer.ReleaseAndGetAddressOf());
-	CHECK_HR(result);
-
-	// create index buffer
-
-	D3D11_BUFFER_DESC indexBufferDesc{};
-	indexBufferDesc.ByteWidth           = sizeof(indices);
-	indexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.BindFlags           = D3D11_BIND_INDEX_BUFFER;
-	indexBufferDesc.StructureByteStride = 3 * sizeof(indices[0]);
-
-	SDL_zero(subResourceData);
-	subResourceData.pSysMem = indices;
-
-	result = device->CreateBuffer(&indexBufferDesc, &subResourceData, m_indexBuffer.ReleaseAndGetAddressOf());
-	CHECK_HR(result);
-
-	// create constant buffer
-
-	std::array<float, (BudgetGbConfig::DEFAULT_GB_PALETTE[0].size() + 1) * 4> cbufferInit{};
-	cbufferInit.fill(1.0f);
-
-	D3D11_BUFFER_DESC constantBufferDesc{};
-	constantBufferDesc.ByteWidth           = sizeof(cbufferInit); // width must be in 16 byte aligned
-	constantBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
-	constantBufferDesc.BindFlags           = D3D11_BIND_CONSTANT_BUFFER;
-	constantBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
-	constantBufferDesc.StructureByteStride = 0;
-
-	SDL_zero(subResourceData);
-	subResourceData.pSysMem = cbufferInit.data();
-
-	result = device->CreateBuffer(&constantBufferDesc, &subResourceData, m_constantBuffer.ReleaseAndGetAddressOf());
+	result = m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, m_mainRenderTargetView.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// compile, create shaders
@@ -407,10 +442,10 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 		CHECK_HR(result);
 	}
 
-	result = device->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, m_vertexShader.ReleaseAndGetAddressOf());
+	result = m_device->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, m_shaderVertex.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	result = device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, m_pixelShader.ReleaseAndGetAddressOf());
+	result = m_device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, m_shaderPixel.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// set input layout
@@ -420,10 +455,99 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 		{"TextureCoord", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	result = device->CreateInputLayout(inputElemDesc, _countof(inputElemDesc), vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), m_inputLayout.ReleaseAndGetAddressOf());
+	result = m_device->CreateInputLayout(inputElemDesc, _countof(inputElemDesc), vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), m_inputLayout.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	// set up texture
+	// create index buffer
+	//
+	// clang-format off
+
+	uint32_t indices[] = 
+	{
+		0, 1, 2,
+		2, 3, 0,
+	};
+	// clang-format on
+
+	D3D11_BUFFER_DESC indexBufferDesc{};
+	indexBufferDesc.ByteWidth           = sizeof(indices);
+	indexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.BindFlags           = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.StructureByteStride = 3 * sizeof(indices[0]);
+
+	D3D11_SUBRESOURCE_DATA subResourceData{};
+	subResourceData.pSysMem = indices;
+
+	result = m_device->CreateBuffer(&indexBufferDesc, &subResourceData, m_bufferIndex.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// create constant buffer for global palette color
+
+	std::array<float, (BudgetGbConfig::DEFAULT_GB_PALETTE[0].size() + 1) * 4> cbufferInit{};
+	cbufferInit.fill(1.0f);
+
+	D3D11_BUFFER_DESC constantBufferDesc{};
+	constantBufferDesc.ByteWidth           = sizeof(cbufferInit); // width must be in 16 byte aligned
+	constantBufferDesc.Usage               = D3D11_USAGE_DYNAMIC;
+	constantBufferDesc.BindFlags           = D3D11_BIND_CONSTANT_BUFFER;
+	constantBufferDesc.CPUAccessFlags      = D3D11_CPU_ACCESS_WRITE;
+	constantBufferDesc.StructureByteStride = 0;
+
+	SDL_zero(subResourceData);
+	subResourceData.pSysMem = cbufferInit.data();
+
+	result = m_device->CreateBuffer(&constantBufferDesc, &subResourceData, m_bufferConstantPalettes.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// set rasterizer state
+
+	mwrl::ComPtr<ID3D11RasterizerState> rasterizerState;
+
+	D3D11_RASTERIZER_DESC rasterizerDesc{};
+	rasterizerDesc.FrontCounterClockwise = FALSE;
+	rasterizerDesc.DepthClipEnable       = TRUE;
+	rasterizerDesc.FillMode              = D3D11_FILL_SOLID;
+	rasterizerDesc.CullMode              = D3D11_CULL_BACK;
+
+	m_device->CreateRasterizerState(&rasterizerDesc, rasterizerState.ReleaseAndGetAddressOf());
+	m_deviceContext->RSSetState(rasterizerState.Get());
+
+	// set up viewport texture
+
+	m_mainViewport.initMainViewport(m_device);
+}
+
+void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device)
+{
+	HRESULT result;
+
+	// create vertex buffer
+
+	// clang-format off
+
+	Vertex vertices[] =
+	{
+		{{-1.0f, -1.0f, 0.0f}, {0.0f,                         0.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f,                         BudgetGbConstants::LCD_HEIGHT}},
+		{{ 1.0f,  1.0f, 0.0f}, {BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT}},
+		{{ 1.0f, -1.0f, 0.0f}, {BudgetGbConstants::LCD_WIDTH, 0.0f}},
+	};
+
+	// clang-format on
+
+	D3D11_BUFFER_DESC vertexBufferDesc{};
+	vertexBufferDesc.ByteWidth           = sizeof(vertices);
+	vertexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.StructureByteStride = sizeof(Vertex);
+
+	D3D11_SUBRESOURCE_DATA subResourceData{};
+	subResourceData.pSysMem = vertices;
+
+	result = device->CreateBuffer(&vertexBufferDesc, &subResourceData, m_bufferVertex.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// set up texture for holding pixel color indices for the lcd display
 
 	D3D11_TEXTURE2D_DESC textureDesc{};
 	textureDesc.Width            = BudgetGbConstants::LCD_WIDTH;
@@ -444,7 +568,7 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	subResourceData.pSysMem     = pixels.data();
 	subResourceData.SysMemPitch = BudgetGbConstants::LCD_WIDTH;
 
-	result = device->CreateTexture2D(&textureDesc, &subResourceData, m_viewportTexture.ReleaseAndGetAddressOf());
+	result = device->CreateTexture2D(&textureDesc, &subResourceData, m_colorIndexTexture.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResViewDesc{};
@@ -453,19 +577,125 @@ void GbMainViewport::initMainViewport(const mwrl::ComPtr<ID3D11Device> &device, 
 	shaderResViewDesc.Texture2D.MostDetailedMip = 0;
 	shaderResViewDesc.Texture2D.MipLevels       = 1;
 
-	result = device->CreateShaderResourceView(m_viewportTexture.Get(), &shaderResViewDesc, m_viewportShaderResourceView.ReleaseAndGetAddressOf());
+	result = device->CreateShaderResourceView(m_colorIndexTexture.Get(), &shaderResViewDesc, m_viewportShaderResourceView.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+}
+
+#include <cstdlib>
+#include <ctime>
+
+PatternTileView::PatternTileView(const PPU &ppu, const RendererGB::RenderContext *renderContext)
+	: m_ppu(ppu)
+{
+	m_patternTileViewport = std::make_unique<RendererGB::PatternTileViewport>(renderContext->m_device);
+
+	srand(time(0));
+
+	for (uint32_t i = 0; i < m_tilePixelBuffer.size(); ++i)
+	{
+		m_tilePixelBuffer[i] = rand() & 0x3;
+	}
+}
+
+PatternTileView ::~PatternTileView() = default;
+
+RendererGB::PatternTileViewport::PatternTileViewport(const mwrl::ComPtr<ID3D11Device> &device)
+{
+
+	// set up vertex buffer
+
+	// clang-format off
+	Vertex vertices[] =
+	{
+		{{-1.0f, -1.0f, 0.0f}, {0.0f,                               0.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f,                               BudgetGbConstants::TILE_VIEW_HEIGHT}},
+		{{ 1.0f,  1.0f, 0.0f}, {BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT}},
+		{{ 1.0f, -1.0f, 0.0f}, {BudgetGbConstants::TILE_VIEW_WIDTH, 0.0f}},
+	};
+	// clang-format on
+
+	D3D11_BUFFER_DESC vertexBufferDesc{};
+	vertexBufferDesc.ByteWidth           = sizeof(vertices);
+	vertexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.StructureByteStride = sizeof(Vertex);
+
+	D3D11_SUBRESOURCE_DATA subResourceData{};
+	subResourceData.pSysMem = vertices;
+
+	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &subResourceData, m_bufferVertex.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	// set rasterizer state
+	// set up texture for holding tile pixel color indices
 
-	mwrl::ComPtr<ID3D11RasterizerState> rasterizerState;
+	D3D11_TEXTURE2D_DESC textureDesc{};
+	textureDesc.Width            = BudgetGbConstants::TILE_VIEW_WIDTH;
+	textureDesc.Height           = BudgetGbConstants::TILE_VIEW_HEIGHT;
+	textureDesc.MipLevels        = 1;
+	textureDesc.ArraySize        = 1;
+	textureDesc.Format           = DXGI_FORMAT_R8_UINT;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.Usage            = D3D11_USAGE_DYNAMIC;
+	textureDesc.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
+	textureDesc.CPUAccessFlags   = D3D11_CPU_ACCESS_WRITE;
+	textureDesc.MiscFlags        = 0;
 
-	D3D11_RASTERIZER_DESC rasterizerDesc{};
-	rasterizerDesc.FrontCounterClockwise = FALSE;
-	rasterizerDesc.DepthClipEnable       = TRUE;
-	rasterizerDesc.FillMode              = D3D11_FILL_SOLID;
-	rasterizerDesc.CullMode              = D3D11_CULL_BACK;
+	result = device->CreateTexture2D(&textureDesc, nullptr, m_colorIndexTexture.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
 
-	device->CreateRasterizerState(&rasterizerDesc, rasterizerState.ReleaseAndGetAddressOf());
-	deviceContext->RSSetState(rasterizerState.Get());
+	// set up shader resource view for tile pixel color index texture
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResViewDesc{};
+	shaderResViewDesc.Format                    = textureDesc.Format;
+	shaderResViewDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+	shaderResViewDesc.Texture2D.MostDetailedMip = 0;
+	shaderResViewDesc.Texture2D.MipLevels       = 1;
+
+	result = device->CreateShaderResourceView(m_colorIndexTexture.Get(), &shaderResViewDesc, m_colorIndexShaderResourceView.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// set up render target texture
+
+	SDL_zero(textureDesc);
+	textureDesc.Width            = BudgetGbConstants::TILE_VIEW_WIDTH;
+	textureDesc.Height           = BudgetGbConstants::TILE_VIEW_HEIGHT;
+	textureDesc.MipLevels        = 1;
+	textureDesc.ArraySize        = 1;
+	textureDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.Usage            = D3D11_USAGE_DEFAULT;
+	textureDesc.BindFlags        = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	textureDesc.CPUAccessFlags   = 0;
+	textureDesc.MiscFlags        = 0;
+
+	result = device->CreateTexture2D(&textureDesc, nullptr, m_renderTargetTexture.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// set up shader resource view for render target texture
+
+	SDL_zero(shaderResViewDesc);
+	shaderResViewDesc.Format                    = textureDesc.Format;
+	shaderResViewDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+	shaderResViewDesc.Texture2D.MostDetailedMip = 0;
+	shaderResViewDesc.Texture2D.MipLevels       = 1;
+
+	result = device->CreateShaderResourceView(m_renderTargetTexture.Get(), &shaderResViewDesc, m_renderTargetShaderResourceView.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// create the render target view
+
+	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc{};
+	renderTargetViewDesc.Format             = textureDesc.Format;
+	renderTargetViewDesc.ViewDimension      = D3D11_RTV_DIMENSION_TEXTURE2D;
+	renderTargetViewDesc.Texture2D.MipSlice = 0;
+
+	result = device->CreateRenderTargetView(m_renderTargetTexture.Get(), &renderTargetViewDesc, m_renderTargetView.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	fmt::println("contruct");
+}
+
+RendererGB::PatternTileViewport::~PatternTileViewport()
+{
+	fmt::println("destruct");
 }

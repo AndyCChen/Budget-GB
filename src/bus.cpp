@@ -4,8 +4,8 @@
 #include "sm83.h"
 #include "emulatorConstants.h"
 
-Bus::Bus(Cartridge &cartridge, Sm83 &cpu, BudgetGbConstants::LcdColorBuffer &lcdColorBuffer)
-	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(lcdColorBuffer, m_cpu.m_interrupts.m_interruptFlags)
+Bus::Bus(Cartridge &cartridge, Sm83 &cpu, PPU &ppu)
+	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(ppu)
 {
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 	std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));

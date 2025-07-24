@@ -93,6 +93,8 @@ set(SOURCE_FILES
 	src/config.cpp
 	src/config.h
 	src/emulatorConstants.h
+	src/patternTileView.cpp
+	src/patternTileView.h
 
 	src/mappers/mapper.cpp
 	src/mappers/mapper.h

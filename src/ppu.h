@@ -340,6 +340,11 @@ class PPU
 	void    writeOam(uint16_t position, uint8_t data);
 	void    writeOamDMA(uint16_t position, uint8_t data);
 
+	const std::array<uint8_t, VRAM_SIZE> &getVram() const
+	{
+		return m_vram;
+	}
+
 	/**
 	 * @brief Should only be used by logger to read into vram for instruction logging.
 	 * Does not respect read access restrictions from ppu rendering.
