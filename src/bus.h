@@ -63,7 +63,6 @@ class Bus
 	 */
 	void init(bool useBootrom)
 	{
-		m_tCyclePerFrame = 0;
 		m_tCycles        = 0;
 
 		std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
@@ -85,7 +84,6 @@ class Bus
 	PPU       &m_ppu;
 
 	std::size_t m_tCycles        = 0; // track total elapsed gameboy cycles
-	std::size_t m_tCyclePerFrame = 0; // track elasped cycles in a frame (1/60 of a second), decremented after frame ends
 
 	// memory components
 

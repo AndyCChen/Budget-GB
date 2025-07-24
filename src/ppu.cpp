@@ -37,6 +37,7 @@ void PPU::tick()
 				m_interruptLine |= Sm83::InterruptFlags::InterruptFlags_VBLANK; // request regular vblank interrupt
 				m_window.reset();
 				m_ppuMode = Mode::MODE_1;
+				m_frameDone = true;
 			}
 			else
 			{
@@ -664,6 +665,8 @@ void PPU::init(bool useBootrom)
 	r_lcdStatus          = 0;
 	m_scanlineDotCounter = 0;
 	r_oamStart           = 0;
+
+	m_frameDone = false;
 
 	m_ppuMode          = Mode::MODE_2;
 	m_pixelRenderState = PixelRenderState::B01_FETCH;

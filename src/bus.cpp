@@ -171,7 +171,6 @@ void Bus::tickM()
 {
 	// one m-cycle is 4 t-cycles
 
-	m_tCyclePerFrame += 4;
 	m_tCycles += 4;
 
 	if (m_ppu.m_oamDmaController.dmaInProgress)
@@ -186,13 +185,8 @@ void Bus::tickM()
 
 void Bus::onUpdate()
 {
-	// number of ticks that should pass per 1/60 of a second
-	constexpr unsigned int TICKS_PER_FRAME = static_cast<unsigned int>(BudgetGbConstants::CLOCK_RATE_T / 59.7275);
-
-	while (m_tCyclePerFrame < TICKS_PER_FRAME)
+	while (!m_ppu.isFrameComplete())
 		m_cpu.instructionStep();
-
-	m_tCyclePerFrame -= TICKS_PER_FRAME;
 }
 
 void Bus::writeIO(uint16_t position, uint8_t data)

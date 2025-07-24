@@ -278,6 +278,8 @@ class PPU
 
 	uint8_t m_pixelX = 0; // track the pixel that is the ppu is currently on, ranges (0 - 159 inclusive)
 
+	bool m_frameDone = false;
+
 	struct WindowRegisters
 	{
 		bool WxMatch = false;
@@ -339,6 +341,15 @@ class PPU
 	uint8_t readOam(uint16_t position);
 	void    writeOam(uint16_t position, uint8_t data);
 	void    writeOamDMA(uint16_t position, uint8_t data);
+
+	// poll if ppu frame is done
+	bool isFrameComplete()
+	{
+		bool status = m_frameDone;
+		m_frameDone &= false;
+
+		return status;
+	}
 
 	const std::array<uint8_t, VRAM_SIZE> &getVram() const
 	{
