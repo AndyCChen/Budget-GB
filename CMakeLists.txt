@@ -156,7 +156,7 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 	target_link_libraries(BudgetGB PRIVATE ${BudgetGbLibs})
-	target_compile_options(BudgetGB PUBLIC /W4 /MT$<$<CONFIG:Debug>:d>)
+	target_compile_options(BudgetGB PRIVATE /W4 /MT$<$<CONFIG:Debug>:d>)
 	message(STATUS "MSVC COMPILER")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 	target_link_libraries(BudgetGB PRIVATE ${BudgetGbLibs} -static)
