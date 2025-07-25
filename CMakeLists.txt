@@ -153,13 +153,13 @@ else()
 	list(APPEND BudgetGbLibs Glad)
 endif()
 
-target_link_libraries(BudgetGB PRIVATE ${BudgetGbLibs})
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-	# statically link against msvc c runtime
+	target_link_libraries(BudgetGB PRIVATE ${BudgetGbLibs})
 	target_compile_options(BudgetGB PUBLIC /W4 /MT$<$<CONFIG:Debug>:d>)
 	message(STATUS "MSVC COMPILER")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+	target_link_libraries(BudgetGB PRIVATE ${BudgetGbLibs} -static)
 	target_compile_options(BudgetGB PRIVATE -O3 -Wall -Wextra -Wpedantic)
 	message(STATUS "GNU COMPILER")
 endif()
