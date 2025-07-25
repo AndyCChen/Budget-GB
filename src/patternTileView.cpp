@@ -2,30 +2,33 @@
 #include "fmt/core.h"
 #include "imgui.h"
 
+#include <cmath>
+
 bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 {
 	bool toggle = true;
 
 	if (ImGui::Begin("Tile View", &toggle))
 	{
-		ImGui::BeginChild("Tile Viewport", ImVec2(ImGui::GetWindowSize().x * 0.75f, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+		ImGui::BeginChild("Tile Viewport", ImVec2(ImGui::GetWindowSize().x - 250.0f, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
 		{
-			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
-			ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0.0f, 0.0f));
-
 			ImVec2 childSize = ImGui::GetWindowSize();
-
 			// resize image texture if window size changes
 			if (updateWindowSize(childSize.x, childSize.y))
-				RendererGB::tileViewResize(renderContext, m_patternTileViewport.get(), m_tileViewportSize);
+				RendererGB::tileViewResize(renderContext, m_patternTileViewport.get(), m_tileTextureSize);
 
-			ImTextureID my_tex_id = RendererGB::tileViewGetTextureID(m_patternTileViewport.get());
-			ImVec2      uv_min    = ImVec2(0.0f, 0.0f); // Top-left
-			ImVec2      uv_max    = ImVec2(1.0f, 1.0f);
+			ImTextureID tileTextureID = RendererGB::tileViewGetTextureID(m_patternTileViewport.get());
 
-			ImGui::ImageWithBg(my_tex_id, ImVec2(m_tileViewportSize.x, m_tileViewportSize.y), uv_min, uv_max, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+			ImGui::Image(tileTextureID, ImVec2(m_tileTextureSize.x, m_tileTextureSize.y));
+			if (ImGui::IsItemHovered())
+			{
+				ImVec2 pos  = ImGui::GetCursorScreenPos();
+				ImVec2 mPos = ImGui::GetMousePos();
 
-			ImGui::PopStyleVar(2);
+				m_tileX = static_cast<uint8_t>((mPos.x - pos.x) / m_tileTextureSize.x * 16.0f);
+				m_tileY = static_cast<uint8_t>(((mPos.y - pos.y) + 5) / m_tileTextureSize.y * 24.0f) * -1;
+				m_tileY = 23 - m_tileY;
+			}
 		}
 		ImGui::EndChild();
 
@@ -33,14 +36,18 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 
 		ImGui::BeginChild("Tile Info");
 		{
-			ImGui::Text("tile id");
+			ImGui::Text("Tile X: %d", m_tileX);
+			ImGui::Text("Tile Y: %d", m_tileY);
+
+			uint16_t address = 0x8000 | (m_tileY << 8) | (m_tileX << 4);
+			ImGui::Text("Tile Address: $%04X - $%04X", address, address + 0xF);
 		}
 		ImGui::EndChild();
 	}
 	ImGui::End();
 
 	updateTilePixelBuffer();
-	RendererGB::tileViewDraw(renderContext, m_patternTileViewport.get(), m_tilePixelBuffer, Utils::Vec2<float>{m_tileViewportSize.x, m_tileViewportSize.y});
+	RendererGB::tileViewDraw(renderContext, m_patternTileViewport.get(), m_tilePixelBuffer, Utils::Vec2<float>{m_tileTextureSize.x, m_tileTextureSize.y});
 
 	return toggle;
 }
@@ -49,11 +56,33 @@ bool PatternTileView::updateWindowSize(float width, float height)
 {
 	bool isResized = false;
 
-	if (m_tileViewportSize.x != width || m_tileViewportSize.y != height)
-		isResized = true;
+	constexpr uint8_t            OFFSET = 16;
+	constexpr Utils::Vec2<float> MIN_SIZE{64, 64};
 
-	m_tileViewportSize.x = width;
-	m_tileViewportSize.y = height;
+	float diffX = width - m_tileTextureSize.x;
+	float diffY = height - m_tileTextureSize.y;
+
+	if (diffX > OFFSET)
+	{
+		isResized           = true;
+		m_tileTextureSize.x = width;
+	}
+	else if (diffX < 0 && m_tileTextureSize.x >= MIN_SIZE.x)
+	{
+		isResized = true;
+		m_tileTextureSize.x -= OFFSET;
+	}
+
+	if (diffY > OFFSET)
+	{
+		isResized           = true;
+		m_tileTextureSize.y = height;
+	}
+	else if (diffY < 0 && m_tileTextureSize.y >= MIN_SIZE.y)
+	{
+		isResized = true;
+		m_tileTextureSize.y -= OFFSET;
+	}
 
 	return isResized;
 }
@@ -66,6 +95,9 @@ void PatternTileView::updateTilePixelBuffer()
 	// | |||| |||| |||+- P: Bit plane selection
 	// | |||| |||| +++-- Y: Fine y offset (row within a 8 pixel high tile)
 	// +-++++-++++------ T: Tile index (16 bytes per tile)
+
+	// update tile pixel buffer which will be sent to shader for render
+	// Texture is flipped also.
 
 	for (uint32_t tile = 0; tile < 384; ++tile)
 	{
@@ -84,6 +116,7 @@ void PatternTileView::updateTilePixelBuffer()
 			for (uint8_t fineX = 0; fineX < 8; ++fineX)
 			{
 				uint8_t colorIndex = ((hi & 0x80) >> 6) | ((lo & 0x80) >> 7);
+
 				m_tilePixelBuffer[topLeft + ((7 - fineY) * 128) + fineX] = colorIndex;
 				lo <<= 1;
 				hi <<= 1;
