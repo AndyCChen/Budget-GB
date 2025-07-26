@@ -12,8 +12,8 @@
 class PatternTileView
 {
   public:
-	PatternTileView(const PPU &, const RendererGB::RenderContext *renderContext);
-	~PatternTileView();
+	PatternTileView(const PPU &, RendererGB::RenderContext *renderContext);
+	~PatternTileView() = default;
 
 	// returns false if gui is closed, else return true
 	bool drawViewportGui(RendererGB::RenderContext *renderContext);
@@ -27,11 +27,12 @@ class PatternTileView
 	void updateTilePixelBuffer();
 
 	const PPU         &m_ppu;
-	Utils::Vec2<float> m_tileTextureSize{};
+	Utils::Vec2<float> m_tileViewportSize{};
 
 	BudgetGbConstants::TileColorBuffer m_tilePixelBuffer{};
 
-	std::unique_ptr<RendererGB::PatternTileViewport> m_patternTileViewport;
+	RendererGB::TextureRenderTargetUniquePtr m_tileViewRenderTarget;
+	RendererGB::TexturedQuadUniquePtr        m_tileViewQuad;
 
 	uint8_t m_tileX = 0;
 	uint8_t m_tileY = 0;

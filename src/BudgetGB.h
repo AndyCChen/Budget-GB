@@ -84,6 +84,8 @@ class BudgetGB
 	RendererGB::RenderContext        *m_renderContext;
 	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer{};
 
+	RendererGB::TexturedQuadUniquePtr m_lcdDisplayQuad;
+
 	std::unique_ptr<PatternTileView> m_patternTileViewport;
 
 	/*std::random_device              m_rd;

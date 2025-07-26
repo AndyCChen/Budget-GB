@@ -2,7 +2,20 @@
 #include "fmt/core.h"
 #include "imgui.h"
 
-#include <cmath>
+PatternTileView::PatternTileView(const PPU &ppu, RendererGB::RenderContext *renderContext)
+	: m_ppu(ppu)
+{
+	Utils::Vec2<float> size{BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT};
+
+	RendererGB::TextureRenderTarget *tileViewRenderTarget = nullptr;
+	RendererGB::textureRenderTargetCreate(renderContext, tileViewRenderTarget, size);
+
+	RendererGB::TexturedQuad *tileViewQuad = nullptr;
+	RendererGB::texturedQuadCreate(renderContext, tileViewQuad, size);
+
+	m_tileViewRenderTarget.reset(tileViewRenderTarget);
+	m_tileViewQuad.reset(tileViewQuad);
+}
 
 bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 {
@@ -15,18 +28,18 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 			ImVec2 childSize = ImGui::GetWindowSize();
 			// resize image texture if window size changes
 			if (updateWindowSize(childSize.x, childSize.y))
-				RendererGB::tileViewResize(renderContext, m_patternTileViewport.get(), m_tileTextureSize);
+				RendererGB::textureRenderTargetResize(renderContext, m_tileViewRenderTarget.get(), Utils::Vec2<float>{m_tileViewportSize.x, m_tileViewportSize.y});
 
-			ImTextureID tileTextureID = RendererGB::tileViewGetTextureID(m_patternTileViewport.get());
+			ImTextureID tileTextureID = RendererGB::textureRenderTargetGetTextureID(m_tileViewRenderTarget.get());
 
-			ImGui::Image(tileTextureID, ImVec2(m_tileTextureSize.x, m_tileTextureSize.y));
+			ImGui::Image(tileTextureID, ImVec2(m_tileViewportSize.x, m_tileViewportSize.y));
 			if (ImGui::IsItemHovered())
 			{
 				ImVec2 pos  = ImGui::GetCursorScreenPos();
 				ImVec2 mPos = ImGui::GetMousePos();
 
-				m_tileX = static_cast<uint8_t>((mPos.x - pos.x) / m_tileTextureSize.x * 16.0f);
-				m_tileY = static_cast<uint8_t>(((mPos.y - pos.y) + 5) / m_tileTextureSize.y * 24.0f) * -1;
+				m_tileX = static_cast<uint8_t>((mPos.x - pos.x) / m_tileViewportSize.x * 16.0f);
+				m_tileY = static_cast<uint8_t>(((mPos.y - pos.y) + 5) / m_tileViewportSize.y * 24.0f) * -1;
 				m_tileY = 23 - m_tileY;
 			}
 		}
@@ -47,7 +60,11 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 	ImGui::End();
 
 	updateTilePixelBuffer();
-	RendererGB::tileViewDraw(renderContext, m_patternTileViewport.get(), m_tilePixelBuffer, Utils::Vec2<float>{m_tileTextureSize.x, m_tileTextureSize.y});
+
+	RendererGB::textureRenderTargetSet(renderContext, m_tileViewRenderTarget.get(), m_tileViewportSize);
+
+	RendererGB::texturedQuadUpdateTexture(renderContext, m_tileViewQuad.get(), m_tilePixelBuffer.data(), m_tilePixelBuffer.size());
+	RendererGB::texturedQuadDraw(renderContext, m_tileViewQuad.get());
 
 	return toggle;
 }
@@ -59,29 +76,29 @@ bool PatternTileView::updateWindowSize(float width, float height)
 	constexpr uint8_t            OFFSET = 16;
 	constexpr Utils::Vec2<float> MIN_SIZE{64, 64};
 
-	float diffX = width - m_tileTextureSize.x;
-	float diffY = height - m_tileTextureSize.y;
+	float diffX = width - m_tileViewportSize.x;
+	float diffY = height - m_tileViewportSize.y;
 
 	if (diffX > OFFSET)
 	{
-		isResized           = true;
-		m_tileTextureSize.x = width;
+		isResized            = true;
+		m_tileViewportSize.x = width;
 	}
-	else if (diffX < 0 && m_tileTextureSize.x >= MIN_SIZE.x)
+	else if (diffX < 0 && m_tileViewportSize.x >= MIN_SIZE.x)
 	{
 		isResized = true;
-		m_tileTextureSize.x -= OFFSET;
+		m_tileViewportSize.x -= OFFSET;
 	}
 
 	if (diffY > OFFSET)
 	{
-		isResized           = true;
-		m_tileTextureSize.y = height;
+		isResized            = true;
+		m_tileViewportSize.y = height;
 	}
-	else if (diffY < 0 && m_tileTextureSize.y >= MIN_SIZE.y)
+	else if (diffY < 0 && m_tileViewportSize.y >= MIN_SIZE.y)
 	{
 		isResized = true;
-		m_tileTextureSize.y -= OFFSET;
+		m_tileViewportSize.y -= OFFSET;
 	}
 
 	return isResized;

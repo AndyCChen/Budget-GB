@@ -46,6 +46,11 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 	m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 	m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
+
+	RendererGB::TexturedQuad *mainViewQuad = nullptr;
+	RendererGB::texturedQuadCreate(m_renderContext, mainViewQuad, Utils::Vec2<float>{BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT});
+
+	m_lcdDisplayQuad.reset(mainViewQuad);
 }
 
 BudgetGB::~BudgetGB()
@@ -68,8 +73,14 @@ void BudgetGB::onUpdate(float deltaTime)
 	}
 
 	guiMain();
-	RendererGB::setViewportPalette(m_renderContext, m_guiContext.guiPalettes_activePalette < 0 ? m_config.defaultPalette : m_config.palettes[m_guiContext.guiPalettes_activePalette]);
-	RendererGB::drawMainViewport(m_lcdColorBuffer, m_renderContext, m_window);
+
+	RendererGB::setGlobalPalette(m_renderContext, m_guiContext.guiPalettes_activePalette < 0 ? m_config.defaultPalette : m_config.palettes[m_guiContext.guiPalettes_activePalette]);
+
+	RendererGB::mainViewportSetRenderTarget(m_renderContext);
+	RendererGB::texturedQuadUpdateTexture(m_renderContext, m_lcdDisplayQuad.get(), m_lcdColorBuffer.data(), m_lcdColorBuffer.size());
+	RendererGB::texturedQuadDraw(m_renderContext, m_lcdDisplayQuad.get());
+
+	// RendererGB::drawMainViewport(m_lcdColorBuffer, m_renderContext, m_window);
 
 	RendererGB::endFrame(m_window, m_renderContext);
 	RendererGB::newFrame(); // begin new frame at end of this game loop
@@ -184,7 +195,7 @@ void BudgetGB::resizeViewportStretched()
 	int viewportX = (resizedWidth - viewportSize.x) / 2;
 	int viewportY = (resizedHeight - viewportSize.y) / 2;
 
-	RendererGB::setMainViewportSize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
+	RendererGB::mainViewportResize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
 }
 
 void BudgetGB::resizeViewportFit()
@@ -208,7 +219,7 @@ void BudgetGB::resizeViewportFit()
 	int viewportX = (resizedWidth - viewportSize.x) / 2;
 	int viewportY = (resizedHeight - viewportSize.y) / 2;
 
-	RendererGB::setMainViewportSize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
+	RendererGB::mainViewportResize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
 }
 
 void BudgetGB::resizeWindowFixed(BudgetGbConfig::WindowScale scale)
