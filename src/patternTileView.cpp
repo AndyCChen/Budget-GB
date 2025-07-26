@@ -5,23 +5,36 @@
 PatternTileView::PatternTileView(const PPU &ppu, RendererGB::RenderContext *renderContext)
 	: m_ppu(ppu)
 {
+	using namespace BudgetGbConstants;
+	using namespace Utils;
+
 	RendererGB::TextureRenderTarget *tileViewRenderTarget = nullptr;
-	RendererGB::textureRenderTargetCreate(renderContext, tileViewRenderTarget, Utils::Vec2<float>{BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT});
+	RendererGB::textureRenderTargetCreate(renderContext, tileViewRenderTarget, Vec2<float>{TILE_VIEW_WIDTH, TILE_VIEW_HEIGHT});
 
 	RendererGB::TexturedQuad *tileViewQuad = nullptr;
-	RendererGB::texturedQuadCreate(renderContext, tileViewQuad, Utils::Vec2<float>{BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT});
+	RendererGB::texturedQuadCreate(renderContext, tileViewQuad, Vec2<float>{TILE_VIEW_WIDTH, TILE_VIEW_HEIGHT});
 
 	m_tileViewRenderTarget.reset(tileViewRenderTarget);
 	m_tileViewQuad.reset(tileViewQuad);
+
+	RendererGB::TextureRenderTarget *tileRenderTarget = nullptr;
+	RendererGB::textureRenderTargetCreate(renderContext, tileRenderTarget, Vec2<float>{TILE_PREVIEW_SIZE.x, TILE_PREVIEW_SIZE.y});
+
+	RendererGB::TexturedQuad *tileQuad = nullptr;
+	RendererGB::texturedQuadCreate(renderContext, tileQuad, Vec2<float>{TILE_WIDTH, TILE_HEIGHT});
+
+	m_tilePreviewRenderTarget.reset(tileRenderTarget);
+	m_tilePreviewQuad.reset(tileQuad);
 }
 
 bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 {
 	bool toggle = true;
+	updateTileViewPixelBuffer();
 
 	if (ImGui::Begin("Tile View", &toggle))
 	{
-		float tileViewportWidth = ImGui::GetWindowSize().x - 250.0f;
+		float tileViewportWidth = ImGui::GetWindowSize().x - 225.0f;
 
 		ImGui::BeginChild("Tile Viewport", ImVec2(tileViewportWidth < MIN_TILE_VIEW_SIZE.x ? MIN_TILE_VIEW_SIZE.x : tileViewportWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
 		{
@@ -31,16 +44,17 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 				RendererGB::textureRenderTargetResize(renderContext, m_tileViewRenderTarget.get(), Utils::Vec2<float>{m_tileViewportSize.x, m_tileViewportSize.y});
 
 			ImTextureID tileTextureID = RendererGB::textureRenderTargetGetTextureID(m_tileViewRenderTarget.get());
-
 			ImGui::Image(tileTextureID, ImVec2(m_tileViewportSize.x, m_tileViewportSize.y));
+
 			if (ImGui::IsItemHovered())
 			{
 				ImVec2 pos  = ImGui::GetCursorScreenPos();
 				ImVec2 mPos = ImGui::GetMousePos();
 
 				m_tileX = static_cast<uint8_t>((mPos.x - pos.x) / m_tileViewportSize.x * 16.0f);
-				m_tileY = static_cast<uint8_t>(((mPos.y - pos.y) + 5) / m_tileViewportSize.y * 24.0f) * -1;
-				m_tileY = 23 - m_tileY;
+				m_tileY = 23 - (static_cast<uint8_t>(((mPos.y - pos.y) + 5) / m_tileViewportSize.y * 24.0f) * -1);
+
+				updateTilePreviewPixelBuffer();
 			}
 		}
 		ImGui::EndChild();
@@ -49,22 +63,30 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 
 		ImGui::BeginChild("Tile Info");
 		{
+			ImTextureID tilePreviewTextureID = RendererGB::textureRenderTargetGetTextureID(m_tilePreviewRenderTarget.get());
+			ImGui::Image(tilePreviewTextureID, ImVec2(TILE_PREVIEW_SIZE.x, TILE_PREVIEW_SIZE.y));
+
 			ImGui::Text("Tile X: %d", m_tileX);
 			ImGui::Text("Tile Y: %d", m_tileY);
 
 			uint16_t address = 0x8000 | (m_tileY << 8) | (m_tileX << 4);
-			ImGui::Text("Tile Address: $%04X - $%04X", address, address + 0xF);
+			ImGui::Text("Address: $%04X - $%04X", address, address + 0xF);
 		}
 		ImGui::EndChild();
 	}
 	ImGui::End();
 
-	updateTilePixelBuffer();
+	// draw main tile view
 
 	RendererGB::textureRenderTargetSet(renderContext, m_tileViewRenderTarget.get(), m_tileViewportSize);
-
-	RendererGB::texturedQuadUpdateTexture(renderContext, m_tileViewQuad.get(), m_tilePixelBuffer.data(), m_tilePixelBuffer.size());
+	RendererGB::texturedQuadUpdateTexture(renderContext, m_tileViewQuad.get(), m_tileViewPixelBuffer.data(), m_tileViewPixelBuffer.size());
 	RendererGB::texturedQuadDraw(renderContext, m_tileViewQuad.get());
+
+	// draw tile preview to display hovered tile
+
+	RendererGB::textureRenderTargetSet(renderContext, m_tilePreviewRenderTarget.get(), TILE_PREVIEW_SIZE);
+	RendererGB::texturedQuadUpdateTexture(renderContext, m_tilePreviewQuad.get(), m_tilePreviewPixelBuffer.data(), m_tilePreviewPixelBuffer.size());
+	RendererGB::texturedQuadDraw(renderContext, m_tilePreviewQuad.get());
 
 	return toggle;
 }
@@ -119,7 +141,7 @@ bool PatternTileView::updateWindowSize(float width, float height)
 	return isResized;
 }
 
-void PatternTileView::updateTilePixelBuffer()
+void PatternTileView::updateTileViewPixelBuffer()
 {
 	auto &vram = m_ppu.getVram();
 
@@ -149,10 +171,23 @@ void PatternTileView::updateTilePixelBuffer()
 			{
 				uint8_t colorIndex = ((hi & 0x80) >> 6) | ((lo & 0x80) >> 7);
 
-				m_tilePixelBuffer[topLeft + ((7 - fineY) * 128) + fineX] = colorIndex;
+				m_tileViewPixelBuffer[topLeft + ((7 - fineY) * 128) + fineX] = colorIndex;
 				lo <<= 1;
 				hi <<= 1;
 			}
+		}
+	}
+}
+
+void PatternTileView::updateTilePreviewPixelBuffer()
+{
+	uint32_t topLeft = ((23 - m_tileY) * 1024) + (m_tileX * 8);
+
+	for (uint8_t fineY = 0; fineY < 8; ++fineY)
+	{
+		for (uint8_t fineX = 0; fineX < 8; ++fineX)
+		{
+			m_tilePreviewPixelBuffer[((7 - fineY) * 8) + fineX] = m_tileViewPixelBuffer[topLeft + ((7 - fineY) * 128) + fineX];
 		}
 	}
 }
