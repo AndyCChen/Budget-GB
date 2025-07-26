@@ -26,8 +26,10 @@ class PatternTileView
 
 	void updateTilePixelBuffer();
 
+	static constexpr Utils::Vec2<float> MIN_TILE_VIEW_SIZE{64, 64};
+
 	const PPU         &m_ppu;
-	Utils::Vec2<float> m_tileViewportSize{};
+	Utils::Vec2<float> m_tileViewportSize{0, 0};
 
 	BudgetGbConstants::TileColorBuffer m_tilePixelBuffer{};
 

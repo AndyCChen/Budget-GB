@@ -5,13 +5,11 @@
 PatternTileView::PatternTileView(const PPU &ppu, RendererGB::RenderContext *renderContext)
 	: m_ppu(ppu)
 {
-	Utils::Vec2<float> size{BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT};
-
 	RendererGB::TextureRenderTarget *tileViewRenderTarget = nullptr;
-	RendererGB::textureRenderTargetCreate(renderContext, tileViewRenderTarget, size);
+	RendererGB::textureRenderTargetCreate(renderContext, tileViewRenderTarget, Utils::Vec2<float>{BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT});
 
 	RendererGB::TexturedQuad *tileViewQuad = nullptr;
-	RendererGB::texturedQuadCreate(renderContext, tileViewQuad, size);
+	RendererGB::texturedQuadCreate(renderContext, tileViewQuad, Utils::Vec2<float>{BudgetGbConstants::TILE_VIEW_WIDTH, BudgetGbConstants::TILE_VIEW_HEIGHT});
 
 	m_tileViewRenderTarget.reset(tileViewRenderTarget);
 	m_tileViewQuad.reset(tileViewQuad);
@@ -23,7 +21,9 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 
 	if (ImGui::Begin("Tile View", &toggle))
 	{
-		ImGui::BeginChild("Tile Viewport", ImVec2(ImGui::GetWindowSize().x - 250.0f, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+		float tileViewportWidth = ImGui::GetWindowSize().x - 250.0f;
+
+		ImGui::BeginChild("Tile Viewport", ImVec2(tileViewportWidth < MIN_TILE_VIEW_SIZE.x ? MIN_TILE_VIEW_SIZE.x : tileViewportWidth, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
 		{
 			ImVec2 childSize = ImGui::GetWindowSize();
 			// resize image texture if window size changes
@@ -73,8 +73,7 @@ bool PatternTileView::updateWindowSize(float width, float height)
 {
 	bool isResized = false;
 
-	constexpr uint8_t            OFFSET = 16;
-	constexpr Utils::Vec2<float> MIN_SIZE{64, 64};
+	constexpr uint8_t OFFSET = 16;
 
 	float diffX = width - m_tileViewportSize.x;
 	float diffY = height - m_tileViewportSize.y;
@@ -84,10 +83,15 @@ bool PatternTileView::updateWindowSize(float width, float height)
 		isResized            = true;
 		m_tileViewportSize.x = width;
 	}
-	else if (diffX < 0 && m_tileViewportSize.x >= MIN_SIZE.x)
+	else if (diffX < 0 && m_tileViewportSize.x >= MIN_TILE_VIEW_SIZE.x)
 	{
 		isResized = true;
 		m_tileViewportSize.x -= OFFSET;
+	}
+	else if (m_tileViewportSize.x == 0)
+	{
+		isResized            = true;
+		m_tileViewportSize.x = MIN_TILE_VIEW_SIZE.x;
 	}
 
 	if (diffY > OFFSET)
@@ -95,10 +99,21 @@ bool PatternTileView::updateWindowSize(float width, float height)
 		isResized            = true;
 		m_tileViewportSize.y = height;
 	}
-	else if (diffY < 0 && m_tileViewportSize.y >= MIN_SIZE.y)
+	else if (diffY < 0 && m_tileViewportSize.y >= MIN_TILE_VIEW_SIZE.y)
 	{
 		isResized = true;
 		m_tileViewportSize.y -= OFFSET;
+	}
+	else if (m_tileViewportSize.y == 0)
+	{
+		isResized            = true;
+		m_tileViewportSize.y = MIN_TILE_VIEW_SIZE.y;
+	}
+
+	if (isResized)
+	{
+		// fmt::println("DIFF: {} {}", diffX, diffY);
+		// fmt::println("{} {}", m_tileViewportSize.x, m_tileViewportSize.y);
 	}
 
 	return isResized;
