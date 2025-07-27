@@ -23,11 +23,22 @@ namespace mwrl = Microsoft::WRL;
 		assert(SUCCEEDED(hr)); \
 	}
 
+namespace
+{
+
 struct Vertex
 {
 	float position[3];
 	float textureCoord[2];
 };
+
+struct MainViewport
+{
+	Utils::Vec2<uint32_t> ViewportSize;
+	Utils::Vec2<uint32_t> ViewportTopLeft;
+};
+
+} // namespace
 
 struct RendererGB::TextureRenderTarget
 {
@@ -47,12 +58,6 @@ struct RendererGB::TexturedQuad
 
 	mwrl::ComPtr<ID3D11Texture2D>          Texture;
 	mwrl::ComPtr<ID3D11ShaderResourceView> TextureResourceView;
-};
-
-struct MainViewport
-{
-	Utils::Vec2<uint32_t> ViewportSize;
-	Utils::Vec2<uint32_t> ViewportTopLeft;
 };
 
 struct RendererGB::RenderContext

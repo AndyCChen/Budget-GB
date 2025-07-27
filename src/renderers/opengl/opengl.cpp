@@ -10,6 +10,7 @@
 #include "utils/vec.h"
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <string>
 
@@ -20,34 +21,66 @@
 namespace
 {
 
-struct GbMainViewport
-{
-	GLuint m_viewportVAO, m_viewportVBO, m_viewportEBO, m_viewportTexture;
-	Shader m_viewportShader;
-
-	Utils::Vec2<uint32_t> m_viewportSize;
-	Utils::Vec2<uint32_t> m_viewportXY;
-
-	GbMainViewport();
-	~GbMainViewport();
-	void draw() const;
-};
-
 #ifdef ENABLE_GL_DEBUG_CALLBACK
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
 #endif
+
+struct Vertex
+{
+	std::array<float, 3> Position;
+	std::array<float, 2> TextureCoord;
+};
+
+struct GbMainViewport
+{
+	Utils::Vec2<uint32_t> ViewportSize;
+	Utils::Vec2<uint32_t> ViewportTopLeft;
+};
 
 } // namespace
 
 // RenderContext can only be instantiated after a valid sdl window and sdl opengl context has been created
 struct RendererGB::RenderContext
 {
-	SDL_GLContext  m_glContext;
-	GbMainViewport m_mainViewport;
+	SDL_GLContext  GlContext = nullptr;
+	GbMainViewport MainViewport;
 
-	RenderContext()
+	Shader MainShaders;
+	GLuint BufferEBO;
+
+	RenderContext(SDL_GLContext glContext);
+};
+
+struct RendererGB::TextureRenderTarget
+{
+	GLuint TextureID               = 0;
+	GLuint RenderTargetFrameBuffer = 0;
+
+	~TextureRenderTarget()
 	{
-		m_glContext = NULL;
+		glDeleteTextures(1, &TextureID);
+		glDeleteFramebuffers(1, &RenderTargetFrameBuffer);
+	}
+};
+
+struct RendererGB::TexturedQuad
+{
+	GLuint Vao          = 0;
+	GLuint BufferVertex = 0;
+	GLuint TextureID    = 0;
+
+	const Utils::Vec2<float> TextureSize;
+
+	TexturedQuad(const Utils::Vec2<float> &textureSize)
+		: TextureSize(textureSize)
+	{
+	}
+
+	~TexturedQuad()
+	{
+		glDeleteVertexArrays(1, &Vao);
+		glDeleteBuffers(1, &BufferVertex);
+		glDeleteTextures(1, &TextureID);
 	}
 };
 
@@ -133,9 +166,16 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 #endif
 
-	renderContext              = new RenderContext; // create renderContext only after window and opengl context are setup
-	renderContext->m_glContext = glContext;
-	// SDL_AddEventWatch(eventWatchCallback, (void *)renderContext);
+	renderContext = new RenderContext(glContext); // create renderContext only after window and opengl context are setup
+
+	int width, height;
+	SDL_GetWindowSize(window, &width, &height);
+
+	renderContext->MainViewport.ViewportSize.x    = width;
+	renderContext->MainViewport.ViewportSize.y    = height;
+	renderContext->MainViewport.ViewportTopLeft.x = 0;
+	renderContext->MainViewport.ViewportTopLeft.y = 0;
+
 	SDL_ShowWindow(window);
 
 	return true;
@@ -148,29 +188,26 @@ void RendererGB::newFrame()
 	ImGui::NewFrame();
 }
 
-void RendererGB::setMainViewportSize(RenderContext *renderContext, int x, int y, int width, int height)
+void RendererGB::mainViewportResize(RenderContext *renderContext, int x, int y, int width, int height)
 {
-	renderContext->m_mainViewport.m_viewportXY.x   = x;
-	renderContext->m_mainViewport.m_viewportXY.y   = y;
-	renderContext->m_mainViewport.m_viewportSize.x = width;
-	renderContext->m_mainViewport.m_viewportSize.y = height;
+	renderContext->MainViewport.ViewportSize.x    = width;
+	renderContext->MainViewport.ViewportSize.y    = height;
+	renderContext->MainViewport.ViewportTopLeft.x = x;
+	renderContext->MainViewport.ViewportTopLeft.y = y;
 }
 
-void RendererGB::drawMainViewport(const BudgetGbConstants::LcdColorBuffer &pixelBuffer, RenderContext *renderContext, SDL_Window *window)
+void RendererGB::mainViewportSetRenderTarget(RenderContext *renderContext)
 {
-	(void)window;
-
-	glBindTexture(GL_TEXTURE_2D, renderContext->m_mainViewport.m_viewportTexture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT, GL_RED_INTEGER, GL_UNSIGNED_BYTE, pixelBuffer.data());
-
-	renderContext->m_mainViewport.m_viewportShader.useProgram();
-	renderContext->m_mainViewport.draw();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(renderContext->MainViewport.ViewportTopLeft.x, renderContext->MainViewport.ViewportTopLeft.y, renderContext->MainViewport.ViewportSize.x, renderContext->MainViewport.ViewportSize.y);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void RendererGB::setViewportPalette(RenderContext *renderContext, const BudgetGbConfig::Palette &palette)
+void RendererGB::setGlobalPalette(RenderContext *renderContext, const BudgetGbConfig::Palette &palette)
 {
-	renderContext->m_mainViewport.m_viewportShader.useProgram();
-	GLint uniformPaletteLocation = glGetUniformLocation(renderContext->m_mainViewport.m_viewportShader.ID(), "PALETTE");
+	renderContext->MainShaders.useProgram();
+	GLint uniformPaletteLocation = glGetUniformLocation(renderContext->MainShaders.ID(), "PALETTE");
 
 	const std::array<std::array<float, 3>, 4> newPalette{palette.color0, palette.color1, palette.color2, palette.color3};
 
@@ -201,39 +238,16 @@ void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
 
-	SDL_GL_DestroyContext(renderContext->m_glContext);
+	SDL_GL_DestroyContext(renderContext->GlContext);
 	delete renderContext;
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
 
-namespace
+RendererGB::RenderContext::RenderContext(SDL_GLContext glContext)
+	: GlContext(glContext), MainShaders("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/viewport.frag")
 {
-
-GbMainViewport::GbMainViewport()
-	: m_viewportShader("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/viewport.frag")
-{
-	{
-		SDL_Window *window = SDL_GL_GetCurrentWindow();
-
-		int width, height;
-		SDL_GetWindowSize(window, &width, &height);
-		m_viewportSize.x = width;
-		m_viewportSize.y = height;
-		m_viewportXY.x   = 0;
-		m_viewportXY.y   = 0;
-	}
-
 	// clang-format off
-	// quad vertices with texure coordinates
-	float quad[] =
-	{
-		-1.0f, -1.0f, 0.5f,   0.0f, 0.0f, // bottom left
-		 1.0f, -1.0f, 0.5f,   1.0f, 0.0f, // bottom right
-		 1.0f,  1.0f, 0.5f,   1.0f, 1.0f, // top right
-		-1.0f,  1.0f, 0.5f,   0.0f, 1.0f, // top left
-	};
-
 	GLuint indices[] =
 	{
 		0, 1, 2,
@@ -241,51 +255,120 @@ GbMainViewport::GbMainViewport()
 	};
 	// clang-format on
 
-	// set up buffers for main viewport mesh
-	glGenVertexArrays(1, &m_viewportVAO);
-	glGenBuffers(1, &m_viewportVBO);
-	glGenBuffers(1, &m_viewportEBO);
-
-	glBindVertexArray(m_viewportVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, m_viewportVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_viewportEBO);
+	glGenBuffers(1, &BufferEBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BufferEBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	glBindVertexArray(0);
 
-	// set up texture that will be rendered onto main viewport mesh
-	glGenTextures(1, &m_viewportTexture);
-
-	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glEnable(GL_CULL_FACE);
+	glFrontFace(GL_CW);
+	glCullFace(GL_BACK);
 }
 
-GbMainViewport::~GbMainViewport()
+void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, TextureRenderTarget *&renderTargetTexture, const Utils::Vec2<float> &size)
 {
-	glDeleteVertexArrays(1, &m_viewportVAO);
-	glDeleteTextures(1, &m_viewportTexture);
-	glDeleteBuffers(1, &m_viewportEBO);
-	glDeleteBuffers(1, &m_viewportVBO);
+	(void)renderContext;
+	renderTargetTexture = new TextureRenderTarget();
+
+	glGenFramebuffers(1, &renderTargetTexture->RenderTargetFrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, renderTargetTexture->RenderTargetFrameBuffer);
+
+	glGenTextures(1, &renderTargetTexture->TextureID);
+	glBindTexture(GL_TEXTURE_2D, renderTargetTexture->TextureID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)size.x, (GLsizei)size.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargetTexture->TextureID, 0);
 }
 
-void GbMainViewport::draw() const
+void RendererGB::textureRenderTargetFree(TextureRenderTarget *&renderTargetTexture)
 {
+	delete renderTargetTexture;
+}
+
+void RendererGB::textureRenderTargetSet(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &viewport)
+{
+	(void)renderContext;
+
+	glBindFramebuffer(GL_FRAMEBUFFER, renderTargetTexture->RenderTargetFrameBuffer);
+	glViewport(0, 0, (GLsizei)viewport.x, (GLsizei)viewport.y);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
-	glViewport(m_viewportXY.x, m_viewportXY.y, m_viewportSize.x, m_viewportSize.y);
-	glBindVertexArray(m_viewportVAO);
-	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
+}
+
+void RendererGB::textureRenderTargetResize(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &size)
+{
+	(void)renderContext;
+	glBindTexture(GL_TEXTURE_2D, renderTargetTexture->TextureID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (GLsizei)size.x, (GLsizei)size.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+}
+
+ImTextureID RendererGB::textureRenderTargetGetTextureID(TextureRenderTarget *renderTargetTexture)
+{
+	return (ImTextureID)(intptr_t)renderTargetTexture->TextureID;
+}
+
+void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *&texturedQuad, const Utils::Vec2<float> &textureSize)
+{
+	texturedQuad = new TexturedQuad(textureSize);
+
+	// clang-format off
+	Vertex vertices[] = 
+	{
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+	// clang-format-on
+
+	glGenVertexArrays(1, &texturedQuad->Vao);
+	glBindVertexArray(texturedQuad->Vao);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext->BufferEBO);
+
+	glGenBuffers(1, &texturedQuad->BufferVertex);
+	glBindBuffer(GL_ARRAY_BUFFER, texturedQuad->BufferVertex);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, (GLint)vertices->Position.size(), GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, (GLint)vertices->TextureCoord.size(), GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) (vertices->Position.size() * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glGenTextures(1, &texturedQuad->TextureID);
+	glBindTexture(GL_TEXTURE_2D, texturedQuad->TextureID);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, (GLsizei)textureSize.x, (GLsizei)textureSize.y, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+}
+
+void RendererGB::texturedQuadFree(TexturedQuad*& texturedQuad)
+{
+	delete texturedQuad;
+}
+
+void RendererGB::texturedQuadUpdateTexture(RenderContext* renderContext, TexturedQuad* texturedQuad, const uint8_t* const data, const std::size_t size)
+{
+	(void) renderContext;
+	assert(texturedQuad->TextureSize.x * texturedQuad->TextureSize.y == size && "Data size does not match texture dimensions");
+
+	glBindTexture(GL_TEXTURE_2D, texturedQuad->TextureID);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (GLsizei)texturedQuad->TextureSize.x, (GLsizei)texturedQuad->TextureSize.y, GL_RED_INTEGER, GL_UNSIGNED_BYTE, data);
+}
+
+void RendererGB::texturedQuadDraw(RenderContext* renderContext, TexturedQuad* texturedQuad)
+{
+	glBindVertexArray(texturedQuad->Vao);
+	glBindTexture(GL_TEXTURE_2D, texturedQuad->TextureID);
+
+	renderContext->MainShaders.useProgram();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
+
+namespace
+{
 
 #ifdef ENABLE_GL_DEBUG_CALLBACK
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
