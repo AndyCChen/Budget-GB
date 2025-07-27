@@ -198,6 +198,10 @@ void RendererGB::mainViewportResize(RenderContext *renderContext, int x, int y, 
 
 void RendererGB::mainViewportSetRenderTarget(RenderContext *renderContext)
 {
+	renderContext->MainShaders.useProgram();
+	GLint uniformInvertedYLocation = glGetUniformLocation(renderContext->MainShaders.ID(), "invertedYTextureCoord");
+	glUniform1ui(uniformInvertedYLocation, false);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(renderContext->MainViewport.ViewportTopLeft.x, renderContext->MainViewport.ViewportTopLeft.y, renderContext->MainViewport.ViewportSize.x, renderContext->MainViewport.ViewportSize.y);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -266,6 +270,7 @@ RendererGB::RenderContext::RenderContext(SDL_GLContext glContext)
 
 void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, TextureRenderTarget *&renderTargetTexture, const Utils::Vec2<float> &size)
 {
+	fmt::println("create render target");
 	(void)renderContext;
 	renderTargetTexture = new TextureRenderTarget();
 
@@ -283,12 +288,20 @@ void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, Texture
 
 void RendererGB::textureRenderTargetFree(TextureRenderTarget *&renderTargetTexture)
 {
+	fmt::println("destroy render target");
 	delete renderTargetTexture;
 }
 
 void RendererGB::textureRenderTargetSet(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &viewport)
 {
 	(void)renderContext;
+
+	// Drawing to framebuffer texture is flipped for some reason even though our texture is loaded bottom to top.
+	// I invert the Y texture coord when drawing to framebuffer to fix this problem.
+
+	renderContext->MainShaders.useProgram();
+	GLint uniformInvertedYLocation = glGetUniformLocation(renderContext->MainShaders.ID(), "invertedYTextureCoord");
+	glUniform1ui(uniformInvertedYLocation, true);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, renderTargetTexture->RenderTargetFrameBuffer);
 	glViewport(0, 0, (GLsizei)viewport.x, (GLsizei)viewport.y);
@@ -310,6 +323,7 @@ ImTextureID RendererGB::textureRenderTargetGetTextureID(TextureRenderTarget *ren
 
 void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *&texturedQuad, const Utils::Vec2<float> &textureSize)
 {
+	fmt::println("create quad");
 	texturedQuad = new TexturedQuad(textureSize);
 
 	// clang-format off
@@ -346,6 +360,7 @@ void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *
 
 void RendererGB::texturedQuadFree(TexturedQuad*& texturedQuad)
 {
+	fmt::println("Destroy quad");
 	delete texturedQuad;
 }
 

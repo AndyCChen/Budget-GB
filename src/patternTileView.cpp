@@ -44,7 +44,7 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 				RendererGB::textureRenderTargetResize(renderContext, m_tileViewRenderTarget.get(), Utils::Vec2<float>{m_tileViewportSize.x, m_tileViewportSize.y});
 
 			ImTextureID tileTextureID = RendererGB::textureRenderTargetGetTextureID(m_tileViewRenderTarget.get());
-			ImGui::Image(tileTextureID, ImVec2(m_tileViewportSize.x, m_tileViewportSize.y), ImVec2(0,0), ImVec2(1,1));
+			ImGui::Image(tileTextureID, ImVec2(m_tileViewportSize.x, m_tileViewportSize.y));
 
 			if (ImGui::IsItemHovered())
 			{
@@ -64,7 +64,7 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 		ImGui::BeginChild("Tile Info");
 		{
 			ImTextureID tilePreviewTextureID = RendererGB::textureRenderTargetGetTextureID(m_tilePreviewRenderTarget.get());
-			ImGui::Image(tilePreviewTextureID, ImVec2(TILE_PREVIEW_SIZE.x, TILE_PREVIEW_SIZE.y), ImVec2(0, 0), ImVec2(1, 1));
+			ImGui::Image(tilePreviewTextureID, ImVec2(TILE_PREVIEW_SIZE.x, TILE_PREVIEW_SIZE.y));
 
 			ImGui::Text("Tile X: %d", m_tileX);
 			ImGui::Text("Tile Y: %d", m_tileY);
