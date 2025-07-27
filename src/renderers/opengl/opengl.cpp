@@ -3,7 +3,6 @@
 #include "imgui_impl_sdl3.h"
 
 #include "emulatorConstants.h"
-#include "fmt/base.h"
 #include "glad/glad.h"
 #include "renderer.h"
 #include "shader.h"
@@ -268,11 +267,11 @@ RendererGB::RenderContext::RenderContext(SDL_GLContext glContext)
 	glCullFace(GL_BACK);
 }
 
-void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, TextureRenderTarget *&renderTargetTexture, const Utils::Vec2<float> &size)
+RendererGB::TextureRenderTargetUniquePtr RendererGB::textureRenderTargetCreate(RenderContext *renderContext, const Utils::Vec2<float> &size)
 {
-	fmt::println("create render target");
 	(void)renderContext;
-	renderTargetTexture = new TextureRenderTarget();
+
+	TextureRenderTargetUniquePtr renderTargetTexture(new TextureRenderTarget());
 
 	glGenFramebuffers(1, &renderTargetTexture->RenderTargetFrameBuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, renderTargetTexture->RenderTargetFrameBuffer);
@@ -284,11 +283,12 @@ void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, Texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargetTexture->TextureID, 0);
+
+	return renderTargetTexture;
 }
 
 void RendererGB::textureRenderTargetFree(TextureRenderTarget *&renderTargetTexture)
 {
-	fmt::println("destroy render target");
 	delete renderTargetTexture;
 }
 
@@ -321,10 +321,9 @@ ImTextureID RendererGB::textureRenderTargetGetTextureID(TextureRenderTarget *ren
 	return (ImTextureID)(intptr_t)renderTargetTexture->TextureID;
 }
 
-void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *&texturedQuad, const Utils::Vec2<float> &textureSize)
+RendererGB::TexturedQuadUniquePtr RendererGB::texturedQuadCreate(RenderContext *renderContext, const Utils::Vec2<float> &textureSize)
 {
-	fmt::println("create quad");
-	texturedQuad = new TexturedQuad(textureSize);
+	TexturedQuadUniquePtr texturedQuad(new TexturedQuad(textureSize));
 
 	// clang-format off
 	Vertex vertices[] = 
@@ -356,11 +355,12 @@ void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, (GLsizei)textureSize.x, (GLsizei)textureSize.y, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+
+	return texturedQuad;
 }
 
 void RendererGB::texturedQuadFree(TexturedQuad*& texturedQuad)
 {
-	fmt::println("Destroy quad");
 	delete texturedQuad;
 }
 

@@ -1,19 +1,16 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_sdl3.h"
 
-#include "BudgetGB.h"
+#include "emulatorConstants.h"
 #include "renderer.h"
 #include "utils/vec.h"
 
-#include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <memory>
-#include <vector>
 #include <wrl.h>
 
 namespace mwrl = Microsoft::WRL;
@@ -386,10 +383,9 @@ RendererGB::RenderContext::RenderContext(HWND hwnd)
 	DeviceContext->RSSetState(rasterizerState.Get());
 }
 
-void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, TextureRenderTarget *&renderTargetTexture, const Utils::Vec2<float> &size)
+RendererGB::TextureRenderTargetUniquePtr RendererGB::textureRenderTargetCreate(RenderContext *renderContext, const Utils::Vec2<float> &size)
 {
-	fmt::println("construct render target");
-	renderTargetTexture = new TextureRenderTarget();
+	TextureRenderTargetUniquePtr renderTargetTexture(new TextureRenderTarget());
 
 	renderTargetTexture->TextureDesc.Width            = (UINT)size.x;
 	renderTargetTexture->TextureDesc.Height           = (UINT)size.y;
@@ -419,11 +415,12 @@ void RendererGB::textureRenderTargetCreate(RenderContext *renderContext, Texture
 
 	result = renderContext->Device->CreateRenderTargetView(renderTargetTexture->RenderTargetTexture.Get(), &renderTargetTexture->RenderTargetViewDesc, renderTargetTexture->RenderTargetView.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
+
+	return renderTargetTexture;
 }
 
 void RendererGB::textureRenderTargetFree(TextureRenderTarget *&renderTargetTexture)
 {
-	fmt::println("destruct render target");
 	delete renderTargetTexture;
 }
 
@@ -464,10 +461,9 @@ ImTextureID RendererGB::textureRenderTargetGetTextureID(TextureRenderTarget *ren
 	return (ImTextureID)(intptr_t)renderTargetTexture->RenderTargetShaderResourceView.Get();
 }
 
-void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *&texturedQuad, const Utils::Vec2<float> &textureSize)
+RendererGB::TexturedQuadUniquePtr RendererGB::texturedQuadCreate(RenderContext *renderContext, const Utils::Vec2<float> &textureSize)
 {
-	fmt::println("construct quad");
-	texturedQuad = new TexturedQuad();
+	TexturedQuadUniquePtr texturedQuad(new TexturedQuad);
 
 	// clang-format off
 	Vertex vertices[] =
@@ -514,11 +510,12 @@ void RendererGB::texturedQuadCreate(RenderContext *renderContext, TexturedQuad *
 
 	result = renderContext->Device->CreateShaderResourceView(texturedQuad->Texture.Get(), &shaderResViewDesc, texturedQuad->TextureResourceView.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
+
+	return texturedQuad;
 }
 
 void RendererGB::texturedQuadFree(TexturedQuad *&texturedQuad)
 {
-	fmt::println("delete quad");
 	delete texturedQuad;
 }
 

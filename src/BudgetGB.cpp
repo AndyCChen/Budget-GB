@@ -47,10 +47,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 	m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 	m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 
-	RendererGB::TexturedQuad *mainViewQuad = nullptr;
-	RendererGB::texturedQuadCreate(m_renderContext, mainViewQuad, Utils::Vec2<float>{BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT});
-
-	m_lcdDisplayQuad.reset(mainViewQuad);
+	m_lcdDisplayQuad = RendererGB::texturedQuadCreate(m_renderContext, Utils::Vec2<float>{BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT});
 }
 
 BudgetGB::~BudgetGB()

@@ -8,23 +8,10 @@ PatternTileView::PatternTileView(const PPU &ppu, RendererGB::RenderContext *rend
 	using namespace BudgetGbConstants;
 	using namespace Utils;
 
-	RendererGB::TextureRenderTarget *tileViewRenderTarget = nullptr;
-	RendererGB::textureRenderTargetCreate(renderContext, tileViewRenderTarget, Vec2<float>{TILE_VIEW_WIDTH, TILE_VIEW_HEIGHT});
-
-	RendererGB::TexturedQuad *tileViewQuad = nullptr;
-	RendererGB::texturedQuadCreate(renderContext, tileViewQuad, Vec2<float>{TILE_VIEW_WIDTH, TILE_VIEW_HEIGHT});
-
-	m_tileViewRenderTarget.reset(tileViewRenderTarget);
-	m_tileViewQuad.reset(tileViewQuad);
-
-	RendererGB::TextureRenderTarget *tileRenderTarget = nullptr;
-	RendererGB::textureRenderTargetCreate(renderContext, tileRenderTarget, Vec2<float>{TILE_PREVIEW_SIZE.x, TILE_PREVIEW_SIZE.y});
-
-	RendererGB::TexturedQuad *tileQuad = nullptr;
-	RendererGB::texturedQuadCreate(renderContext, tileQuad, Vec2<float>{TILE_WIDTH, TILE_HEIGHT});
-
-	m_tilePreviewRenderTarget.reset(tileRenderTarget);
-	m_tilePreviewQuad.reset(tileQuad);
+	m_tileViewRenderTarget    = RendererGB::textureRenderTargetCreate(renderContext, Vec2<float>{TILE_VIEW_WIDTH, TILE_VIEW_HEIGHT});
+	m_tileViewQuad            = RendererGB::texturedQuadCreate(renderContext, Vec2<float>{TILE_VIEW_WIDTH, TILE_VIEW_HEIGHT});
+	m_tilePreviewRenderTarget = RendererGB::textureRenderTargetCreate(renderContext, Vec2<float>{TILE_PREVIEW_SIZE.x, TILE_PREVIEW_SIZE.y});
+	m_tilePreviewQuad         = RendererGB::texturedQuadCreate(renderContext, Vec2<float>{TILE_WIDTH, TILE_HEIGHT});
 }
 
 bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
