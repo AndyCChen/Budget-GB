@@ -6,7 +6,7 @@ NoMBC::NoMBC(std::ifstream &romFile, const CartInfo &cartInfo)
 	: IMapper(cartInfo)
 {
 	romFile.seekg(0);
-	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.romSize);
+	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.RomSize);
 	romFile.seekg(0);
 }
 
@@ -20,5 +20,7 @@ uint8_t NoMBC::read(uint16_t position)
 
 void NoMBC::write(uint16_t position, uint8_t data)
 {
+	(void) position;
+	(void) data;
 	return;	
 }

@@ -10,7 +10,7 @@
 using namespace Mapper;
 
 /**
- * @brief File out cartinfo with cartridge header
+ * @brief Fill out cartinfo with cartridge header, cartInfo need to be passed into loadMapper for the full mapper info to be determined.
  * @param romFile File object that is already opened, will not be closed once this function returns
  * @param cartInfo Cart info that will be filled out
  * @param errorMsg contains error msg if function return false
@@ -25,17 +25,18 @@ static bool readCartridgeHeader(std::ifstream &romFile, Mapper::CartInfo &cartIn
 	// set mbc type
 
 	romFile.seekg(CARTRIDGE_TYPE_POS, std::ios::beg);
-	romFile.read(reinterpret_cast<char *>(&cartInfo.mbcType), 1);
+	romFile.read(reinterpret_cast<char *>(&cartInfo.MbcType), 1);
 
 	romFile.seekg(ROM_SIZE_POS, std::ios::beg);
-	romFile.read(reinterpret_cast<char *>(&cartInfo.romSize), 1);
+	romFile.read(reinterpret_cast<char *>(&cartInfo.RomSize), 1);
 
 	romFile.seekg(RAM_SIZE_POS, std::ios::beg);
-	romFile.read(reinterpret_cast<char *>(&cartInfo.ramSize), 1);
+	romFile.read(reinterpret_cast<char *>(&cartInfo.RamSize), 1);
 
 	// set rom size https://gbdev.io/pandocs/The_Cartridge_Header.html#0148--rom-size
 
-	if (cartInfo.romSize > 0x08)
+	// rom size values above 0x08 are not well documented and possibly incorrect, they are not used by official games anyways
+	if (cartInfo.RomSize > 0x08)
 	{
 		errorMsg = "Unrecognized rom size!";
 		return false;
@@ -46,9 +47,9 @@ static bool readCartridgeHeader(std::ifstream &romFile, Mapper::CartInfo &cartIn
 		auto fileSize = romFile.tellg();
 		romFile.seekg(0, std::ios::beg);
 
-		cartInfo.romSize = 0x8000 * (1 << cartInfo.romSize);
+		cartInfo.RomSize = 0x8000 * (1 << cartInfo.RomSize);
 
-		if (cartInfo.romSize != fileSize)
+		if (cartInfo.RomSize != fileSize)
 		{
 			errorMsg = "Cartridge header rom size and actual file rom size miss-match!";
 			return false;
@@ -57,34 +58,32 @@ static bool readCartridgeHeader(std::ifstream &romFile, Mapper::CartInfo &cartIn
 
 	// set ram size
 
-	switch (cartInfo.ramSize)
+	switch (cartInfo.RamSize)
 	{
 	case 0x00:
-		cartInfo.ramSize = 0;
+		cartInfo.RamSize = 0;
 		break;
 
 	case 0x02:
-		cartInfo.ramSize = 1024 * 8;
+		cartInfo.RamSize = 1024 * 8;
 		break;
 
 	case 0x03:
-		cartInfo.ramSize = 1024 * 32;
+		cartInfo.RamSize = 1024 * 32;
 		break;
 
 	case 0x04:
-		cartInfo.ramSize = 1024 * 128;
+		cartInfo.RamSize = 1024 * 128;
 		break;
 
 	case 0x05:
-		cartInfo.ramSize = 1024 * 64;
+		cartInfo.RamSize = 1024 * 64;
 		break;
 
 	default:
 		errorMsg = "Unrecognized ram size!";
 		return false;
 	}
-
-	cartInfo.batteryBacked = Mapper::isBatteryBacked(cartInfo.mbcType);
 
 	return true;
 }

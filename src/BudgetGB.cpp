@@ -588,9 +588,9 @@ void BudgetGB::guiCpuViewer()
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
 
-				ImVec4 red = {0.9686f, 0.1843f, 0.1843f, 1.0f};
+				constexpr ImVec4 RED = {0.9686f, 0.1843f, 0.1843f, 1.0f};
 
-				ImGui::TextColored(red, "%s", m_disassembler.getDisassemblyAt(0));
+				ImGui::TextColored(RED, "%s", m_disassembler.getDisassemblyAt(0));
 				ImGui::Text("%s", m_disassembler.getDisassemblyAt(1));
 				ImGui::Text("%s", m_disassembler.getDisassemblyAt(2));
 				ImGui::Text("%s", m_disassembler.getDisassemblyAt(3));

@@ -1,22 +1,21 @@
 #include "MBC1.h"
 
-#include <cstring>
-
 Mapper::MBC1::MBC1(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	: IMapper(cartInfo)
 {
-	m_rom.resize(cartInfo.romSize);
-	m_ram.resize(cartInfo.ramSize);
+	m_rom.resize(cartInfo.RomSize);
+	m_ram.resize(cartInfo.RamSize);
 
 	romFile.seekg(0);
-	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.romSize);
+	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.RomSize);
 	romFile.seekg(0);
 
 	std::fill(m_ram.begin(), m_ram.end(), (uint8_t)0);
 
-	std::memset(&m_registers, 0, sizeof(Registers));
-
+	m_registers.RamEnable       = false;
 	m_registers.RomBankSelector = 1;
+	m_registers.Extra2Bits      = 0;
+	m_registers.BankModeSelect  = 0;
 }
 
 uint8_t Mapper::MBC1::read(uint16_t position)
@@ -39,7 +38,7 @@ uint8_t Mapper::MBC1::read(uint16_t position)
 		uint32_t bankNumber = (m_registers.Extra2Bits << 5) | m_registers.RomBankSelector;
 
 		// bit mask with proper rom size
-		bankNumber &= (static_cast<uint32_t>(m_cartInfo.romSize / 16384) - 1);
+		bankNumber &= (static_cast<uint32_t>(m_cartInfo.RomSize / 16384) - 1);
 
 		uint32_t address = (bankNumber << 14) | (position & 0x3FFF);
 		data             = m_rom[address];
@@ -50,7 +49,7 @@ uint8_t Mapper::MBC1::read(uint16_t position)
 			data = m_ram[position & 0x1FFF];
 		else
 		{
-			uint32_t bankNumber = m_registers.Extra2Bits & (static_cast<uint32_t>(m_cartInfo.ramSize / 8192) - 1);
+			uint32_t bankNumber = m_registers.Extra2Bits & (static_cast<uint32_t>(m_cartInfo.RamSize / 8192) - 1);
 			uint32_t address    = (bankNumber << 13) | (position & 0x1FFF);
 			data                = m_ram[address];
 		}
@@ -90,7 +89,7 @@ void Mapper::MBC1::write(uint16_t position, uint8_t data)
 			m_ram[position & 0x1FFF] = data;
 		else
 		{
-			uint32_t bankNumber = m_registers.Extra2Bits & (static_cast<uint32_t>(m_cartInfo.ramSize / 8192) - 1);
+			uint32_t bankNumber = m_registers.Extra2Bits & (static_cast<uint32_t>(m_cartInfo.RamSize / 8192) - 1);
 			uint32_t address    = (bankNumber << 13) | (position & 0x1FFF);
 			m_ram[address]      = data;
 		}
