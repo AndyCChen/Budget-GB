@@ -2,9 +2,11 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace Mapper
 {
@@ -31,10 +33,11 @@ enum class MBC_TYPES
 
 struct CartInfo
 {
-	MBC_TYPES MbcType       = MBC_TYPES::NO_MBC;
-	uint32_t  RomSize       = 0;
-	uint32_t  RamSize       = 0;
-	bool      BatteryBacked = false;
+	MBC_TYPES             MbcType       = MBC_TYPES::NO_MBC;
+	uint32_t              RomSize       = 0;
+	uint32_t              RamSize       = 0;
+	bool                  BatteryBacked = false;
+	std::filesystem::path CartFilePath;
 };
 
 class IMapper
@@ -50,6 +53,12 @@ class IMapper
 	virtual uint8_t read(uint16_t position)                = 0;
 	virtual void    write(uint16_t position, uint8_t data) = 0;
 	virtual void    reset()                                = 0;
+
+	void dumpBatteryBackedRam(const std::vector<uint8_t> &ram) const;
+	void dumpBatteryBackedRam(const uint8_t *ram, std::size_t size) const;
+
+	void loadSaveRam( std::vector<uint8_t> &ram);
+	void loadSaveRam(uint8_t *ram, std::size_t size);
 
 	const CartInfo m_cartInfo{};
 };

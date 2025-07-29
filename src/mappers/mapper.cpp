@@ -4,6 +4,9 @@
 #include "mappers/MBC3.h"
 #include "mappers/noMBC.h"
 
+#include <filesystem>
+#include <fstream>
+
 // Instantiates mapper device
 bool Mapper::loadMapper(std::ifstream &romFile, std::unique_ptr<IMapper> &mapper, CartInfo &cartInfo, std::string &errorMsg)
 {
@@ -95,5 +98,37 @@ const std::string_view Mapper::getMapperString(MBC_TYPES mbcType)
 
 	default:
 		return "";
+	}
+}
+
+void Mapper::IMapper::dumpBatteryBackedRam(const std::vector<uint8_t> &ram) const
+{
+	dumpBatteryBackedRam(ram.data(), ram.size());
+}
+
+void Mapper::IMapper::dumpBatteryBackedRam(const uint8_t *ram, std::size_t size) const
+{
+	auto savePath = m_cartInfo.CartFilePath.parent_path() / m_cartInfo.CartFilePath.filename().replace_extension(".sav");
+
+	std::ofstream saveFile(savePath, std::ios::binary);
+	if (saveFile.is_open())
+	{
+		saveFile.write(reinterpret_cast<const char *>(ram), size);
+	}
+}
+
+void Mapper::IMapper::loadSaveRam(std::vector<uint8_t> &ram)
+{
+	loadSaveRam(ram.data(), ram.size());
+}
+
+void Mapper::IMapper::loadSaveRam(uint8_t *ram, std::size_t size)
+{
+	auto savePath = m_cartInfo.CartFilePath.parent_path() / m_cartInfo.CartFilePath.filename().replace_extension(".sav");
+
+	std::ifstream saveFile(savePath, std::ios::binary);
+	if (saveFile.is_open())
+	{
+		saveFile.read(reinterpret_cast<char *>(ram), size);
 	}
 }

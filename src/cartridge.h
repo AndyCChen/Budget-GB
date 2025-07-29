@@ -34,7 +34,7 @@ class Cartridge
 	}
 
 	// Retrieves cartridge info that is valid assuming the cartridge is loaded.
-	const Mapper::CartInfo& getCartInfo() const
+	const Mapper::CartInfo &getCartInfo() const
 	{
 		return m_mapper->m_cartInfo;
 	}

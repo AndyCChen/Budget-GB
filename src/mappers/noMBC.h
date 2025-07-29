@@ -1,6 +1,5 @@
 #pragma once
 
-#include "fmt/core.h"
 #include "mapper.h"
 
 #include <array>

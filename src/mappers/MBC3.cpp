@@ -1,6 +1,8 @@
 #include "MBC3.h"
 #include "fmt/core.h"
 
+#include <algorithm>
+
 Mapper::MBC3::MBC3(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	: IMapper(cartInfo)
 {
@@ -10,10 +12,17 @@ Mapper::MBC3::MBC3(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	romFile.seekg(0);
 	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.RomSize);
 	romFile.seekg(0);
+
+	if (cartInfo.BatteryBacked)
+		loadSaveRam(m_ram);
+	else
+		std::fill(m_ram.begin(), m_ram.end(), static_cast<uint8_t>(0));
 }
 
 Mapper::MBC3::~MBC3()
 {
+	if (m_cartInfo.BatteryBacked)
+		dumpBatteryBackedRam(m_ram);
 }
 
 uint8_t Mapper::MBC3::read(uint16_t position)

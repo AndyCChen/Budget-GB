@@ -90,42 +90,33 @@ static bool readCartridgeHeader(std::ifstream &romFile, Mapper::CartInfo &cartIn
 
 bool Cartridge::loadCartridgeFromPath(const std::string &path, std::vector<std::string> &recentRoms)
 {
-	bool             status = true;
-	Mapper::CartInfo cartInfo{};
-
 	std::ifstream romFile(path, std::ios::binary);
+	recentRoms.erase(std::remove(recentRoms.begin(), recentRoms.end(), path), recentRoms.end());
+
 	if (!romFile.is_open())
 	{
 		fmt::println(stderr, "Failed to open rom at: {}", path);
-		status = false;
-		goto EXIT;
+		return m_cartridgeLoaded = false;
 	}
 
+	Mapper::CartInfo cartInfo{};
+	cartInfo.CartFilePath = path;
 	if (!readCartridgeHeader(romFile, cartInfo, m_errorMsg))
 	{
 		fmt::println("{}", m_errorMsg);
-		status = false;
-		goto EXIT;
+		return m_cartridgeLoaded = false;
 	}
 
 	if (!Mapper::loadMapper(romFile, m_mapper, cartInfo, m_errorMsg))
 	{
 		fmt::println("{}", m_errorMsg);
-		status = false;
-		goto EXIT;
+		return m_cartridgeLoaded = false;
 	}
 
-EXIT:
-	m_cartridgeLoaded = status;
+	if (recentRoms.size() == BudgetGbConfig::MAX_RECENT_ROMS)
+		recentRoms.pop_back();
 
-	recentRoms.erase(std::remove(recentRoms.begin(), recentRoms.end(), path), recentRoms.end());
-	if (m_cartridgeLoaded)
-	{
-		if (recentRoms.size() == BudgetGbConfig::MAX_RECENT_ROMS)
-			recentRoms.pop_back();
+	recentRoms.insert(recentRoms.begin(), path);
 
-		recentRoms.insert(recentRoms.begin(), path);
-	}
-
-	return m_cartridgeLoaded;
+	return m_cartridgeLoaded = true;
 }

@@ -31,6 +31,14 @@ class MBC1 : public IMapper
 		uint8_t RomBankSelector : 5; // 5 bit rom bank number
 		uint8_t Extra2Bits : 2;      // extra 2 bits for more rom banks in large cartridges (+512kb rom size) or acts as ram bank selector
 		uint8_t BankModeSelect : 1;  // controls behavior of the 2 bit register
+
+		void reset()
+		{
+			RamEnable       = false;
+			RomBankSelector = 1;
+			Extra2Bits      = 0;
+			BankModeSelect  = 0;
+		}
 	} m_registers;
 };
 

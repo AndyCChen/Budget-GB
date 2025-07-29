@@ -15,7 +15,7 @@ class MBC2 : public IMapper
 {
   public:
 	MBC2(std::ifstream &romFile, const Mapper::CartInfo &cartInfo);
-	~MBC2() override = default;
+	~MBC2();
 
 	virtual uint8_t read(uint16_t position) override;
 	virtual void    write(uint16_t position, uint8_t data) override;

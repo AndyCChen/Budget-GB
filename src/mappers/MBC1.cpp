@@ -1,5 +1,7 @@
 #include "MBC1.h"
 
+#include <algorithm>
+
 Mapper::MBC1::MBC1(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	: IMapper(cartInfo)
 {
@@ -10,17 +12,18 @@ Mapper::MBC1::MBC1(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.RomSize);
 	romFile.seekg(0);
 
-	std::fill(m_ram.begin(), m_ram.end(), (uint8_t)0);
+	if (cartInfo.BatteryBacked)
+		loadSaveRam(m_ram);
+	else
+		std::fill(m_ram.begin(), m_ram.end(), (uint8_t)0);
 
-	m_registers.RamEnable       = false;
-	m_registers.RomBankSelector = 1;
-	m_registers.Extra2Bits      = 0;
-	m_registers.BankModeSelect  = 0;
+	m_registers.reset();
 }
 
 Mapper::MBC1::~MBC1()
 {
-	
+	if (m_cartInfo.BatteryBacked)
+		dumpBatteryBackedRam(m_ram);
 }
 
 uint8_t Mapper::MBC1::read(uint16_t position)
@@ -103,8 +106,5 @@ void Mapper::MBC1::write(uint16_t position, uint8_t data)
 
 void Mapper::MBC1::reset()
 {
-	m_registers.RamEnable       = false;
-	m_registers.RomBankSelector = 1;
-	m_registers.Extra2Bits      = 0;
-	m_registers.BankModeSelect  = 0;
+	m_registers.reset();
 }

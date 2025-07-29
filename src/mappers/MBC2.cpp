@@ -8,6 +8,15 @@ Mapper::MBC2::MBC2(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	romFile.seekg(0);
 	romFile.read(reinterpret_cast<char *>(m_rom.data()), cartInfo.RomSize);
 	romFile.seekg(0);
+
+	if (m_cartInfo.BatteryBacked)
+		loadSaveRam(m_ram.data(), m_ram.size());
+}
+
+Mapper::MBC2::~MBC2()
+{
+	if (m_cartInfo.BatteryBacked)
+		dumpBatteryBackedRam(m_ram.data(), m_ram.size());
 }
 
 uint8_t Mapper::MBC2::read(uint16_t position)
