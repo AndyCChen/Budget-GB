@@ -108,6 +108,8 @@ set(SOURCE_FILES
 	src/mappers/MBC1.h
 	src/mappers/MBC2.cpp
 	src/mappers/MBC2.h
+	src/mappers/MBC3.cpp
+	src/mappers/MBC3.h
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)

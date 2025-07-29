@@ -1,6 +1,5 @@
 #pragma once
 
-#include "fmt/core.h"
 #include "mapper.h"
 
 #include <cstdint>
@@ -14,7 +13,7 @@ class MBC1 : public IMapper
 {
   public:
 	MBC1(std::ifstream &romFile, const Mapper::CartInfo &cartInfo);
-	~MBC1() override = default;
+	~MBC1() override;
 
 	virtual uint8_t read(uint16_t position) override;
 	virtual void    write(uint16_t position, uint8_t data) override;

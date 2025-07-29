@@ -18,6 +18,11 @@ Mapper::MBC1::MBC1(std::ifstream &romFile, const Mapper::CartInfo &cartInfo)
 	m_registers.BankModeSelect  = 0;
 }
 
+Mapper::MBC1::~MBC1()
+{
+	
+}
+
 uint8_t Mapper::MBC1::read(uint16_t position)
 {
 	uint8_t data = 0xFF;

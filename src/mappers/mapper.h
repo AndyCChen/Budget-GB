@@ -10,16 +10,23 @@ namespace Mapper
 {
 
 // https://gbdev.io/pandocs/The_Cartridge_Header.html#0147--cartridge-type
-enum MBC_TYPES
+enum class MBC_TYPES
 {
 	NO_MBC = 0x00,
 
-	MBC_1             = 0x01,
-	MBC_1_RAM         = 0x02,
-	MBC_1_RAM_BATTERY = 0x03,
+	MBC1             = 0x01,
+	MBC1_RAM         = 0x02,
+	MBC1_RAM_BATTERY = 0x03,
 
-	MBC_2         = 0x05,
-	MBC_2_BATTERY = 0x06,
+	MBC2         = 0x05,
+	MBC2_BATTERY = 0x06,
+
+	MBC3_TIMER_BATTERY     = 0x0F,
+	MBC3_TIMER_RAM_BATERRY = 0x10,
+
+	MBC3             = 0x11,
+	MBC3_RAM         = 0x12,
+	MBC3_RAM_BATTERY = 0x13,
 };
 
 struct CartInfo

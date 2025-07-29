@@ -2,7 +2,6 @@
 #include "BudgetGB.h"
 #include "fmt/base.h"
 #include "sm83.h"
-#include "emulatorConstants.h"
 
 Bus::Bus(Cartridge &cartridge, Sm83 &cpu, PPU &ppu)
 	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(ppu)
