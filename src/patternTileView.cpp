@@ -19,7 +19,7 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 	bool toggle = true;
 	updateTileViewPixelBuffer();
 
-	if (ImGui::Begin("Tile View", &toggle))
+	if (ImGui::Begin("Tile View", &toggle) && toggle)
 	{
 		float tileViewportWidth = ImGui::GetWindowSize().x - 225.0f;
 
@@ -60,20 +60,18 @@ bool PatternTileView::drawViewportGui(RendererGB::RenderContext *renderContext)
 			ImGui::Text("Address: $%04X - $%04X", address, address + 0xF);
 		}
 		ImGui::EndChild();
+
+		// draw main tile view
+		RendererGB::textureRenderTargetSet(renderContext, m_tileViewRenderTarget.get(), m_tileViewportSize);
+		RendererGB::texturedQuadUpdateTexture(renderContext, m_tileViewQuad.get(), m_tileViewPixelBuffer.data(), m_tileViewPixelBuffer.size());
+		RendererGB::texturedQuadDraw(renderContext, m_tileViewQuad.get());
+
+		// draw tile preview to display hovered tile
+		RendererGB::textureRenderTargetSet(renderContext, m_tilePreviewRenderTarget.get(), TILE_PREVIEW_SIZE);
+		RendererGB::texturedQuadUpdateTexture(renderContext, m_tilePreviewQuad.get(), m_tilePreviewPixelBuffer.data(), m_tilePreviewPixelBuffer.size());
+		RendererGB::texturedQuadDraw(renderContext, m_tilePreviewQuad.get());
 	}
 	ImGui::End();
-
-	// draw main tile view
-
-	RendererGB::textureRenderTargetSet(renderContext, m_tileViewRenderTarget.get(), m_tileViewportSize);
-	RendererGB::texturedQuadUpdateTexture(renderContext, m_tileViewQuad.get(), m_tileViewPixelBuffer.data(), m_tileViewPixelBuffer.size());
-	RendererGB::texturedQuadDraw(renderContext, m_tileViewQuad.get());
-
-	// draw tile preview to display hovered tile
-
-	RendererGB::textureRenderTargetSet(renderContext, m_tilePreviewRenderTarget.get(), TILE_PREVIEW_SIZE);
-	RendererGB::texturedQuadUpdateTexture(renderContext, m_tilePreviewQuad.get(), m_tilePreviewPixelBuffer.data(), m_tilePreviewPixelBuffer.size());
-	RendererGB::texturedQuadDraw(renderContext, m_tilePreviewQuad.get());
 
 	return toggle;
 }

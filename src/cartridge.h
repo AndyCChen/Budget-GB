@@ -39,6 +39,11 @@ class Cartridge
 		return m_mapper->m_cartInfo;
 	}
 
+	void resetMapper()
+	{
+		m_mapper->reset();
+	}
+
 	const char *getCartridgeErrorMsg()
 	{
 		return m_errorMsg.c_str();

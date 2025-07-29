@@ -95,3 +95,11 @@ void Mapper::MBC1::write(uint16_t position, uint8_t data)
 		}
 	}
 }
+
+void Mapper::MBC1::reset()
+{
+	m_registers.RamEnable       = false;
+	m_registers.RomBankSelector = 1;
+	m_registers.Extra2Bits      = 0;
+	m_registers.BankModeSelect  = 0;
+}

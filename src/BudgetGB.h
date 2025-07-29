@@ -104,6 +104,7 @@ class BudgetGB
 		m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		m_disassembler.step();
+		m_cartridge.resetMapper();
 	}
 
 	/**

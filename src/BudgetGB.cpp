@@ -4,6 +4,7 @@
 #include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
+#include "mappers/mapper.h"
 #include "misc/cpp/imgui_stdlib.h"
 
 #include "BudgetGB.h"
@@ -144,7 +145,8 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 			break;
 
 		case SDL_SCANCODE_KP_MULTIPLY:
-			resetBudgetGB();
+			if (m_cartridge.isLoaded())
+				resetBudgetGB();
 			break;
 
 		default:
@@ -241,30 +243,6 @@ void BudgetGB::guiMain()
 {
 	m_guiContext.blockJoypadInputs = false;
 
-	// imgui demo window
-	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
-	{
-		bool toggle = true;
-		ImGui::ShowDemoWindow(&toggle);
-		if (!toggle)
-			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
-	}
-
-	if (m_guiContext.flags & GuiContextFlags_SHOW_TILES)
-	{
-		if (!m_patternTileViewport->drawViewportGui(m_renderContext))
-		{
-			m_patternTileViewport.reset();
-			m_guiContext.flags &= ~GuiContextFlags_SHOW_TILES;
-		}
-	}
-
-	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
-		guiCpuViewer();
-
-	if (m_guiContext.flags & GuiContextFlags_SHOW_PALETTES)
-		guiPalettes();
-
 	if (m_guiContext.flags & GuiContextFlags_SHOW_MAIN_MENU)
 	{
 		ImGui::OpenPopup("Main Menu?");
@@ -272,6 +250,7 @@ void BudgetGB::guiMain()
 	}
 
 	bool showBootromModal = false;
+	bool showCartInfo     = false;
 
 	if (ImGui::BeginPopup("Main Menu?", ImGuiWindowFlags_NoMove))
 	{
@@ -353,11 +332,18 @@ void BudgetGB::guiMain()
 		if (ImGui::MenuItem("CPU Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_CPU_VIEWER;
 
+		ImGui::BeginDisabled(!m_cartridge.isLoaded());
 		if (ImGui::MenuItem("Reset", "*"))
 			resetBudgetGB();
+		ImGui::EndDisabled();
 
 		if (ImGui::Selectable("Bootrom"))
 			showBootromModal = true;
+
+		ImGui::BeginDisabled(!m_cartridge.isLoaded());
+		if (ImGui::Selectable("CartInfo"))
+			showCartInfo = true;
+		ImGui::EndDisabled();
 
 		if (ImGui::BeginMenu("Recent roms", !m_config.recentRoms.empty()))
 		{
@@ -383,6 +369,48 @@ void BudgetGB::guiMain()
 			event.type = SDL_EVENT_QUIT;
 			SDL_PushEvent(&event);
 		}
+		ImGui::EndPopup();
+	}
+
+	// imgui demo window
+	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
+	{
+		bool toggle = true;
+		ImGui::ShowDemoWindow(&toggle);
+		if (!toggle)
+			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
+	}
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
+		guiCpuViewer();
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_PALETTES)
+		guiPalettes();
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_TILES)
+	{
+		if (!m_patternTileViewport->drawViewportGui(m_renderContext))
+		{
+			m_patternTileViewport.reset();
+			m_guiContext.flags &= ~GuiContextFlags_SHOW_TILES;
+		}
+	}
+
+	if (showCartInfo)
+		ImGui::OpenPopup("CartInfo");
+
+	if (ImGui::BeginPopupModal("CartInfo", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		const Mapper::CartInfo &cartInfo = m_cartridge.getCartInfo();
+
+		ImGui::Text("Mapper: %s", Mapper::getMapperString(cartInfo.MbcType).data());
+		ImGui::Text("Rom size: %u", cartInfo.RomSize);
+		ImGui::Text("Ram size: %u", cartInfo.RamSize);
+		ImGui::Text("Battery backed: %s", cartInfo.BatteryBacked ? "Yes" : "No");
+
+		if (ImGui::Button("Ok"))
+			ImGui::CloseCurrentPopup();
+
 		ImGui::EndPopup();
 	}
 
