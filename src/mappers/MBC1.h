@@ -24,9 +24,6 @@ class MBC1 : public IMapper
 	std::vector<uint8_t> m_rom;
 	std::vector<uint8_t> m_ram;
 
-	uint32_t m_romBank = 0;
-	uint32_t m_ramBank = 0;
-
 	// registers
 
 	struct Registers

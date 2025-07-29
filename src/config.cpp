@@ -111,11 +111,6 @@ void BudgetGbConfig::Config::loadConfig()
 		{
 			auto &item = config["palettes"][i];
 
-			std::array<float, 3> color0{};
-			std::array<float, 3> color1{};
-			std::array<float, 3> color2{};
-			std::array<float, 3> color3{};
-
 			// clang-format off
 			palettes.emplace_back(
 				Palette {
