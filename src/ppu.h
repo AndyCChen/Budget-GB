@@ -15,16 +15,6 @@ class PPU
 
 	void init(bool useBootrom);
 
-	// Bits
-	// 0: enable/disable BG and window
-	// 1: enable/disable objects
-	// 2: toggle between 8x8 or 8x16 sprites
-	// 3: select 0x9800 or 0x9C00 to use for BG tile map
-	// 4: control addressing mode for BG and window
-	// 5: window enable
-	// 6: select 0x9800 or 0x9C00 to use for window tile map
-	// 7: enable/disable lcd (ppu)
-	uint8_t r_lcdControl      = 0;
 	uint8_t r_LYC             = 0; // value to compare against the current scanline (lcdY)
 	uint8_t r_scrollX         = 0;
 	uint8_t r_scrollY         = 0;
@@ -270,6 +260,17 @@ class PPU
 	uint8_t r_lcdStatus = 0;
 	uint8_t r_lcdY      = 0; // holds the current horizontal scanline
 
+	// Bits
+	// 0: enable/disable BG and window
+	// 1: enable/disable objects
+	// 2: toggle between 8x8 or 8x16 sprites
+	// 3: select 0x9800 or 0x9C00 to use for BG tile map
+	// 4: control addressing mode for BG and window
+	// 5: window enable
+	// 6: select 0x9800 or 0x9C00 to use for window tile map
+	// 7: enable/disable lcd (ppu)
+	uint8_t r_lcdControl = 0;
+
 	uint16_t m_scanlineDotCounter = 0;
 
 	Mode             m_ppuMode          = Mode::MODE_2;
@@ -278,7 +279,8 @@ class PPU
 
 	uint8_t m_pixelX = 0; // track the pixel that is the ppu is currently on, ranges (0 - 159 inclusive)
 
-	bool m_frameDone = false;
+	bool   m_frameDone  = false;
+	size_t m_dotCounter = 0;
 
 	struct WindowRegisters
 	{
@@ -323,7 +325,7 @@ class PPU
 		m_bgFifo.patternTileHiShifter = m_bgFetcher.patternTileHiLatch;
 		m_bgFetcher.reset();
 	}
-
+	
   public:
 	PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFlags);
 
@@ -385,4 +387,21 @@ class PPU
 		// bits 0-2 are read only
 		r_lcdStatus = (in & 0xF8) | (r_lcdStatus & 0x7);
 	}
+
+	uint8_t getLcdControl() const
+	{
+		return r_lcdControl;
+	}
+
+	void setLcdControl(uint8_t data)
+	{
+		if (r_lcdControl & LCD_CONTROLS::PPU_ENABLE && (data & LCD_CONTROLS::PPU_ENABLE) == 0)
+		{
+			ppuDisable();
+		}
+
+		r_lcdControl = data;
+	}
+
+	void ppuDisable();
 };

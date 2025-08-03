@@ -74,6 +74,8 @@ set(SOURCE_FILES
 	src/BudgetGB.h
 	src/sm83.cpp
 	src/sm83.h
+	src/apu.cpp
+	src/apu.h
 	src/bus.cpp
 	src/bus.h
 	src/sm83JsonTest.cpp
@@ -99,6 +101,7 @@ set(SOURCE_FILES
 	src/emulatorConstants.h
 	src/patternTileView.cpp
 	src/patternTileView.h
+	src/IORegisters.h
 
 	src/mappers/mapper.cpp
 	src/mappers/mapper.h

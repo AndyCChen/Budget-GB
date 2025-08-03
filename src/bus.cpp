@@ -1,10 +1,11 @@
 #include "bus.h"
 #include "BudgetGB.h"
+#include "IORegisters.h"
 #include "fmt/base.h"
 #include "sm83.h"
 
-Bus::Bus(Cartridge &cartridge, Sm83 &cpu, PPU &ppu)
-	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(ppu)
+Bus::Bus(Cartridge &cartridge, Sm83 &cpu, PPU &ppu, Apu &apu)
+	: m_cartridge(cartridge), m_cpu(cpu), m_ppu(ppu), m_apu(apu)
 {
 	std::fill(m_wram.begin(), m_wram.end(), static_cast<uint8_t>(0));
 	std::fill(m_hram.begin(), m_hram.end(), static_cast<uint8_t>(0));
@@ -175,17 +176,33 @@ void Bus::tickM()
 	if (m_ppu.m_oamDmaController.dmaInProgress)
 		handleOamDMA();
 
+	m_apu.tick(m_cpu.m_timer.getDivider());
+	m_ppu.tick();
+	m_ppu.tick();
+	m_ppu.tick();
+	m_ppu.tick();
 	m_cpu.m_timer.tick(m_cpu.m_interrupts.m_interruptFlags);
-	m_ppu.tick();
-	m_ppu.tick();
-	m_ppu.tick();
-	m_ppu.tick();
 }
 
 void Bus::onUpdate()
 {
-	while (!m_ppu.isFrameComplete())
-		m_cpu.instructionStep();
+	using namespace BudgetGbConstants;
+
+	if (m_apu.beginAudioFrame())
+	{
+		while (!m_ppu.isFrameComplete())
+			m_cpu.instructionStep();
+		// do
+		//{
+		/*constexpr float AUDIO_FRAME = (static_cast<float>(CLOCK_RATE_T) / AUDIO_SAMPLE_RATE) * (AUDIO_SAMPLE_RATE / 60.0f);
+		while (m_tCycles < AUDIO_FRAME)
+		    m_cpu.instructionStep();
+
+		m_tCycles -= AUDIO_FRAME;*/
+		//} while (m_apu.m_boxFilter.getSamplesAvail() < m_apu.m_boxFilter.getAudioFrameSize() * 4);
+
+		m_apu.endAudioFrame();
+	}
 }
 
 void Bus::writeIO(uint16_t position, uint8_t data)
@@ -215,12 +232,34 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		m_cpu.m_timer.m_timerControl = data;
 		break;
 
+	case IORegisters::INTERRUPT_IF:
+		m_cpu.m_interrupts.m_interruptFlags = data;
+		break;
+
+	case IORegisters::NR10:
+	case IORegisters::NR11:
+	case IORegisters::NR12:
+	case IORegisters::NR13:
+	case IORegisters::NR14:
+	case IORegisters::NR50:
+	case IORegisters::NR52:
+		m_apu.writeIO(position, data);
+		break;
+
 	case IORegisters::LCD_CONTROL:
-		m_ppu.r_lcdControl = data;
+		m_ppu.setLcdControl(data);
 		break;
 
 	case IORegisters::LCD_STAT:
 		m_ppu.setLcdStatus(data);
+		break;
+
+	case IORegisters::LCD_SCY:
+		m_ppu.r_scrollY = data;
+		break;
+
+	case IORegisters::LCD_SCX:
+		m_ppu.r_scrollX = data;
 		break;
 
 	case IORegisters::LCD_LYC:
@@ -243,28 +282,16 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 		m_ppu.r_objPaletteData1 = data;
 		break;
 
-	case IORegisters::BOOT_ROM_ENABLE:
-		m_cpu.m_bootRomDisable |= data;
-		break;
-
-	case IORegisters::LCD_SCX:
-		m_ppu.r_scrollX = data;
-		break;
-
-	case IORegisters::LCD_SCY:
-		m_ppu.r_scrollY = data;
+	case IORegisters::LCD_WY:
+		m_ppu.r_windowY = data;
 		break;
 
 	case IORegisters::LCD_WX:
 		m_ppu.r_windowX = data;
 		break;
 
-	case IORegisters::LCD_WY:
-		m_ppu.r_windowY = data;
-		break;
-
-	case IORegisters::INTERRUPT_IF:
-		m_cpu.m_interrupts.m_interruptFlags = data;
+	case IORegisters::BOOT_ROM_ENABLE:
+		m_cpu.m_bootRomDisable |= data;
 		break;
 
 	default:
@@ -294,11 +321,29 @@ uint8_t Bus::readIO(uint16_t position)
 	case IORegisters::TIMER_TAC:
 		return m_cpu.m_timer.m_timerControl;
 
+	case IORegisters::INTERRUPT_IF:
+		return m_cpu.m_interrupts.m_interruptFlags;
+
+	case IORegisters::NR10:
+	case IORegisters::NR11:
+	case IORegisters::NR12:
+	case IORegisters::NR13:
+	case IORegisters::NR14:
+	case IORegisters::NR50:
+	case IORegisters::NR52:
+		return m_apu.readIO(position);
+
 	case IORegisters::LCD_CONTROL:
-		return m_ppu.r_lcdControl;
+		return m_ppu.getLcdControl();
 
 	case IORegisters::LCD_STAT:
 		return m_ppu.getLcdStatus();
+
+	case IORegisters::LCD_SCY:
+		return m_ppu.r_scrollY;
+
+	case IORegisters::LCD_SCX:
+		return m_ppu.r_scrollX;
 
 	case IORegisters::LCD_LY:
 		return m_ppu.getLcdY();
@@ -318,26 +363,17 @@ uint8_t Bus::readIO(uint16_t position)
 	case IORegisters::OBP1:
 		return m_ppu.r_objPaletteData1;
 
-	case IORegisters::BOOT_ROM_ENABLE:
-		return m_cpu.m_bootRomDisable;
-
-	case IORegisters::LCD_SCX:
-		return m_ppu.r_scrollX;
-
-	case IORegisters::LCD_SCY:
-		return m_ppu.r_scrollY;
+	case IORegisters::LCD_WY:
+		return m_ppu.r_windowY;
 
 	case IORegisters::LCD_WX:
 		return m_ppu.r_windowX;
 
-	case IORegisters::LCD_WY:
-		return m_ppu.r_windowY;
-
-	case IORegisters::INTERRUPT_IF:
-		return m_cpu.m_interrupts.m_interruptFlags;
+	case IORegisters::BOOT_ROM_ENABLE:
+		return m_cpu.m_bootRomDisable;
 
 	default:
-		return 0;
+		return 0xFF;
 	}
 }
 

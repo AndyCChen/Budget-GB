@@ -83,12 +83,12 @@ struct RendererGB::TexturedQuad
 	}
 };
 
-bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale)
+RendererGB::RenderContext *RendererGB::initWindowWithRenderer(SDL_Window *&window, const uint32_t windowScale)
 {
-	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO))
 	{
 		SDL_LogError(0, "Failed to init SDL video! SDL error: %s", SDL_GetError());
-		return false;
+		return nullptr;
 	}
 
 #ifdef USE_GL_VERSION_410
@@ -119,7 +119,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
-		return false;
+		return nullptr;
 	}
 
 	SDL_SetWindowMinimumSize(window, BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT);
@@ -129,13 +129,13 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	if (!glContext)
 	{
 		SDL_LogError(0, "Failed to create openGL context! SDL error: %s", SDL_GetError());
-		return false;
+		return nullptr;
 	}
 
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
 		SDL_LogError(0, "Failed to load initialize glad!");
-		return false;
+		return nullptr;
 	}
 
 	SDL_GL_MakeCurrent(window, glContext);
@@ -165,7 +165,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 #endif
 
-	renderContext = new RenderContext(glContext); // create renderContext only after window and opengl context are setup
+	RenderContext *renderContext = new RenderContext(glContext); // create renderContext only after window and opengl context are setup
 
 	int width, height;
 	SDL_GetWindowSize(window, &width, &height);
@@ -177,7 +177,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 
 	SDL_ShowWindow(window);
 
-	return true;
+	return renderContext;
 }
 
 void RendererGB::newFrame()

@@ -17,14 +17,8 @@ struct RenderContext;
 struct TextureRenderTarget; // a texture that can be used as a render target
 struct TexturedQuad;        // A quad with a attached texture containing color indices
 
-/**
- * @brief Initializes the main window with sdl3 and sets up ImGui context.
- *
- * @param window
- * @param renderContext
- */
-bool initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale);
-void freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
+RenderContext *initWindowWithRenderer(SDL_Window *&window, const uint32_t windowScale);
+void           freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
 
 void newFrame();
 void endFrame(SDL_Window *window, RenderContext *renderContext);

@@ -9,6 +9,8 @@ static constexpr uint32_t LCD_WIDTH    = 160;
 static constexpr uint32_t LCD_HEIGHT   = 144;
 static constexpr uint32_t CLOCK_RATE_T = 4194304; // gameboy clock frequency
 
+static constexpr uint32_t AUDIO_SAMPLE_RATE = 48000;
+
 static constexpr uint32_t TILE_VIEW_WIDTH  = 128; // pixel width of tile viewport
 static constexpr uint32_t TILE_VIEW_HEIGHT = 192; // pixel height of tile viewport
 

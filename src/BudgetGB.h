@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "SDL3/SDL.h"
+#include "apu.h"
 #include "bus.h"
 #include "cartridge.h"
 #include "config.h"
@@ -69,19 +70,21 @@ class BudgetGB
 		bool guiCpuViewer_snapInstructionScrollY = false;
 	};
 
+	GuiContext             m_guiContext;
+	BudgetGbConfig::Config m_config;
+
+	SDL_Window                *m_window;
+	RendererGB::RenderContext *m_renderContext;
+
 	Cartridge    m_cartridge;
 	Bus          m_bus;
 	Sm83         m_cpu;
 	PPU          m_ppu;
+	Apu          m_apu;
 	Disassembler m_disassembler;
-
-	GuiContext             m_guiContext;
-	BudgetGbConfig::Config m_config;
 
 	float m_accumulatedDeltaTime = 0.0f;
 
-	SDL_Window                       *m_window;
-	RendererGB::RenderContext        *m_renderContext;
 	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer{};
 
 	RendererGB::TexturedQuadUniquePtr m_lcdDisplayQuad;

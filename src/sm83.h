@@ -113,7 +113,7 @@ class Sm83
 	struct Sm83Timer
 	{
 	  private:
-		uint16_t m_divider      = 0;
+		uint16_t m_divider      = 0; // divider is used by the timer and apu
 		uint8_t  m_timerCounter = 0;
 
 	  public:

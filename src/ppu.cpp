@@ -8,8 +8,10 @@ PPU::PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFl
 
 void PPU::tick()
 {
+	m_dotCounter += 1;
 	if ((r_lcdControl & LCD_CONTROLS::PPU_ENABLE) == 0)
 	{
+		m_frameDone = m_dotCounter % 70225 == 0;
 		return;
 	}
 
@@ -36,7 +38,7 @@ void PPU::tick()
 			{
 				m_interruptLine |= Sm83::InterruptFlags::InterruptFlags_VBLANK; // request regular vblank interrupt
 				m_window.reset();
-				m_ppuMode = Mode::MODE_1;
+				m_ppuMode   = Mode::MODE_1;
 				m_frameDone = true;
 			}
 			else
@@ -685,6 +687,34 @@ void PPU::init(bool useBootrom)
 	m_spriteFifo.reset();
 	m_spriteScanner.reset();
 	m_spriteFetcher.reset();
+
+	m_dotCounter = 0;
+}
+
+void PPU::ppuDisable()
+{
+	r_lcdY               = 0;
+	r_lcdStatus          = r_lcdStatus & 0xF8;
+	m_scanlineDotCounter = 0;
+
+	m_frameDone = false;
+
+	m_ppuMode          = Mode::MODE_2;
+	m_pixelRenderState = PixelRenderState::B01_FETCH;
+
+	m_pixelX = 0;
+	m_window.reset();
+
+	m_statInterruptSources = 0;
+	m_sharedInterruptLine  = 0;
+
+	m_bgFetcher.reset();
+	m_bgFifo.reset();
+	m_spriteFifo.reset();
+	m_spriteScanner.reset();
+	m_spriteFetcher.reset();
+
+	m_dotCounter = 0;
 }
 
 bool PPU::SpriteFifo::clockFifo(uint8_t fetcherX, uint8_t &spriteColorIndex, uint8_t &attributes)

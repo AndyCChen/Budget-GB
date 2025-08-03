@@ -76,12 +76,12 @@ struct RendererGB::RenderContext
 	MainViewport MainViewport;
 };
 
-bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext, const uint32_t windowScale)
+RendererGB::RenderContext *RendererGB::initWindowWithRenderer(SDL_Window *&window, const uint32_t windowScale)
 {
-	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
 	{
 		SDL_LogError(0, "Failed to init SDL video! SDL error: %s", SDL_GetError());
-		return false;
+		return nullptr;
 	}
 
 	window = SDL_CreateWindow("Budget Gameboy", BudgetGbConstants::LCD_WIDTH * windowScale, BudgetGbConstants::LCD_HEIGHT * windowScale, 0);
@@ -90,11 +90,12 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	if (!window)
 	{
 		SDL_LogError(0, "Failed to create SDL window! SDL error: %s", SDL_GetError());
-		return false;
+		return nullptr;
 	}
 
-	HWND hwnd     = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
-	renderContext = new RenderContext(hwnd);
+	HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+
+	RenderContext *renderContext = new RenderContext(hwnd);
 
 	{
 		int width, height;
@@ -122,7 +123,7 @@ bool RendererGB::initWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 	ImGui_ImplSDL3_InitForD3D(window);
 	ImGui_ImplDX11_Init(renderContext->Device.Get(), renderContext->DeviceContext.Get());
 
-	return true;
+	return renderContext;
 }
 
 void RendererGB::newFrame()

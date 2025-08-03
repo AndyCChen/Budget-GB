@@ -21,9 +21,15 @@ static void SDLCALL loadRomDialogCallback(void *userdata, const char *const *fil
 static void SDLCALL loadBootromDialogCallback(void *userdata, const char *const *filelist, int filter);
 
 BudgetGB::BudgetGB(const std::string &cartridgePath)
-	: m_cartridge(), m_bus(m_cartridge, m_cpu, m_ppu), m_cpu(m_bus), m_ppu(m_lcdColorBuffer, m_cpu.m_interrupts.m_interruptFlags), m_disassembler(m_bus)
+	: m_renderContext(RendererGB::initWindowWithRenderer(m_window, static_cast<uint32_t>(m_config.windowScale))),
+	  m_cartridge(),
+	  m_bus(m_cartridge, m_cpu, m_ppu, m_apu),
+	  m_cpu(m_bus),
+	  m_ppu(m_lcdColorBuffer, m_cpu.m_interrupts.m_interruptFlags),
+	  m_apu(BudgetGbConstants::AUDIO_SAMPLE_RATE),
+	  m_disassembler(m_bus)
 {
-	if (!RendererGB::initWindowWithRenderer(m_window, m_renderContext, static_cast<uint32_t>(m_config.windowScale)))
+	if (!m_renderContext)
 	{
 		throw std::runtime_error("Failed to initialize window with renderer!");
 	}
@@ -53,6 +59,8 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 BudgetGB::~BudgetGB()
 {
+	fmt::println("destruct emulator");
+	m_apu.pauseAudio();
 	m_config.activePalette = m_guiContext.guiPalettes_activePalette;
 	RendererGB::freeWindowWithRenderer(m_window, m_renderContext);
 }
@@ -62,7 +70,13 @@ void BudgetGB::onUpdate(float deltaTime)
 	if (!(m_guiContext.flags & GuiContextFlags_PAUSE) && m_cartridge.isLoaded())
 	{
 		m_accumulatedDeltaTime += deltaTime;
-		constexpr float TIME_STEP = 1.0f / 60.0f;
+		constexpr float TIME_STEP = 1.0f / 61.0f;
+
+		//fmt::println("{}", deltaTime);
+
+		/*if (m_accumulatedDeltaTime > 1.0f)
+			m_accumulatedDeltaTime = 0;*/
+
 		if (m_accumulatedDeltaTime > TIME_STEP)
 		{
 			m_bus.onUpdate();

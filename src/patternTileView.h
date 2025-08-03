@@ -5,10 +5,10 @@
 #include "renderer.h"
 #include "utils/vec.h"
 
+#include "fmt/core.h"
 #include <array>
 #include <cstdint>
 #include <memory>
-
 class PatternTileView
 {
   public:
