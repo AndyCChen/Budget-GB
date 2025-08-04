@@ -40,6 +40,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 	{
 		if (m_cartridge.loadCartridgeFromPath(cartridgePath, m_config.recentRoms))
 		{
+			m_apu.resumeAudio();
 			m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 			m_disassembler.step();
 		}
@@ -53,31 +54,25 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 
 	m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 	m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
+	m_apu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 
 	m_lcdDisplayQuad = RendererGB::texturedQuadCreate(m_renderContext, Utils::Vec2<float>{BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT});
 }
 
 BudgetGB::~BudgetGB()
 {
-	fmt::println("destruct emulator");
-	m_apu.pauseAudio();
 	m_config.activePalette = m_guiContext.guiPalettes_activePalette;
 	RendererGB::freeWindowWithRenderer(m_window, m_renderContext);
 }
 
-void BudgetGB::onUpdate(float deltaTime)
+void BudgetGB::onUpdate()
 {
 	if (!(m_guiContext.flags & GuiContextFlags_PAUSE) && m_cartridge.isLoaded())
 	{
-		m_accumulatedDeltaTime += deltaTime;
-		constexpr float TIME_STEP = 1.0f / 61.0f;
+		m_accumulatedDeltaTime += ImGui::GetIO().DeltaTime;
+		constexpr float TIME_STEP = 1.0f / 60.0f;
 
-		//fmt::println("{}", deltaTime);
-
-		/*if (m_accumulatedDeltaTime > 1.0f)
-			m_accumulatedDeltaTime = 0;*/
-
-		if (m_accumulatedDeltaTime > TIME_STEP)
+		while (m_accumulatedDeltaTime > TIME_STEP)
 		{
 			m_bus.onUpdate();
 			m_accumulatedDeltaTime -= TIME_STEP;
@@ -91,8 +86,6 @@ void BudgetGB::onUpdate(float deltaTime)
 	RendererGB::mainViewportSetRenderTarget(m_renderContext);
 	RendererGB::texturedQuadUpdateTexture(m_renderContext, m_lcdDisplayQuad.get(), m_lcdColorBuffer.data(), m_lcdColorBuffer.size());
 	RendererGB::texturedQuadDraw(m_renderContext, m_lcdDisplayQuad.get());
-
-	// RendererGB::drawMainViewport(m_lcdColorBuffer, m_renderContext, m_window);
 
 	RendererGB::endFrame(m_window, m_renderContext);
 	RendererGB::newFrame(); // begin new frame at end of this game loop
@@ -179,7 +172,10 @@ bool BudgetGB::loadCartridge(const std::string &cartridgePath)
 		return true;
 	}
 	else
+	{
+		m_apu.pauseAudio();
 		return false;
+	}
 }
 
 void BudgetGB::resizeViewportStretched()

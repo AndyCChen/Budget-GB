@@ -426,7 +426,7 @@ void PPU::pushPixelToLCD()
 	bgColorIndex = (r_bgPaletteData >> (bgColorIndex * 2)) & 0x3;
 	m_bgFifo.clockFifo();
 
-	outputColorIndex = bgColorIndex;
+	outputColorIndex = (r_lcdControl & LCD_CONTROLS::BG_WINDOW_ENABLE) ? bgColorIndex : 0;
 
 	uint8_t spriteColorIndex = 0, attributes = 0;
 

@@ -14,16 +14,7 @@ void SDLCALL audioDeviceStreamCallback(void *userdata, SDL_AudioStream *audioStr
 	Apu::AudioCallbackData *callBackData = (Apu::AudioCallbackData *)userdata;
 	totalAmount /= sizeof(float);
 
-	// SDL_LockMutex(callBackData->AudioThreadCtx.Mutex);
-
-	// if buffer is does not contain enough samples, block until main thread has pushed enough samples into buffer
-	// if (callBackData->Buffer->getSamplesAvail() < totalAmount && !callBackData->StopAudioPlayback)
-	{
-		// SDL_WaitCondition(callBackData->AudioThreadCtx.CanConsume, callBackData->AudioThreadCtx.Mutex);
-		// int a = 0;
-	}
-
-	if (!callBackData->StopAudioPlayback)
+	//if (!callBackData->StopAudioPlayback)
 	{
 		SDL_LockMutex(callBackData->AudioThreadCtx.Mutex);
 
@@ -43,86 +34,7 @@ void SDLCALL audioDeviceStreamCallback(void *userdata, SDL_AudioStream *audioStr
 		}
 
 		SDL_UnlockMutex(callBackData->AudioThreadCtx.Mutex);
-
-		/*if (callBackData->AudioBuffer.getSamplesAvail() < 800 * 4 && SDL_TryLockMutex(callBackData->AudioThreadCtx.Mutex))
-		{
-			while (callBackData->AudioBuffer.getSamplesAvail() < 800 * 4)
-			{
-				std::array<float, 128> samples;
-
-				const uint32_t samplesRead = callBackData->Buffer->readSamples(samples.data(), samples.size());
-
-				if (samplesRead == 0)
-					break;
-
-				for (uint32_t i = 0; i < samplesRead; ++i)
-				{
-					callBackData->AudioBuffer.pushSample(samples[i]);
-				}
-			}
-			SDL_UnlockMutex(callBackData->AudioThreadCtx.Mutex);
-		}*/
-
-		/*if (callBackData->AudioBuffer.getSamplesAvail() < totalAmount)
-		{
-			int ab = 0;
-			SDL_LockMutex(callBackData->AudioThreadCtx.Mutex2);
-
-			while (callBackData->AudioBuffer.getSamplesAvail() < totalAmount)
-			{
-				std::array<float, 128> samples;
-
-				const uint32_t samplesRead = callBackData->Buffer->readSamples(samples.data(), samples.size());
-
-				if (samplesRead == 0)
-					break;
-
-				for (uint32_t i = 0; i < samplesRead; ++i)
-				{
-					callBackData->AudioBuffer.pushSample(samples[i]);
-				}
-			}
-
-			SDL_UnlockMutex(callBackData->AudioThreadCtx.Mutex2);
-		}*/
-
-		/*while (totalAmount > 0)
-		{
-			std::array<float, 128> samples;
-
-			const int total = std::min(totalAmount, (int)samples.size());
-
-			const uint32_t samplesRead = callBackData->AudioBuffer.readSamples(samples.data(), total);
-
-			if (samplesRead == 0)
-				break;
-
-			SDL_PutAudioStreamData(audioStream, samples.data(), samplesRead * sizeof(samples[0]));
-			totalAmount -= samplesRead;
-		}*/
 	}
-
-	// SDL_SignalCondition(callBackData->AudioThreadCtx.CanProduce);
-	// SDL_UnlockMutex(callBackData->AudioThreadCtx.Mutex);
-
-	/*static int currentSineSample = 0;
-	additionalAmount /= sizeof(float);
-	while (additionalAmount > 0)
-	{
-	    float     samples[128];
-	    const int total = std::min(additionalAmount, 128);
-
-	    for (int i = 0; i < total; ++i)
-	    {
-	        const int   freq  = 240;
-	        const float phase = currentSineSample * freq / 8000.0f;
-	        samples[i]        = SDL_sinf(phase * 2 * SDL_PI_F);
-	        currentSineSample += 1;
-	    }
-	    currentSineSample %= 8000;
-	    SDL_PutAudioStreamData(audioStream, samples, total * sizeof(float));
-	    additionalAmount -= total;
-	}*/
 }
 } // namespace
 
@@ -137,44 +49,30 @@ Apu::Apu(uint32_t sampleRate)
 	if (!(m_audioCallbackData.AudioThreadCtx.Mutex = SDL_CreateMutex()))
 		fmt::println("{}", SDL_GetError());
 
-	if (!(m_audioCallbackData.AudioThreadCtx.Mutex2 = SDL_CreateMutex()))
-		fmt::println("{}", SDL_GetError());
-
-	if (!(m_audioCallbackData.AudioThreadCtx.CanConsume = SDL_CreateCondition()))
-		fmt::println("{}", SDL_GetError());
-
-	if (!(m_audioCallbackData.AudioThreadCtx.CanProduce = SDL_CreateCondition()))
-		fmt::println("{}", SDL_GetError());
-
 	m_audioCallbackData.Buffer = &m_boxFilter;
 	m_audioStream              = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, audioDeviceStreamCallback, (void *)&m_audioCallbackData);
 
 	if (!m_audioStream)
 		fmt::println("{}", SDL_GetError());
-
-	SDL_ResumeAudioStreamDevice(m_audioStream);
-}
-
-Apu::~Apu()
-{
-	fmt::println("destruct audio");
 }
 
 bool Apu::beginAudioFrame()
 {
 	SDL_LockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
+
 	if (m_boxFilter.getSamplesAvail() > m_boxFilter.getAudioFrameSize() * 4)
 	{
 		endAudioFrame();
 		return false;
 	}
 	else
+	{
 		return true;
+	}
 }
 
 void Apu::endAudioFrame()
 {
-	SDL_SignalCondition(m_audioCallbackData.AudioThreadCtx.CanConsume);
 	SDL_UnlockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 }
 
@@ -300,37 +198,51 @@ void Apu::pauseAudio()
 	SDL_LockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 	m_audioCallbackData.StopAudioPlayback = true;
 	SDL_UnlockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
-	SDL_SignalCondition(m_audioCallbackData.AudioThreadCtx.CanConsume);
 	SDL_PauseAudioStreamDevice(m_audioStream);
+	SDL_ClearAudioStream(m_audioStream);
+
 }
 
 void Apu::resumeAudio()
 {
 	SDL_LockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
-	m_audioCallbackData.StopAudioPlayback = true;
+	m_audioCallbackData.StopAudioPlayback = false;
 	SDL_UnlockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 
 	SDL_ResumeAudioStreamDevice(m_audioStream);
+}
+
+void Apu::init(bool useBootrom)
+{
+	if (useBootrom)
+	{
+		m_audioControl = AudioMasterControl{};
+		m_masterVolume = MasterVolume{};
+		m_pulse1       = Pulse1{};
+	}
+	else
+	{
+		m_audioControl.set(0xF1);
+		m_masterVolume.set(0x77);
+
+		m_pulse1.Registers.FrequencySweep.set(0x80);
+		m_pulse1.Registers.LengthAndDuty.set(0xBF);
+		m_pulse1.Registers.VolumeAndEnvelope.set(0xF3);
+		m_pulse1.Registers.PeriodLo.set(0xFF);
+		m_pulse1.Registers.PeriodHiAndControl.set(0xBF);
+	}
+
+	m_prevDivider = 0;
+	m_apuDivider  = 0;
+
+	m_boxFilter.clear();
 }
 
 void Apu::mixAudio()
 {
 	uint8_t pulse1Sample = m_pulse1.outputSample();
 
-	// stop pushing samples if buffer is full and let audio callback eat samples
-	// if (m_boxFilter.isFull())
-	{
-		// SDL_WaitCondition(m_audioCallbackData.AudioThreadCtx.CanProduce, m_audioCallbackData.AudioThreadCtx.Mutex);
-		// fmt::println("full");
-	}
-
 	m_boxFilter.pushSample(pulse1Sample);
-
-	// signal to audio thread that it can continue consuming samples since buffer is full
-	/*if (m_boxFilter.isFull())
-	{
-	    SDL_SignalCondition(m_audioCallbackData.AudioThreadCtx.CanConsume);
-	}*/
 }
 
 uint8_t Apu::Pulse1::outputSample() const
@@ -358,29 +270,23 @@ void Apu::Pulse1::clockPeriodDivider()
 
 Apu::BoxFilter::BoxFilter(uint32_t sampleRate)
 	: SAMPLE_RATE(sampleRate),
-	  SAMPLES_PER_AVERAGE(static_cast<float>(BudgetGbConstants::CLOCK_RATE_T) / static_cast<float>(SAMPLE_RATE) / 4.0f)
+	  SAMPLES_PER_AVERAGE(static_cast<float>(BudgetGbConstants::CLOCK_RATE_T) / static_cast<float>(SAMPLE_RATE) / 4.0f),
+	  BOX_WIDTH(static_cast<uint32_t>(SAMPLES_PER_AVERAGE))
 {
-	m_boxWidth = static_cast<uint32_t>(SAMPLES_PER_AVERAGE);
-
-	const int SIZE = (SAMPLE_RATE / 60) * 16;
+	const int SIZE = (SAMPLE_RATE / 60) * 8;
 	m_buffer.resize(SIZE);
-}
-
-Apu::BoxFilter::~BoxFilter()
-{
-	fmt::println("box filter destruct");
 }
 
 void Apu::BoxFilter::pushSample(uint8_t sample)
 {
 	m_runningSum += sample;
 
-	if (++m_sampleCountInBox == m_boxWidth + static_cast<uint32_t>(m_error))
+	if (++m_sampleCountInBox == BOX_WIDTH + static_cast<uint32_t>(m_error))
 	{
 		m_samplesAvail     = std::min(m_samplesAvail + 1, (uint32_t)m_buffer.size());
 		m_sampleCountInBox = 0;
 
-		float average    = static_cast<float>(m_runningSum) / (m_boxWidth + static_cast<uint32_t>(m_error));
+		float average    = static_cast<float>(m_runningSum) / (BOX_WIDTH + static_cast<uint32_t>(m_error));
 		m_buffer[m_head] = average;
 		m_runningSum     = 0;
 
@@ -391,7 +297,7 @@ void Apu::BoxFilter::pushSample(uint8_t sample)
 		}
 
 		m_error -= static_cast<uint32_t>(m_error);
-		m_error += SDL_fabsf(SAMPLES_PER_AVERAGE - m_boxWidth);
+		m_error += SDL_fabsf(SAMPLES_PER_AVERAGE - BOX_WIDTH);
 	}
 }
 
@@ -403,34 +309,6 @@ uint32_t Apu::BoxFilter::readSamples(float *buffer, uint32_t size)
 	{
 		--m_samplesAvail;
 		buffer[count++] = (m_buffer[m_tail] - 7.5f) / 7.5f;
-
-		if (m_tail != m_head)
-			m_tail = (m_tail + 1) % m_buffer.size();
-	}
-
-	return count;
-}
-
-void Apu::AudioThreadSampleBuffer::pushSample(float sample)
-{
-	m_samplesAvail = std::min(m_samplesAvail + 1, (uint32_t)m_buffer.size());
-
-	m_buffer[m_head] = sample;
-	m_head           = (m_head + 1) % m_buffer.size();
-	if (m_head == m_tail)
-	{
-		m_tail = (m_tail + 1) % m_buffer.size();
-	}
-}
-
-uint32_t Apu::AudioThreadSampleBuffer::readSamples(float *buffer, uint32_t size)
-{
-	uint32_t count = 0;
-
-	while (count < size && m_samplesAvail > 0)
-	{
-		--m_samplesAvail;
-		buffer[count++] = m_buffer[m_tail];
 
 		if (m_tail != m_head)
 			m_tail = (m_tail + 1) % m_buffer.size();

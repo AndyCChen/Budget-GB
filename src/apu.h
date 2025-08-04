@@ -11,7 +11,6 @@ class Apu
 {
   public:
 	Apu(uint32_t sampleRate);
-	~Apu();
 
 	bool beginAudioFrame();
 	void endAudioFrame();
@@ -22,6 +21,17 @@ class Apu
 
 	void pauseAudio();
 	void resumeAudio();
+
+	void init(bool useBootrom);
+
+	static constexpr std::array<std::array<uint8_t, 8>, 4> WAVE_DUTIES = {{
+		{0, 0, 0, 0, 0, 0, 0, 1},
+		{0, 1, 1, 1, 1, 1, 1, 0},
+		{0, 1, 1, 1, 1, 0, 0, 0},
+		{1, 0, 0, 0, 0, 0, 0, 1},
+	}};
+
+	static constexpr uint8_t LENGTH_COUNTER_MAX = 64; // channel is silence once length counter reaches 64 (i.e. overflows 0x3F)
 
 	struct AudioMasterControl
 	{
@@ -188,20 +198,10 @@ class Apu
 	    PulsePeriodHighAndControl PeriodHiAndControl;
 	};*/
 
-	static constexpr std::array<std::array<uint8_t, 8>, 4> WAVE_DUTIES = {{
-		{0, 0, 0, 0, 0, 0, 0, 1},
-		{0, 1, 1, 1, 1, 1, 1, 0},
-		{0, 1, 1, 1, 1, 0, 0, 0},
-		{1, 0, 0, 0, 0, 0, 0, 1},
-	}};
-
-	static constexpr uint8_t LENGTH_COUNTER_MAX = 64; // channel is silence once length counter reaches 64 (i.e. overflows 0x3F)
-
 	class BoxFilter
 	{
 	  public:
 		BoxFilter(uint32_t sampleRate);
-		~BoxFilter();
 
 		void pushSample(uint8_t sample);
 
@@ -213,60 +213,45 @@ class Apu
 			return m_samplesAvail;
 		}
 
-		bool isFull() const
-		{
-			return m_samplesAvail == m_buffer.size();
-		}
-
 		uint32_t getAudioFrameSize() const
 		{
 			return SAMPLE_RATE / 60;
 		}
 
+		void clear()
+		{
+			std::fill(m_buffer.begin(), m_buffer.end(), (float)0);
+			m_runningSum       = 0;
+			m_sampleCountInBox = 0;
+			m_error            = 0;
+			m_head             = 0,
+			m_tail             = 0,
+			m_samplesAvail     = 0;
+		}
+
 	  private:
-		const int   SAMPLE_RATE;
-		const float SAMPLES_PER_AVERAGE;
+		const int      SAMPLE_RATE;
+		const float    SAMPLES_PER_AVERAGE;
+		const uint32_t BOX_WIDTH;
 
 		std::vector<float> m_buffer;
 
 		uint32_t m_runningSum       = 0;
 		uint32_t m_sampleCountInBox = 0;
-		uint32_t m_boxWidth         = 0;
 		float    m_error            = 0;
 
 		uint32_t m_head = 0, m_tail = 0, m_samplesAvail = 0;
 	};
 
-	class AudioThreadSampleBuffer
-	{
-	  public:
-		void     pushSample(float sample);
-		uint32_t readSamples(float *buffer, uint32_t size);
-
-		uint32_t getSamplesAvail() const
-		{
-			return m_samplesAvail;
-		}
-
-	  private:
-		std::array<float, BudgetGbConstants::AUDIO_SAMPLE_RATE / 60 * 16> m_buffer;
-
-		uint32_t m_head = 0, m_tail = 0, m_samplesAvail;
-	};
-
 	struct AudioCallbackData
 	{
-		Apu::BoxFilter         *Buffer               = nullptr;
-		uint32_t                RequestedSampleCount = 0;
-		bool                    StopAudioPlayback    = false;
-		AudioThreadSampleBuffer AudioBuffer;
+		Apu::BoxFilter *Buffer               = nullptr;
+		uint32_t        RequestedSampleCount = 0;
+		bool            StopAudioPlayback    = false;
 
 		struct AudioThreadContext
 		{
 			SDL_Mutex     *Mutex      = nullptr;
-			SDL_Mutex     *Mutex2     = nullptr;
-			SDL_Condition *CanConsume = nullptr;
-			SDL_Condition *CanProduce = nullptr;
 		} AudioThreadCtx;
 	};
 
@@ -284,6 +269,5 @@ class Apu
 	SDL_AudioStream  *m_audioStream;
 	AudioCallbackData m_audioCallbackData{};
 
-  public:
 	BoxFilter m_boxFilter;
 };

@@ -30,7 +30,7 @@ class BudgetGB
 	~BudgetGB();
 
 	// Called once per frame at refresh rate
-	void onUpdate(float deltaTime);
+	void onUpdate();
 
 	SDL_AppResult processEvent(SDL_Event *event);
 
@@ -91,10 +91,6 @@ class BudgetGB
 
 	std::unique_ptr<PatternTileView> m_patternTileViewport;
 
-	/*std::random_device              m_rd;
-	std::mt19937                    m_gen;
-	std::uniform_int_distribution<> m_palleteRange;*/
-
 	void resetBudgetGB()
 	{
 		if (m_config.useBootrom)
@@ -105,9 +101,14 @@ class BudgetGB
 
 		m_cpu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 		m_bus.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
+		m_apu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 		m_disassembler.setProgramCounter(m_cpu.m_programCounter);
 		m_disassembler.step();
 		m_cartridge.resetMapper();
+
+		// pause/unpause sequence audio to reset audio stream
+		m_apu.pauseAudio();
+		m_apu.resumeAudio();
 	}
 
 	/**
