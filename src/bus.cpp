@@ -191,14 +191,14 @@ void Bus::onUpdate()
 	if (m_apu.beginAudioFrame())
 	{
 
-		/*while (!m_ppu.isFrameComplete())
-		    m_cpu.instructionStep();*/
+		while (!m_ppu.isFrameComplete())
+		    m_cpu.instructionStep();
 
-		const float AUDIO_FRAME = (static_cast<float>(CLOCK_RATE_T) / AUDIO_SAMPLE_RATE) * (AUDIO_SAMPLE_RATE / 60.0f);
+		/*const float AUDIO_FRAME = (static_cast<float>(CLOCK_RATE_T) / AUDIO_SAMPLE_RATE) * (AUDIO_SAMPLE_RATE / 60.0f);
 		while (m_tCycles < AUDIO_FRAME)
 			m_cpu.instructionStep();
 
-		m_tCycles -= AUDIO_FRAME;
+		m_tCycles -= AUDIO_FRAME;*/
 
 		m_apu.endAudioFrame();
 	}

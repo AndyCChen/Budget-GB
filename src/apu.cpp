@@ -14,27 +14,24 @@ void SDLCALL audioDeviceStreamCallback(void *userdata, SDL_AudioStream *audioStr
 	Apu::AudioCallbackData *callBackData = (Apu::AudioCallbackData *)userdata;
 	totalAmount /= sizeof(float);
 
-	//if (!callBackData->StopAudioPlayback)
+	SDL_LockMutex(callBackData->AudioThreadCtx.Mutex);
+
+	while (totalAmount > 0)
 	{
-		SDL_LockMutex(callBackData->AudioThreadCtx.Mutex);
+		std::array<float, 128> samples;
 
-		while (totalAmount > 0)
-		{
-			std::array<float, 128> samples;
+		const int total = std::min(totalAmount, (int)samples.size());
 
-			const int total = std::min(totalAmount, (int)samples.size());
+		const uint32_t samplesRead = callBackData->Buffer->readSamples(samples.data(), total);
 
-			const uint32_t samplesRead = callBackData->Buffer->readSamples(samples.data(), total);
+		if (samplesRead == 0)
+			break;
 
-			if (samplesRead == 0)
-				break;
-
-			SDL_PutAudioStreamData(audioStream, samples.data(), samplesRead * sizeof(samples[0]));
-			totalAmount -= samplesRead;
-		}
-
-		SDL_UnlockMutex(callBackData->AudioThreadCtx.Mutex);
+		SDL_PutAudioStreamData(audioStream, samples.data(), samplesRead * sizeof(samples[0]));
+		totalAmount -= samplesRead;
 	}
+
+	SDL_UnlockMutex(callBackData->AudioThreadCtx.Mutex);
 }
 } // namespace
 
@@ -82,31 +79,31 @@ void Apu::tick(uint8_t divider)
 	if ((m_prevDivider & 0x10) && (divider & 0x10) == 0)
 	{
 		m_apuDivider += 1;
-	}
 
+		// clock length timers
+		if (m_apuDivider % 2 == 0)
+		{
+			m_pulse1.clockLengthCounter();
+		}
+
+		// clock pulse1 frequency sweep
+		if (m_apuDivider % 4 == 0)
+		{
+			m_pulse1.clockFrequencyCounter();
+		}
+
+		// clock envelope sweep
+		if (m_apuDivider % 8 == 0)
+		{
+			m_pulse1.clockEnvelopeCounter();
+			m_apuDivider = 0;
+		}
+	}
 	m_prevDivider = divider;
-
-	switch (m_apuDivider)
-	{
-	// clock length timers
-	case 2:
-		break;
-
-	// clock pulse1 frequency sweep
-	case 4:
-		break;
-
-	// clock envelope sweep
-	case 8:
-		m_apuDivider = 0;
-		break;
-
-	default:
-		break;
-	}
 
 	mixAudio();
 
+	updateChannelStatus();
 	m_pulse1.clockPeriodDivider();
 }
 
@@ -140,13 +137,15 @@ void Apu::writeIO(uint16_t position, uint8_t data)
 		m_pulse1.Registers.PeriodHiAndControl.set(data);
 		if (m_pulse1.Registers.PeriodHiAndControl.Trigger)
 		{
-			m_audioControl.Pulse1Status = 1;
-			m_pulse1.LengthPeriod       = m_pulse1.LengthPeriod == LENGTH_COUNTER_MAX ? m_pulse1.Registers.LengthAndDuty.InitialLength : m_pulse1.LengthPeriod;
+			m_audioControl.Pulse1Status = m_pulse1.isDacOn() ? 1 : 0;
+			m_pulse1.LengthPeriod       = m_pulse1.isLengthCounterExpired() ? m_pulse1.Registers.LengthAndDuty.InitialLength : m_pulse1.LengthPeriod;
 			m_pulse1.PeriodDivider      = (m_pulse1.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse1.Registers.PeriodLo.PeriodLo8Bits;
 			m_pulse1.EnvelopePeriod     = 0;
 			m_pulse1.Volume             = m_pulse1.Registers.VolumeAndEnvelope.InitialVolume;
 
-			// todo handle sweep
+			m_pulse1.SweepPeriod       = 0;
+			m_pulse1.TempPeriodDivider = (m_pulse1.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse1.Registers.PeriodLo.PeriodLo8Bits;
+			m_pulse1.computeFrequencySweep();
 		}
 		break;
 
@@ -200,7 +199,6 @@ void Apu::pauseAudio()
 	SDL_UnlockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 	SDL_PauseAudioStreamDevice(m_audioStream);
 	SDL_ClearAudioStream(m_audioStream);
-
 }
 
 void Apu::resumeAudio()
@@ -245,17 +243,110 @@ void Apu::mixAudio()
 	m_boxFilter.pushSample(pulse1Sample);
 }
 
+void Apu::updateChannelStatus()
+{
+	if (m_pulse1.Registers.PeriodHiAndControl.LengthEnable && m_pulse1.isLengthCounterExpired())
+	{
+		m_audioControl.Pulse1Status = 0;
+	}
+}
+
 uint8_t Apu::Pulse1::outputSample() const
 {
 	uint8_t sample = 0;
 
-	if (isDacOn())
+	if (isDacOn() && !isFreqSweepForcingSilence())
 	{
-		sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][DutyCycleIndex];
-		sample *= Volume;
+		if (Registers.PeriodHiAndControl.LengthEnable)
+		{
+			if (!isLengthCounterExpired())
+			{
+				sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][DutyCycleIndex];
+				sample *= Volume;
+			}
+		}
+		else
+		{
+			sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][DutyCycleIndex];
+			sample *= Volume;
+		}
 	}
 
 	return sample;
+}
+
+void Apu::Pulse1::clockLengthCounter()
+{
+	if (LengthPeriod < Apu::LENGTH_COUNTER_MAX)
+	{
+		++LengthPeriod;
+	}
+}
+
+void Apu::Pulse1::clockEnvelopeCounter()
+{
+	// envelope period of zero means envelope is disabled
+	if (Registers.VolumeAndEnvelope.Period == 0)
+		return;
+
+	if (++EnvelopePeriod == Registers.VolumeAndEnvelope.Period)
+	{
+		EnvelopePeriod = 0;
+
+		if (Registers.VolumeAndEnvelope.Direction)
+		{
+			Volume = static_cast<uint8_t>(std::clamp(Volume + 1, 0x0, 0xF));
+		}
+		else
+		{
+			Volume = static_cast<uint8_t>(std::clamp(Volume - 1, 0x0, 0xF));
+		}
+	}
+}
+
+void Apu::Pulse1::clockFrequencyCounter()
+{
+	// do not perform freq sweep iterations if the sweep period is 0
+	if (Registers.FrequencySweep.Period == 0)
+		return;
+
+	if (++SweepPeriod == Registers.FrequencySweep.Period)
+	{
+		SweepPeriod = 0;
+
+		if (isFreqSweepEnabled())
+		{
+			computeFrequencySweep();
+		}
+	}
+}
+
+void Apu::Pulse1::computeFrequencySweep()
+{
+	if (Registers.FrequencySweep.ShiftSweep == 0)
+		return;
+
+	uint16_t offset = TempPeriodDivider >> Registers.FrequencySweep.ShiftSweep;
+
+	int targetPeriod = 0;
+
+	if (Registers.FrequencySweep.Negate)
+	{
+		targetPeriod = TempPeriodDivider - offset;
+		targetPeriod = std::max(targetPeriod, 0); // target period cannnot underflow to negative value
+	}
+	else
+	{
+		targetPeriod = TempPeriodDivider + offset;
+	}
+
+	if (targetPeriod <= 0x7FF)
+	{
+		TempPeriodDivider = static_cast<uint16_t>(targetPeriod);
+
+		Registers.PeriodLo.PeriodLo8Bits           = static_cast<uint8_t>(targetPeriod);
+		Registers.PeriodHiAndControl.PeriodHi3Bits = targetPeriod >> 8;
+	}
 }
 
 void Apu::Pulse1::clockPeriodDivider()
@@ -263,7 +354,7 @@ void Apu::Pulse1::clockPeriodDivider()
 	if (++PeriodDivider == 0x800)
 	{
 		// divider overflowed 0x7FF
-		DutyCycleIndex = (DutyCycleIndex + 1) % 7;
+		DutyCycleIndex = (DutyCycleIndex + 1) % 8;
 		PeriodDivider  = (Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | Registers.PeriodLo.PeriodLo8Bits;
 	}
 }
@@ -303,12 +394,13 @@ void Apu::BoxFilter::pushSample(uint8_t sample)
 
 uint32_t Apu::BoxFilter::readSamples(float *buffer, uint32_t size)
 {
-	uint32_t count = 0;
+	uint32_t        count         = 0;
+	constexpr float MASTER_VOLUME = 0.05f;
 
 	while (count < size && m_samplesAvail > 0)
 	{
 		--m_samplesAvail;
-		buffer[count++] = (m_buffer[m_tail] - 7.5f) / 7.5f;
+		buffer[count++] = ((m_buffer[m_tail] - 7.5f) / 7.5f) * MASTER_VOLUME;
 
 		if (m_tail != m_head)
 			m_tail = (m_tail + 1) % m_buffer.size();

@@ -74,7 +74,7 @@ class Apu
 	struct PulseFrequencySweep
 	{
 		uint8_t ShiftSweep : 3;
-		uint8_t Negate : 1;
+		uint8_t Negate : 1; // 1: Period decreases over time, 0: Period increases over time
 		uint8_t Period : 3;
 
 		uint8_t get() const
@@ -174,20 +174,47 @@ class Apu
 			PulsePeriodHighAndControl PeriodHiAndControl;
 		} Registers;
 
-		uint16_t PeriodDivider;
-		uint8_t  LengthPeriod;
-		uint8_t  EnvelopePeriod;
-		uint8_t  Volume;         // volume ranging $0 - $F
-		uint8_t  DutyCycleIndex; // duty cycle index 0 - 7
+		uint16_t PeriodDivider; // the channel's main period divider aka its frequency
+
+		uint16_t TempPeriodDivider; // the calculated frequency from period sweep changes
+		uint8_t  SweepPeriod;       // control frequency change (PeriodDivider) over time;
+
+		uint8_t LengthPeriod;   // auto duration control
+		uint8_t EnvelopePeriod; // control how fast volume changes over time
+		uint8_t Volume;         // volume ranging $0 - $F
+		uint8_t DutyCycleIndex; // duty cycle index 0 - 7
 
 		bool isDacOn() const
 		{
 			return (Registers.VolumeAndEnvelope.get() & 0xF8) != 0;
 		}
 
+		bool isLengthCounterExpired() const
+		{
+			return LengthPeriod == Apu::LENGTH_COUNTER_MAX;
+		}
+
+		bool isFreqSweepEnabled() const
+		{
+			return Registers.FrequencySweep.Period != 0 || Registers.FrequencySweep.ShiftSweep != 0;
+		}
+
+		// overflowing 0x7FF in addition mode silences the pulse channel
+		bool isFreqSweepForcingSilence() const
+		{
+			return !Registers.FrequencySweep.Negate && (TempPeriodDivider >> Registers.FrequencySweep.ShiftSweep) > 0x7FF;
+		}
+
+		void computeFrequencySweep();
+
 		// outputs audio sample in range 0x0 - 0xF
 		uint8_t outputSample() const;
-		void    clockPeriodDivider();
+
+		// return 0 if length counter has expired, else return 1
+		void clockLengthCounter();
+		void clockEnvelopeCounter();
+		void clockFrequencyCounter();
+		void clockPeriodDivider();
 	};
 
 	/*struct Pulse2
@@ -251,12 +278,13 @@ class Apu
 
 		struct AudioThreadContext
 		{
-			SDL_Mutex     *Mutex      = nullptr;
+			SDL_Mutex *Mutex = nullptr;
 		} AudioThreadCtx;
 	};
 
   private:
 	void mixAudio();
+	void updateChannelStatus();
 
 	AudioMasterControl m_audioControl{};
 	MasterVolume       m_masterVolume{};
