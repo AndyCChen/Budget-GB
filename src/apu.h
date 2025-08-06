@@ -14,10 +14,13 @@ class Apu
 
 	bool beginAudioFrame();
 	void endAudioFrame();
-	void tick(uint8_t divider);
+	void tick(uint16_t divider);
 
 	void    writeIO(uint16_t position, uint8_t data);
 	uint8_t readIO(uint16_t position);
+
+	void    writeWaveRam(uint16_t position, uint8_t data);
+	uint8_t readWaveRam(uint16_t position) const;
 
 	void pauseAudio();
 	void resumeAudio();
@@ -132,20 +135,10 @@ class Apu
 		}
 	};
 
+	// write only
 	struct RegisterPulsePeriodLo
 	{
 		uint8_t PeriodLo8Bits;
-
-		// Period lo is write only!
-		uint8_t get() const
-		{
-			return 0;
-		}
-
-		void set(const uint8_t data)
-		{
-			PeriodLo8Bits = data;
-		}
 	};
 
 	struct RegisterPulsePeriodHighAndControl
@@ -168,7 +161,67 @@ class Apu
 		}
 	};
 
-	// PeriodDivide, Volume, Length, and Frequncy components of pulse channels
+	struct RegisterWaveDacEnable
+	{
+		uint8_t DacEnable : 1;
+
+		uint8_t get() const
+		{
+			return static_cast<uint8_t>(DacEnable << 7);
+		}
+
+		void set(const uint8_t data)
+		{
+			DacEnable = data >> 7;
+		}
+	};
+
+	// write only
+	struct RegisterWaveLength
+	{
+		uint8_t LengthPeriod;
+	};
+
+	struct RegisterWaveOutputLevel
+	{
+		uint8_t OutputLevel : 2;
+
+		uint8_t get() const
+		{
+			return static_cast<uint8_t>(OutputLevel << 5);
+		}
+
+		void set(const uint8_t data)
+		{
+			OutputLevel = data >> 5;
+		}
+	};
+
+	struct RegisterWavePeriodLo
+	{
+		uint8_t PeriodLo8Bits;
+	};
+
+	struct RegisterWavePeriodHiAndControl
+	{
+		uint8_t Trigger : 1;
+		uint8_t LengthEnable : 1;
+		uint8_t PeriodHi3Bits : 3;
+
+		uint8_t get() const
+		{
+			return static_cast<uint8_t>(LengthEnable << 6);
+		}
+
+		void set(const uint8_t data)
+		{
+			Trigger       = data >> 7;
+			LengthEnable  = data >> 6;
+			PeriodHi3Bits = data & 0x7;
+		}
+	};
+
+	// PeriodDivider, Volume, Length, and Frequncy components of pulse channels
 
 	struct PulsePeriodDivider
 	{
@@ -253,11 +306,39 @@ class Apu
 		uint8_t outputSample() const;
 	};
 
+	struct Wave
+	{
+		struct Reg
+		{
+			RegisterWaveDacEnable          DacEnable;
+			RegisterWaveLength             WaveLength;
+			RegisterWaveOutputLevel        OutLevel;
+			RegisterWavePeriodLo           PeriodLo;
+			RegisterWavePeriodHiAndControl PeriodHiAndControl;
+		} Registers;
+
+		uint16_t PeriodDivider;
+		uint8_t  LengthPeriod;
+		uint8_t  Volume;       // here volume represents how many bits to right shift by when outputing samples from wave ram
+		uint8_t  WaveRamIndex; // wave ram index for 32 samples from 16 byte wave ram. Each index accesses a 4-bit nibble from a byte (32 total nibbles)
+
+		uint8_t SampleBuffer; // holds the sample read from wave ram and repeately outputs this sample until WaveRamIndex is incremented and a new sample is read
+
+		bool islengthExpired() const
+		{
+			return LengthPeriod >= LENGTH_COUNTER_MAX;
+		}
+
+		void clockWaveLength();
+		void clockWavePeriod(const std::array<uint8_t, 16> &waveRam);
+
+		uint8_t outputSample() const;
+	};
+
 	struct AudioCallbackData
 	{
-		BoxFilter *Buffer               = nullptr;
-		uint32_t   RequestedSampleCount = 0;
-		bool       StopAudioPlayback    = false;
+		BoxFilter *Buffer            = nullptr;
+		bool       StopAudioPlayback = false;
 
 		struct AudioThreadContext
 		{
@@ -278,9 +359,12 @@ class Apu
 
 	Pulse1 m_pulse1{};
 	Pulse2 m_pulse2{};
+	Wave   m_wave{};
 
-	uint8_t m_prevDivider = 0; // hold the previous divide value to detect a falling edge on bit 4
-	uint8_t m_apuDivider  = 0; // incremented on bit 4 falling edge of system divider
+	std::array<uint8_t, 16> m_waveRam{};
+
+	uint16_t m_prevDivider = 0; // hold the previous divide value to detect a falling edge on bit 10
+	uint8_t m_apuDivider  = 0; // incremented on bit 10 falling edge of system divider
 
 	SDL_AudioStream  *m_audioStream;
 	AudioCallbackData m_audioCallbackData{};

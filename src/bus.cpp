@@ -109,7 +109,10 @@ uint8_t Bus::cpuRead(uint16_t position)
 	}
 	else if (position < IO_REGISTERS_END)
 	{
-		out = readIO(position);
+		if (position >= IORegisters::WAVE_RAM_START && position <= IORegisters::WAVE_RAM_END)
+			out = m_apu.readWaveRam(position);
+		else
+			out = readIO(position);
 	}
 	else if (position < HRAM_END)
 	{
@@ -152,7 +155,10 @@ void Bus::cpuWrite(uint16_t position, uint8_t data)
 	}
 	else if (position < IO_REGISTERS_END)
 	{
-		writeIO(position, data);
+		if (position >= IORegisters::WAVE_RAM_START && position <= IORegisters::WAVE_RAM_END)
+			m_apu.writeWaveRam(position, data);
+		else
+			writeIO(position, data);
 	}
 	else if (position < HRAM_END)
 	{
@@ -176,7 +182,7 @@ void Bus::tickM()
 	if (m_ppu.m_oamDmaController.dmaInProgress)
 		handleOamDMA();
 
-	m_apu.tick(m_cpu.m_timer.getDivider());
+	m_apu.tick(m_cpu.m_timer.getDividerFull());
 	m_ppu.tick();
 	m_ppu.tick();
 	m_ppu.tick();
@@ -192,11 +198,11 @@ void Bus::onUpdate()
 	{
 
 		while (!m_ppu.isFrameComplete())
-		    m_cpu.instructionStep();
+			m_cpu.instructionStep();
 
 		/*const float AUDIO_FRAME = (static_cast<float>(CLOCK_RATE_T) / AUDIO_SAMPLE_RATE) * (AUDIO_SAMPLE_RATE / 60.0f);
 		while (m_tCycles < AUDIO_FRAME)
-			m_cpu.instructionStep();
+		    m_cpu.instructionStep();
 
 		m_tCycles -= AUDIO_FRAME;*/
 
@@ -244,6 +250,11 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 	case IORegisters::NR22:
 	case IORegisters::NR23:
 	case IORegisters::NR24:
+	case IORegisters::NR30:
+	case IORegisters::NR31:
+	case IORegisters::NR32:
+	case IORegisters::NR33:
+	case IORegisters::NR34:
 	case IORegisters::NR50:
 	case IORegisters::NR52:
 		m_apu.writeIO(position, data);
@@ -336,6 +347,11 @@ uint8_t Bus::readIO(uint16_t position)
 	case IORegisters::NR22:
 	case IORegisters::NR23:
 	case IORegisters::NR24:
+	case IORegisters::NR30:
+	case IORegisters::NR31:
+	case IORegisters::NR32:
+	case IORegisters::NR33:
+	case IORegisters::NR34:
 	case IORegisters::NR50:
 	case IORegisters::NR52:
 		return m_apu.readIO(position);

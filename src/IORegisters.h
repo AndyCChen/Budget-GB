@@ -27,8 +27,17 @@ enum RegisterAdresses
 	NR23 = 0xFF18, // pulse 2 period lo
 	NR24 = 0xFF19, // pulse 1 period hi & control
 
+	NR30 = 0xFF1A, // wave dac enable
+	NR31 = 0xFF1B, // wave length timer
+	NR32 = 0xFF1C, // wave output level
+	NR33 = 0xFF1D, // wave period lo
+	NR34 = 0xFF1E, // wave period hi & control
+
 	NR50 = 0xFF24, // master volume control
 	NR52 = 0xFF26, // audio master control
+
+	WAVE_RAM_START = 0xFF30,
+	WAVE_RAM_END   = 0xFF3F,
 
 	// PPU registers
 	LCD_CONTROL = 0xFF40,
