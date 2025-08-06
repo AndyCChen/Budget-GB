@@ -102,6 +102,8 @@ set(SOURCE_FILES
 	src/patternTileView.cpp
 	src/patternTileView.h
 	src/IORegisters.h
+	src/BoxFilter.cpp
+	src/BoxFilter.h
 
 	src/mappers/mapper.cpp
 	src/mappers/mapper.h

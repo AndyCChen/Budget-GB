@@ -240,6 +240,10 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 	case IORegisters::NR12:
 	case IORegisters::NR13:
 	case IORegisters::NR14:
+	case IORegisters::NR21:
+	case IORegisters::NR22:
+	case IORegisters::NR23:
+	case IORegisters::NR24:
 	case IORegisters::NR50:
 	case IORegisters::NR52:
 		m_apu.writeIO(position, data);
@@ -328,6 +332,10 @@ uint8_t Bus::readIO(uint16_t position)
 	case IORegisters::NR12:
 	case IORegisters::NR13:
 	case IORegisters::NR14:
+	case IORegisters::NR21:
+	case IORegisters::NR22:
+	case IORegisters::NR23:
+	case IORegisters::NR24:
 	case IORegisters::NR50:
 	case IORegisters::NR52:
 		return m_apu.readIO(position);

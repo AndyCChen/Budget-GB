@@ -6,10 +6,9 @@
 
 namespace
 {
-
 void SDLCALL audioDeviceStreamCallback(void *userdata, SDL_AudioStream *audioStream, int additionalAmount, int totalAmount)
 {
-	(void)totalAmount;
+	(void)additionalAmount;
 
 	Apu::AudioCallbackData *callBackData = (Apu::AudioCallbackData *)userdata;
 	totalAmount /= sizeof(float);
@@ -83,19 +82,21 @@ void Apu::tick(uint8_t divider)
 		// clock length timers
 		if (m_apuDivider % 2 == 0)
 		{
-			m_pulse1.clockLengthCounter();
+			clockPulseLength(m_pulse1.Length);
+			clockPulseLength(m_pulse2.Length);
 		}
 
 		// clock pulse1 frequency sweep
 		if (m_apuDivider % 4 == 0)
 		{
-			m_pulse1.clockFrequencyCounter();
+			m_pulse1.clockPulseFrequencySweep();
 		}
 
-		// clock envelope sweep
+		// clock volume envelope
 		if (m_apuDivider % 8 == 0)
 		{
-			m_pulse1.clockEnvelopeCounter();
+			clockPulseVolumeEnvelope(m_pulse1.VolumeEnvelope, m_pulse1.Registers.VolumeAndEnvelope);
+			clockPulseVolumeEnvelope(m_pulse2.VolumeEnvelope, m_pulse2.Registers.VolumeAndEnvelope);
 			m_apuDivider = 0;
 		}
 	}
@@ -104,7 +105,9 @@ void Apu::tick(uint8_t divider)
 	mixAudio();
 
 	updateChannelStatus();
-	m_pulse1.clockPeriodDivider();
+
+	clockPulsePeriod(m_pulse1.PeriodAndDuty, m_pulse1.Registers.PeriodLo, m_pulse1.Registers.PeriodHiAndControl);
+	clockPulsePeriod(m_pulse2.PeriodAndDuty, m_pulse2.Registers.PeriodLo, m_pulse2.Registers.PeriodHiAndControl);
 }
 
 void Apu::writeIO(uint16_t position, uint8_t data)
@@ -135,18 +138,55 @@ void Apu::writeIO(uint16_t position, uint8_t data)
 
 	case IORegisters::NR14:
 		m_pulse1.Registers.PeriodHiAndControl.set(data);
+
 		if (m_pulse1.Registers.PeriodHiAndControl.Trigger)
 		{
-			m_audioControl.Pulse1Status = m_pulse1.isDacOn() ? 1 : 0;
-			m_pulse1.LengthPeriod       = m_pulse1.isLengthCounterExpired() ? m_pulse1.Registers.LengthAndDuty.InitialLength : m_pulse1.LengthPeriod;
-			m_pulse1.PeriodDivider      = (m_pulse1.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse1.Registers.PeriodLo.PeriodLo8Bits;
-			m_pulse1.EnvelopePeriod     = 0;
-			m_pulse1.Volume             = m_pulse1.Registers.VolumeAndEnvelope.InitialVolume;
+			m_audioControl.Pulse1Status = m_pulse1.Registers.VolumeAndEnvelope.isDacOn() ? 1 : 0;
 
-			m_pulse1.SweepPeriod       = 0;
-			m_pulse1.TempPeriodDivider = (m_pulse1.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse1.Registers.PeriodLo.PeriodLo8Bits;
+			m_pulse1.PeriodAndDuty.PeriodDivider  = (m_pulse1.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse1.Registers.PeriodLo.PeriodLo8Bits;
+			m_pulse1.PeriodAndDuty.DutyCycleIndex = 0;
+
+			m_pulse1.Length.LengthPeriod = m_pulse1.Length.isLengthCounterExpired() ? m_pulse1.Registers.LengthAndDuty.InitialLength : m_pulse1.Length.LengthPeriod;
+
+			m_pulse1.VolumeEnvelope.EnvelopePeriod = 0;
+			m_pulse1.VolumeEnvelope.Volume         = m_pulse1.Registers.VolumeAndEnvelope.InitialVolume;
+
+			m_pulse1.FrequencySweep.SweepPeriod       = 0;
+			m_pulse1.FrequencySweep.TempPeriodDivider = (m_pulse1.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse1.Registers.PeriodLo.PeriodLo8Bits;
+
 			m_pulse1.computeFrequencySweep();
 		}
+
+		break;
+
+	case IORegisters::NR21:
+		m_pulse2.Registers.LengthAndDuty.set(data);
+		break;
+
+	case IORegisters::NR22:
+		m_pulse2.Registers.VolumeAndEnvelope.set(data);
+		break;
+
+	case IORegisters::NR23:
+		m_pulse2.Registers.PeriodLo.set(data);
+		break;
+
+	case IORegisters::NR24:
+		m_pulse2.Registers.PeriodHiAndControl.set(data);
+
+		if (m_pulse2.Registers.PeriodHiAndControl.Trigger)
+		{
+			m_audioControl.Pulse2Status = m_pulse2.Registers.VolumeAndEnvelope.isDacOn() ? 1 : 0;
+
+			m_pulse2.PeriodAndDuty.PeriodDivider  = (m_pulse2.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | m_pulse2.Registers.PeriodLo.PeriodLo8Bits;
+			m_pulse2.PeriodAndDuty.DutyCycleIndex = 0;
+
+			m_pulse2.Length.LengthPeriod = m_pulse2.Length.isLengthCounterExpired() ? m_pulse2.Registers.LengthAndDuty.InitialLength : m_pulse2.Length.LengthPeriod;
+
+			m_pulse2.VolumeEnvelope.EnvelopePeriod = 0;
+			m_pulse2.VolumeEnvelope.Volume         = m_pulse2.Registers.VolumeAndEnvelope.InitialVolume;
+		}
+
 		break;
 
 	case IORegisters::NR50:
@@ -181,6 +221,18 @@ uint8_t Apu::readIO(uint16_t position)
 	case IORegisters::NR14:
 		return m_pulse1.Registers.PeriodHiAndControl.get();
 
+	case IORegisters::NR21:
+		return m_pulse2.Registers.LengthAndDuty.get();
+
+	case IORegisters::NR22:
+		return m_pulse2.Registers.VolumeAndEnvelope.get();
+
+	case IORegisters::NR23:
+		return m_pulse2.Registers.PeriodLo.get();
+
+	case IORegisters::NR24:
+		return m_pulse2.Registers.PeriodHiAndControl.get();
+
 	case IORegisters::NR50:
 		return m_masterVolume.get();
 
@@ -197,6 +249,7 @@ void Apu::pauseAudio()
 	SDL_LockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 	m_audioCallbackData.StopAudioPlayback = true;
 	SDL_UnlockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
+
 	SDL_PauseAudioStreamDevice(m_audioStream);
 	SDL_ClearAudioStream(m_audioStream);
 }
@@ -212,13 +265,12 @@ void Apu::resumeAudio()
 
 void Apu::init(bool useBootrom)
 {
-	if (useBootrom)
-	{
-		m_audioControl = AudioMasterControl{};
-		m_masterVolume = MasterVolume{};
-		m_pulse1       = Pulse1{};
-	}
-	else
+	m_audioControl = RegisterAudioMasterControl{};
+	m_masterVolume = RegisterMasterVolume{};
+	m_pulse1       = Pulse1{};
+	m_pulse2       = Pulse2{};
+
+	if (!useBootrom)
 	{
 		m_audioControl.set(0xF1);
 		m_masterVolume.set(0x77);
@@ -228,6 +280,11 @@ void Apu::init(bool useBootrom)
 		m_pulse1.Registers.VolumeAndEnvelope.set(0xF3);
 		m_pulse1.Registers.PeriodLo.set(0xFF);
 		m_pulse1.Registers.PeriodHiAndControl.set(0xBF);
+
+		m_pulse2.Registers.LengthAndDuty.set(0x3F);
+		m_pulse2.Registers.VolumeAndEnvelope.set(0x00);
+		m_pulse2.Registers.PeriodLo.set(0xFF);
+		m_pulse2.Registers.PeriodHiAndControl.set(0xBF);
 	}
 
 	m_prevDivider = 0;
@@ -236,84 +293,17 @@ void Apu::init(bool useBootrom)
 	m_boxFilter.clear();
 }
 
-void Apu::mixAudio()
-{
-	uint8_t pulse1Sample = m_pulse1.outputSample();
-
-	m_boxFilter.pushSample(pulse1Sample);
-}
-
-void Apu::updateChannelStatus()
-{
-	if (m_pulse1.Registers.PeriodHiAndControl.LengthEnable && m_pulse1.isLengthCounterExpired())
-	{
-		m_audioControl.Pulse1Status = 0;
-	}
-}
-
-uint8_t Apu::Pulse1::outputSample() const
-{
-	uint8_t sample = 0;
-
-	if (isDacOn() && !isFreqSweepForcingSilence())
-	{
-		if (Registers.PeriodHiAndControl.LengthEnable)
-		{
-			if (!isLengthCounterExpired())
-			{
-				sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][DutyCycleIndex];
-				sample *= Volume;
-			}
-		}
-		else
-		{
-			sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][DutyCycleIndex];
-			sample *= Volume;
-		}
-	}
-
-	return sample;
-}
-
-void Apu::Pulse1::clockLengthCounter()
-{
-	if (LengthPeriod < Apu::LENGTH_COUNTER_MAX)
-	{
-		++LengthPeriod;
-	}
-}
-
-void Apu::Pulse1::clockEnvelopeCounter()
-{
-	// envelope period of zero means envelope is disabled
-	if (Registers.VolumeAndEnvelope.Period == 0)
-		return;
-
-	if (++EnvelopePeriod == Registers.VolumeAndEnvelope.Period)
-	{
-		EnvelopePeriod = 0;
-
-		if (Registers.VolumeAndEnvelope.Direction)
-		{
-			Volume = static_cast<uint8_t>(std::clamp(Volume + 1, 0x0, 0xF));
-		}
-		else
-		{
-			Volume = static_cast<uint8_t>(std::clamp(Volume - 1, 0x0, 0xF));
-		}
-	}
-}
-
-void Apu::Pulse1::clockFrequencyCounter()
+void Apu::Pulse1::clockPulseFrequencySweep()
 {
 	// do not perform freq sweep iterations if the sweep period is 0
 	if (Registers.FrequencySweep.Period == 0)
 		return;
 
-	if (++SweepPeriod == Registers.FrequencySweep.Period)
+	if (++FrequencySweep.SweepPeriod == Registers.FrequencySweep.Period)
 	{
-		SweepPeriod = 0;
+		FrequencySweep.SweepPeriod = 0;
 
+		// check if freq sweep is enabled
 		if (isFreqSweepEnabled())
 		{
 			computeFrequencySweep();
@@ -326,85 +316,128 @@ void Apu::Pulse1::computeFrequencySweep()
 	if (Registers.FrequencySweep.ShiftSweep == 0)
 		return;
 
-	uint16_t offset = TempPeriodDivider >> Registers.FrequencySweep.ShiftSweep;
+	uint16_t offset = FrequencySweep.TempPeriodDivider >> Registers.FrequencySweep.ShiftSweep;
 
 	int targetPeriod = 0;
 
 	if (Registers.FrequencySweep.Negate)
 	{
-		targetPeriod = TempPeriodDivider - offset;
+		targetPeriod = FrequencySweep.TempPeriodDivider - offset;
 		targetPeriod = std::max(targetPeriod, 0); // target period cannnot underflow to negative value
 	}
 	else
 	{
-		targetPeriod = TempPeriodDivider + offset;
+		targetPeriod = FrequencySweep.TempPeriodDivider + offset;
 	}
 
 	if (targetPeriod <= 0x7FF)
 	{
-		TempPeriodDivider = static_cast<uint16_t>(targetPeriod);
+		FrequencySweep.TempPeriodDivider = static_cast<uint16_t>(targetPeriod);
 
 		Registers.PeriodLo.PeriodLo8Bits           = static_cast<uint8_t>(targetPeriod);
 		Registers.PeriodHiAndControl.PeriodHi3Bits = targetPeriod >> 8;
 	}
 }
 
-void Apu::Pulse1::clockPeriodDivider()
+uint8_t Apu::Pulse1::outputSample() const
 {
-	if (++PeriodDivider == 0x800)
+	uint8_t sample = 0;
+
+	if (Registers.VolumeAndEnvelope.isDacOn() && !isFreqSweepForcingSilence())
+	{
+		if (Registers.PeriodHiAndControl.LengthEnable)
+		{
+			if (!Length.isLengthCounterExpired())
+			{
+				sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][PeriodAndDuty.DutyCycleIndex];
+				sample *= VolumeEnvelope.Volume;
+			}
+		}
+		else
+		{
+			sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][PeriodAndDuty.DutyCycleIndex];
+			sample *= VolumeEnvelope.Volume;
+		}
+	}
+
+	return sample;
+}
+
+uint8_t Apu::Pulse2::outputSample() const
+{
+	uint8_t sample = 0;
+
+	if (Registers.VolumeAndEnvelope.isDacOn())
+	{
+		if (Registers.PeriodHiAndControl.LengthEnable)
+		{
+			if (!Length.isLengthCounterExpired())
+			{
+				sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][PeriodAndDuty.DutyCycleIndex];
+				sample *= VolumeEnvelope.Volume;
+			}
+		}
+		else
+		{
+			sample = Apu::WAVE_DUTIES[Registers.LengthAndDuty.WaveDuty][PeriodAndDuty.DutyCycleIndex];
+			sample *= VolumeEnvelope.Volume;
+		}
+	}
+
+	return sample;
+}
+
+void Apu::mixAudio()
+{
+	uint8_t pulse1Sample = m_pulse1.outputSample();
+	uint8_t pulse2Sample = m_pulse2.outputSample();
+
+	m_boxFilter.pushSample(pulse1Sample + pulse2Sample);
+}
+
+void Apu::updateChannelStatus()
+{
+	if (m_pulse1.Registers.PeriodHiAndControl.LengthEnable && m_pulse1.Length.isLengthCounterExpired())
+	{
+		m_audioControl.Pulse1Status = 0;
+	}
+}
+
+void Apu::clockPulsePeriod(PulsePeriodDivider &in, RegisterPulsePeriodLo &periodLo, RegisterPulsePeriodHighAndControl &periodHi)
+{
+	if (++in.PeriodDivider == 0x800)
 	{
 		// divider overflowed 0x7FF
-		DutyCycleIndex = (DutyCycleIndex + 1) % 8;
-		PeriodDivider  = (Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | Registers.PeriodLo.PeriodLo8Bits;
+		in.DutyCycleIndex = (in.DutyCycleIndex + 1) % 8;
+		in.PeriodDivider  = (periodHi.PeriodHi3Bits << 8) | periodLo.PeriodLo8Bits;
 	}
 }
 
-Apu::BoxFilter::BoxFilter(uint32_t sampleRate)
-	: SAMPLE_RATE(sampleRate),
-	  SAMPLES_PER_AVERAGE(static_cast<float>(BudgetGbConstants::CLOCK_RATE_T) / static_cast<float>(SAMPLE_RATE) / 4.0f),
-	  BOX_WIDTH(static_cast<uint32_t>(SAMPLES_PER_AVERAGE))
+void Apu::clockPulseVolumeEnvelope(PulseEnvelope &in, const RegisterPulseVolumeAndEnvelope &reg)
 {
-	const int SIZE = (SAMPLE_RATE / 60) * 8;
-	m_buffer.resize(SIZE);
-}
+	// envelope period of zero means envelope is disabled
+	if (reg.Period == 0)
+		return;
 
-void Apu::BoxFilter::pushSample(uint8_t sample)
-{
-	m_runningSum += sample;
-
-	if (++m_sampleCountInBox == BOX_WIDTH + static_cast<uint32_t>(m_error))
+	if (++in.EnvelopePeriod == reg.Period)
 	{
-		m_samplesAvail     = std::min(m_samplesAvail + 1, (uint32_t)m_buffer.size());
-		m_sampleCountInBox = 0;
+		in.EnvelopePeriod = 0;
 
-		float average    = static_cast<float>(m_runningSum) / (BOX_WIDTH + static_cast<uint32_t>(m_error));
-		m_buffer[m_head] = average;
-		m_runningSum     = 0;
-
-		m_head = (m_head + 1) % m_buffer.size();
-		if (m_head == m_tail)
+		if (reg.Direction)
 		{
-			m_tail = (m_tail + 1) % m_buffer.size();
+			in.Volume = static_cast<uint8_t>(std::clamp(in.Volume + 1, 0x0, 0xF));
 		}
-
-		m_error -= static_cast<uint32_t>(m_error);
-		m_error += SDL_fabsf(SAMPLES_PER_AVERAGE - BOX_WIDTH);
+		else
+		{
+			in.Volume = static_cast<uint8_t>(std::clamp(in.Volume - 1, 0x0, 0xF));
+		}
 	}
 }
 
-uint32_t Apu::BoxFilter::readSamples(float *buffer, uint32_t size)
+void Apu::clockPulseLength(PulseLength &in)
 {
-	uint32_t        count         = 0;
-	constexpr float MASTER_VOLUME = 0.05f;
-
-	while (count < size && m_samplesAvail > 0)
+	if (in.LengthPeriod < Apu::LENGTH_COUNTER_MAX)
 	{
-		--m_samplesAvail;
-		buffer[count++] = ((m_buffer[m_tail] - 7.5f) / 7.5f) * MASTER_VOLUME;
-
-		if (m_tail != m_head)
-			m_tail = (m_tail + 1) % m_buffer.size();
+		++in.LengthPeriod;
 	}
-
-	return count;
 }

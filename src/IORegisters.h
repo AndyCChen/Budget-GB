@@ -22,6 +22,11 @@ enum RegisterAdresses
 	NR13 = 0xFF13, // pulse 1 period lo
 	NR14 = 0xFF14, // pulse 1 period hi & control
 
+	NR21 = 0xFF16, // pulse 2 length timer & duty cycle
+	NR22 = 0xFF17, // pulse 2 volume & envelope
+	NR23 = 0xFF18, // pulse 2 period lo
+	NR24 = 0xFF19, // pulse 1 period hi & control
+
 	NR50 = 0xFF24, // master volume control
 	NR52 = 0xFF26, // audio master control
 

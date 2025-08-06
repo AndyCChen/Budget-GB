@@ -2,8 +2,8 @@
 
 #include <array>
 #include <cstdint>
-#include <vector>
 
+#include "BoxFilter.h"
 #include "SDL3/SDL.h"
 #include "emulatorConstants.h"
 
@@ -33,7 +33,7 @@ class Apu
 
 	static constexpr uint8_t LENGTH_COUNTER_MAX = 64; // channel is silence once length counter reaches 64 (i.e. overflows 0x3F)
 
-	struct AudioMasterControl
+	struct RegisterAudioMasterControl
 	{
 		uint8_t Pulse1Status : 1;
 		uint8_t Pulse2Status : 1;
@@ -54,7 +54,7 @@ class Apu
 	};
 
 	// external audio for VIN left unimplemented
-	struct MasterVolume
+	struct RegisterMasterVolume
 	{
 		uint8_t RightVolume : 3;
 		uint8_t LeftVolume : 3;
@@ -71,7 +71,7 @@ class Apu
 		}
 	};
 
-	struct PulseFrequencySweep
+	struct RegisterPulseFrequencySweep
 	{
 		uint8_t ShiftSweep : 3;
 		uint8_t Negate : 1; // 1: Period decreases over time, 0: Period increases over time
@@ -90,7 +90,7 @@ class Apu
 		}
 	};
 
-	struct PulseLengthAndDutyCycle
+	struct RegisterPulseLengthAndDutyCycle
 	{
 		uint8_t InitialLength : 6;
 		uint8_t WaveDuty : 2;
@@ -108,11 +108,16 @@ class Apu
 		}
 	};
 
-	struct PulseVolumeAndEnvelope
+	struct RegisterPulseVolumeAndEnvelope
 	{
 		uint8_t Period : 3;
 		uint8_t Direction : 1; // 0: Volume decreases, 1: Volume increases
 		uint8_t InitialVolume : 4;
+
+		bool isDacOn() const
+		{
+			return (get() & 0xF8) != 0;
+		}
 
 		uint8_t get() const
 		{
@@ -127,7 +132,7 @@ class Apu
 		}
 	};
 
-	struct PulsePeriodLo
+	struct RegisterPulsePeriodLo
 	{
 		uint8_t PeriodLo8Bits;
 
@@ -143,7 +148,7 @@ class Apu
 		}
 	};
 
-	struct PulsePeriodHighAndControl
+	struct RegisterPulsePeriodHighAndControl
 	{
 		uint8_t PeriodHi3Bits : 3;
 		uint8_t LengthEnable : 1;
@@ -163,36 +168,54 @@ class Apu
 		}
 	};
 
-	struct Pulse1
+	// PeriodDivide, Volume, Length, and Frequncy components of pulse channels
+
+	struct PulsePeriodDivider
 	{
-		struct Reg
-		{
-			PulseLengthAndDutyCycle   LengthAndDuty;
-			PulseVolumeAndEnvelope    VolumeAndEnvelope;
-			PulseFrequencySweep       FrequencySweep;
-			PulsePeriodLo             PeriodLo;
-			PulsePeriodHighAndControl PeriodHiAndControl;
-		} Registers;
+		uint16_t PeriodDivider;  // the channel's main period divider aka its frequency
+		uint8_t  DutyCycleIndex; // duty cycle index 0 - 7
+	};
 
-		uint16_t PeriodDivider; // the channel's main period divider aka its frequency
-
-		uint16_t TempPeriodDivider; // the calculated frequency from period sweep changes
-		uint8_t  SweepPeriod;       // control frequency change (PeriodDivider) over time;
-
-		uint8_t LengthPeriod;   // auto duration control
-		uint8_t EnvelopePeriod; // control how fast volume changes over time
+	struct PulseEnvelope
+	{
 		uint8_t Volume;         // volume ranging $0 - $F
-		uint8_t DutyCycleIndex; // duty cycle index 0 - 7
+		uint8_t EnvelopePeriod; // volume ranging $0 - $F
+	};
 
-		bool isDacOn() const
-		{
-			return (Registers.VolumeAndEnvelope.get() & 0xF8) != 0;
-		}
+	struct PulseLength
+	{
+		uint8_t LengthPeriod; // auto duration control
 
 		bool isLengthCounterExpired() const
 		{
 			return LengthPeriod == Apu::LENGTH_COUNTER_MAX;
 		}
+	};
+
+	struct PulseFrequencySweep
+	{
+		uint16_t TempPeriodDivider; // the calculated frequency from period sweep changes
+		uint8_t  SweepPeriod;       // control frequency change (PeriodDivider) over time;
+	};
+
+	// Sound channels definitions
+
+	struct Pulse1
+	{
+		struct Reg
+		{
+			RegisterPulseLengthAndDutyCycle   LengthAndDuty;
+			RegisterPulseVolumeAndEnvelope    VolumeAndEnvelope;
+			RegisterPulseFrequencySweep       FrequencySweep;
+			RegisterPulsePeriodLo             PeriodLo;
+			RegisterPulsePeriodHighAndControl PeriodHiAndControl;
+		} Registers;
+
+		PulsePeriodDivider PeriodAndDuty{};
+
+		PulseEnvelope       VolumeEnvelope{};
+		PulseLength         Length{};
+		PulseFrequencySweep FrequencySweep{};
 
 		bool isFreqSweepEnabled() const
 		{
@@ -202,79 +225,39 @@ class Apu
 		// overflowing 0x7FF in addition mode silences the pulse channel
 		bool isFreqSweepForcingSilence() const
 		{
-			return !Registers.FrequencySweep.Negate && (TempPeriodDivider >> Registers.FrequencySweep.ShiftSweep) > 0x7FF;
+			return !Registers.FrequencySweep.Negate && (FrequencySweep.TempPeriodDivider >> Registers.FrequencySweep.ShiftSweep) > 0x7FF;
 		}
 
+		void clockPulseFrequencySweep();
 		void computeFrequencySweep();
 
 		// outputs audio sample in range 0x0 - 0xF
 		uint8_t outputSample() const;
-
-		// return 0 if length counter has expired, else return 1
-		void clockLengthCounter();
-		void clockEnvelopeCounter();
-		void clockFrequencyCounter();
-		void clockPeriodDivider();
 	};
 
-	/*struct Pulse2
+	struct Pulse2
 	{
-	    PulseLengthAndDutyCycle   LengthAndDuty;
-	    PulseVolumeAndEnvelope    VolumeAndEnvelope;
-	    PulsePeriodLo             PeriodLo;
-	    PulsePeriodHighAndControl PeriodHiAndControl;
-	};*/
-
-	class BoxFilter
-	{
-	  public:
-		BoxFilter(uint32_t sampleRate);
-
-		void pushSample(uint8_t sample);
-
-		// samples are read into buffer and clamped into a 32 bit float sample in the range (-1.0f - 1.0f)
-		uint32_t readSamples(float *buffer, uint32_t size);
-
-		uint32_t getSamplesAvail() const
+		struct Reg
 		{
-			return m_samplesAvail;
-		}
+			RegisterPulseLengthAndDutyCycle   LengthAndDuty;
+			RegisterPulseVolumeAndEnvelope    VolumeAndEnvelope;
+			RegisterPulsePeriodLo             PeriodLo;
+			RegisterPulsePeriodHighAndControl PeriodHiAndControl;
+		} Registers;
 
-		uint32_t getAudioFrameSize() const
-		{
-			return SAMPLE_RATE / 60;
-		}
+		PulsePeriodDivider PeriodAndDuty{};
 
-		void clear()
-		{
-			std::fill(m_buffer.begin(), m_buffer.end(), (float)0);
-			m_runningSum       = 0;
-			m_sampleCountInBox = 0;
-			m_error            = 0;
-			m_head             = 0,
-			m_tail             = 0,
-			m_samplesAvail     = 0;
-		}
+		PulseEnvelope VolumeEnvelope{};
+		PulseLength   Length{};
 
-	  private:
-		const int      SAMPLE_RATE;
-		const float    SAMPLES_PER_AVERAGE;
-		const uint32_t BOX_WIDTH;
-
-		std::vector<float> m_buffer;
-
-		uint32_t m_runningSum       = 0;
-		uint32_t m_sampleCountInBox = 0;
-		float    m_error            = 0;
-
-		uint32_t m_head = 0, m_tail = 0, m_samplesAvail = 0;
+		uint8_t outputSample() const;
 	};
 
 	struct AudioCallbackData
 	{
-		Apu::BoxFilter *Buffer               = nullptr;
-		uint32_t        RequestedSampleCount = 0;
-		bool            StopAudioPlayback    = false;
+		BoxFilter *Buffer               = nullptr;
+		uint32_t   RequestedSampleCount = 0;
+		bool       StopAudioPlayback    = false;
 
 		struct AudioThreadContext
 		{
@@ -286,10 +269,15 @@ class Apu
 	void mixAudio();
 	void updateChannelStatus();
 
-	AudioMasterControl m_audioControl{};
-	MasterVolume       m_masterVolume{};
+	static void clockPulsePeriod(PulsePeriodDivider &in, RegisterPulsePeriodLo &periodLo, RegisterPulsePeriodHighAndControl &periodHi);
+	static void clockPulseVolumeEnvelope(PulseEnvelope &in, const RegisterPulseVolumeAndEnvelope &reg);
+	static void clockPulseLength(PulseLength &in);
+
+	RegisterAudioMasterControl m_audioControl{};
+	RegisterMasterVolume       m_masterVolume{};
 
 	Pulse1 m_pulse1{};
+	Pulse2 m_pulse2{};
 
 	uint8_t m_prevDivider = 0; // hold the previous divide value to detect a falling edge on bit 4
 	uint8_t m_apuDivider  = 0; // incremented on bit 4 falling edge of system divider
