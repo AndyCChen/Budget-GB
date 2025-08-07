@@ -182,7 +182,7 @@ void Bus::tickM()
 	if (m_ppu.m_oamDmaController.dmaInProgress)
 		handleOamDMA();
 
-	m_apu.tick(m_cpu.m_timer.getDividerFull());
+	m_apu.tick(m_cpu.m_timer.getDivider());
 	m_ppu.tick();
 	m_ppu.tick();
 	m_ppu.tick();
@@ -255,6 +255,10 @@ void Bus::writeIO(uint16_t position, uint8_t data)
 	case IORegisters::NR32:
 	case IORegisters::NR33:
 	case IORegisters::NR34:
+	case IORegisters::NR41:
+	case IORegisters::NR42:
+	case IORegisters::NR43:
+	case IORegisters::NR44:
 	case IORegisters::NR50:
 	case IORegisters::NR52:
 		m_apu.writeIO(position, data);
@@ -352,6 +356,10 @@ uint8_t Bus::readIO(uint16_t position)
 	case IORegisters::NR32:
 	case IORegisters::NR33:
 	case IORegisters::NR34:
+	case IORegisters::NR41:
+	case IORegisters::NR42:
+	case IORegisters::NR43:
+	case IORegisters::NR44:
 	case IORegisters::NR50:
 	case IORegisters::NR52:
 		return m_apu.readIO(position);

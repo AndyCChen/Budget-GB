@@ -14,7 +14,7 @@ class Apu
 
 	bool beginAudioFrame();
 	void endAudioFrame();
-	void tick(uint16_t divider);
+	void tick(uint8_t divider);
 
 	void    writeIO(uint16_t position, uint8_t data);
 	uint8_t readIO(uint16_t position);
@@ -111,7 +111,7 @@ class Apu
 		}
 	};
 
-	struct RegisterPulseVolumeAndEnvelope
+	struct RegisterVolumeAndEnvelope
 	{
 		uint8_t Period : 3;
 		uint8_t Direction : 1; // 0: Volume decreases, 1: Volume increases
@@ -221,6 +221,51 @@ class Apu
 		}
 	};
 
+	struct RegisterNoiseFreqAndRand
+	{
+		uint8_t ClockShift : 4;
+		uint8_t LfsrWidth : 1;
+		uint8_t ClockDivider : 3;
+
+		uint32_t FrequencyPeriod;
+
+		uint8_t get() const
+		{
+			return static_cast<uint8_t>((ClockShift << 4) | (LfsrWidth << 3) | ClockDivider);
+		}
+
+		void set(const uint8_t data)
+		{
+			ClockShift   = data >> 4;
+			LfsrWidth    = data >> 3;
+			ClockDivider = data;
+
+			constexpr uint32_t CLOCK_RATE_M = BudgetGbConstants::CLOCK_RATE_T / 4;
+
+			float divider = ClockDivider > 0 ? ClockDivider : 0.5f;
+
+			FrequencyPeriod = static_cast<uint32_t>(262144 / (divider * (1 << ClockShift)));
+			FrequencyPeriod = CLOCK_RATE_M / FrequencyPeriod;
+		}
+	};
+
+	struct RegisterNoiseControl
+	{
+		uint8_t Trigger : 1; // write only
+		uint8_t LengthEnable : 1;
+
+		uint8_t get() const
+		{
+			return static_cast<uint8_t>(LengthEnable << 6);
+		}
+
+		void set(const uint8_t data)
+		{
+			Trigger      = data >> 7;
+			LengthEnable = data >> 6;
+		}
+	};
+
 	// PeriodDivider, Volume, Length, and Frequncy components of pulse channels
 
 	struct PulsePeriodDivider
@@ -258,7 +303,7 @@ class Apu
 		struct Reg
 		{
 			RegisterPulseLengthAndDutyCycle   LengthAndDuty;
-			RegisterPulseVolumeAndEnvelope    VolumeAndEnvelope;
+			RegisterVolumeAndEnvelope         VolumeAndEnvelope;
 			RegisterPulseFrequencySweep       FrequencySweep;
 			RegisterPulsePeriodLo             PeriodLo;
 			RegisterPulsePeriodHighAndControl PeriodHiAndControl;
@@ -293,7 +338,7 @@ class Apu
 		struct Reg
 		{
 			RegisterPulseLengthAndDutyCycle   LengthAndDuty;
-			RegisterPulseVolumeAndEnvelope    VolumeAndEnvelope;
+			RegisterVolumeAndEnvelope         VolumeAndEnvelope;
 			RegisterPulsePeriodLo             PeriodLo;
 			RegisterPulsePeriodHighAndControl PeriodHiAndControl;
 		} Registers;
@@ -335,6 +380,35 @@ class Apu
 		uint8_t outputSample() const;
 	};
 
+	struct Noise
+	{
+		struct Reg
+		{
+			uint8_t                   InitialLength : 6;
+			RegisterVolumeAndEnvelope VolumeAndEnvelope;
+			RegisterNoiseFreqAndRand  FreqAndRand;
+			RegisterNoiseControl      Control;
+		} Registers;
+
+		uint32_t PeriodDivider;
+		uint16_t LFSR; // linear feedback shift register
+
+		uint8_t LengthTimer;
+		uint8_t EnvelopeTimer;
+		uint8_t Volume;
+
+		bool isLengthExpired() const
+		{
+			return LengthTimer >= LENGTH_COUNTER_MAX;
+		}
+
+		void clockNoisePeriod();
+		void clockNoiseLength();
+		void clockNoiseEnvelope();
+
+		uint8_t outputSample() const;
+	};
+
 	struct AudioCallbackData
 	{
 		BoxFilter *Buffer            = nullptr;
@@ -351,7 +425,7 @@ class Apu
 	void updateChannelStatus();
 
 	static void clockPulsePeriod(PulsePeriodDivider &in, RegisterPulsePeriodLo &periodLo, RegisterPulsePeriodHighAndControl &periodHi);
-	static void clockPulseVolumeEnvelope(PulseEnvelope &in, const RegisterPulseVolumeAndEnvelope &reg);
+	static void clockPulseVolumeEnvelope(PulseEnvelope &in, const RegisterVolumeAndEnvelope &reg);
 	static void clockPulseLength(PulseLength &in);
 
 	RegisterAudioMasterControl m_audioControl{};
@@ -360,11 +434,12 @@ class Apu
 	Pulse1 m_pulse1{};
 	Pulse2 m_pulse2{};
 	Wave   m_wave{};
+	Noise  m_noise{};
 
 	std::array<uint8_t, 16> m_waveRam{};
 
-	uint16_t m_prevDivider = 0; // hold the previous divide value to detect a falling edge on bit 10
-	uint8_t m_apuDivider  = 0; // incremented on bit 10 falling edge of system divider
+	uint16_t m_prevDivider = 0; // hold the previous divide value to detect a falling edge on bit 4
+	uint8_t  m_apuDivider  = 0; // incremented on bit 4 falling edge of system divider
 
 	SDL_AudioStream  *m_audioStream;
 	AudioCallbackData m_audioCallbackData{};

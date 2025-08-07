@@ -146,12 +146,6 @@ class Sm83
 			return static_cast<uint8_t>((m_divider & 0x3FC0) >> 6);
 		}
 
-		// retrive the full divider value which increments at 1048576 hz
-		uint16_t getDividerFull() const
-		{
-			return m_divider;
-		}
-
 		void reset();
 
 	  private:

@@ -33,6 +33,11 @@ enum RegisterAdresses
 	NR33 = 0xFF1D, // wave period lo
 	NR34 = 0xFF1E, // wave period hi & control
 
+	NR41 = 0xFF20, // noise length timer
+	NR42 = 0xFF21, // noise volume & envelope
+	NR43 = 0xFF22, // noise frequency & randomness
+	NR44 = 0xFF23, // noise control
+
 	NR50 = 0xFF24, // master volume control
 	NR52 = 0xFF26, // audio master control
 

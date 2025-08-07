@@ -57,7 +57,7 @@ bool Apu::beginAudioFrame()
 {
 	SDL_LockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 
-	if (m_boxFilter.getSamplesAvail() > m_boxFilter.getAudioFrameSize() * 4)
+	if (m_boxFilter.getSamplesAvail() > m_boxFilter.getAudioFrameSize() * 3)
 	{
 		endAudioFrame();
 		return false;
@@ -73,10 +73,10 @@ void Apu::endAudioFrame()
 	SDL_UnlockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 }
 
-void Apu::tick(uint16_t divider)
+void Apu::tick(uint8_t divider)
 {
-	// apu div is incremented on a falling edge for bit 10 for the divider
-	if ((m_prevDivider & 0x400) && (divider & 0x400) == 0)
+	// apu div is incremented on a falling edge for bit 4 for the divider
+	if ((m_prevDivider & 0x10) && (divider & 0x10) == 0)
 	{
 		m_apuDivider += 1;
 
@@ -86,6 +86,7 @@ void Apu::tick(uint16_t divider)
 			clockPulseLength(m_pulse1.Length);
 			clockPulseLength(m_pulse2.Length);
 			m_wave.clockWaveLength();
+			m_noise.clockNoiseLength();
 		}
 
 		// clock pulse1 frequency sweep
@@ -99,13 +100,12 @@ void Apu::tick(uint16_t divider)
 		{
 			clockPulseVolumeEnvelope(m_pulse1.VolumeEnvelope, m_pulse1.Registers.VolumeAndEnvelope);
 			clockPulseVolumeEnvelope(m_pulse2.VolumeEnvelope, m_pulse2.Registers.VolumeAndEnvelope);
+			m_noise.clockNoiseEnvelope();
 			m_apuDivider = 0;
 		}
 	}
-	m_prevDivider = divider;
 
 	mixAudio();
-
 	updateChannelStatus();
 
 	clockPulsePeriod(m_pulse1.PeriodAndDuty, m_pulse1.Registers.PeriodLo, m_pulse1.Registers.PeriodHiAndControl);
@@ -114,6 +114,10 @@ void Apu::tick(uint16_t divider)
 	// wave period clocks at 2097152hz
 	m_wave.clockWavePeriod(m_waveRam);
 	m_wave.clockWavePeriod(m_waveRam);
+
+	m_noise.clockNoisePeriod();
+
+	m_prevDivider = divider;
 }
 
 void Apu::writeIO(uint16_t position, uint8_t data)
@@ -255,6 +259,32 @@ void Apu::writeIO(uint16_t position, uint8_t data)
 
 		break;
 
+	case IORegisters::NR41:
+		m_noise.Registers.InitialLength = data;
+		break;
+
+	case IORegisters::NR42:
+		m_noise.Registers.VolumeAndEnvelope.set(data);
+		break;
+
+	case IORegisters::NR43:
+		m_noise.Registers.FreqAndRand.set(data);
+		break;
+
+	case IORegisters::NR44:
+		m_noise.Registers.Control.set(data);
+
+		if (m_noise.Registers.Control.Trigger)
+		{
+			m_audioControl.NoiseStatus = m_noise.Registers.VolumeAndEnvelope.isDacOn();
+			m_noise.LengthTimer        = m_noise.isLengthExpired() ? 0 : m_noise.LengthTimer;
+			m_noise.EnvelopeTimer      = 0;
+			m_noise.Volume             = m_noise.Registers.VolumeAndEnvelope.InitialVolume;
+			m_noise.LFSR               = 0;
+		}
+
+		break;
+
 	case IORegisters::NR50:
 		m_masterVolume.set(data);
 		break;
@@ -302,6 +332,15 @@ uint8_t Apu::readIO(uint16_t position)
 	case IORegisters::NR34:
 		return m_wave.Registers.PeriodHiAndControl.get();
 
+	case IORegisters::NR42:
+		return m_noise.Registers.VolumeAndEnvelope.get();
+
+	case IORegisters::NR43:
+		return m_noise.Registers.FreqAndRand.get();
+
+	case IORegisters::NR44:
+		return m_noise.Registers.Control.get();
+
 	case IORegisters::NR50:
 		return m_masterVolume.get();
 
@@ -346,9 +385,11 @@ void Apu::init(bool useBootrom)
 {
 	m_audioControl = RegisterAudioMasterControl{};
 	m_masterVolume = RegisterMasterVolume{};
-	m_pulse1       = Pulse1{};
-	m_pulse2       = Pulse2{};
-	m_wave         = Wave{};
+
+	m_pulse1 = Pulse1{};
+	m_pulse2 = Pulse2{};
+	m_wave   = Wave{};
+	m_noise  = Noise{};
 
 	m_waveRam.fill(0);
 
@@ -373,6 +414,11 @@ void Apu::init(bool useBootrom)
 		m_wave.Registers.OutLevel.set(0x9F);
 		m_wave.Registers.PeriodLo.PeriodLo8Bits = 0xFF;
 		m_wave.Registers.PeriodHiAndControl.set(0xBF);
+
+		m_noise.Registers.InitialLength = 0xFF;
+		m_noise.Registers.VolumeAndEnvelope.set(0x00);
+		m_noise.Registers.FreqAndRand.set(0x00);
+		m_noise.Registers.Control.set(0xBF);
 	}
 
 	m_prevDivider = 0;
@@ -464,8 +510,9 @@ void Apu::mixAudio()
 	uint8_t pulse1Sample = m_pulse1.outputSample();
 	uint8_t pulse2Sample = m_pulse2.outputSample();
 	uint8_t waveSample   = m_wave.outputSample();
+	uint8_t noiseSample  = m_noise.outputSample();
 
-	m_boxFilter.pushSample(pulse1Sample + pulse2Sample + waveSample);
+	m_boxFilter.pushSample(pulse1Sample + pulse2Sample + waveSample + noiseSample);
 }
 
 void Apu::updateChannelStatus()
@@ -484,6 +531,11 @@ void Apu::updateChannelStatus()
 	{
 		m_audioControl.WaveStatus = 0;
 	}
+
+	if (m_noise.Registers.Control.LengthEnable && m_noise.isLengthExpired())
+	{
+		m_audioControl.NoiseStatus = 0;
+	}
 }
 
 void Apu::clockPulsePeriod(PulsePeriodDivider &in, RegisterPulsePeriodLo &periodLo, RegisterPulsePeriodHighAndControl &periodHi)
@@ -496,7 +548,7 @@ void Apu::clockPulsePeriod(PulsePeriodDivider &in, RegisterPulsePeriodLo &period
 	}
 }
 
-void Apu::clockPulseVolumeEnvelope(PulseEnvelope &in, const RegisterPulseVolumeAndEnvelope &reg)
+void Apu::clockPulseVolumeEnvelope(PulseEnvelope &in, const RegisterVolumeAndEnvelope &reg)
 {
 	// envelope period of zero means envelope is disabled
 	if (reg.Period == 0)
@@ -559,6 +611,70 @@ uint8_t Apu::Wave::outputSample() const
 
 		sample = SampleBuffer;
 		sample >>= Volume;
+	}
+
+	return sample;
+}
+
+void Apu::Noise::clockNoisePeriod()
+{
+	if (++PeriodDivider >= Registers.FreqAndRand.FrequencyPeriod)
+	{
+		PeriodDivider = 0;
+
+		uint8_t bit0 = LFSR & 1;
+		uint8_t bit1 = (LFSR >> 1) & 1;
+
+		uint8_t feedback = !(bit1 ^ bit0);
+		LFSR |= (feedback << 15);
+
+		if (Registers.FreqAndRand.LfsrWidth)
+			LFSR |= (feedback << 7);
+
+		LFSR >>= 1;
+	}
+}
+
+void Apu::Noise::clockNoiseLength()
+{
+	if (LengthTimer < LENGTH_COUNTER_MAX)
+	{
+		++LengthTimer;
+	}
+}
+
+void Apu::Noise::clockNoiseEnvelope()
+{
+	// envelope period of zero means envelope is disabled
+	if (Registers.VolumeAndEnvelope.Period == 0)
+		return;
+
+	if (++EnvelopeTimer == Registers.VolumeAndEnvelope.Period)
+	{
+		EnvelopeTimer = 0;
+
+		if (Registers.VolumeAndEnvelope.Direction)
+		{
+			Volume = static_cast<uint8_t>(std::clamp(Volume + 1, 0x0, 0xF));
+		}
+		else
+		{
+			Volume = static_cast<uint8_t>(std::clamp(Volume - 1, 0x0, 0xF));
+		}
+	}
+}
+
+uint8_t Apu::Noise::outputSample() const
+{
+	uint8_t sample = 0;
+
+	if (Registers.VolumeAndEnvelope.isDacOn())
+	{
+		if (Registers.Control.LengthEnable && isLengthExpired())
+			return sample;
+
+		sample = LFSR & 1;
+		sample *= Volume;
 	}
 
 	return sample;
