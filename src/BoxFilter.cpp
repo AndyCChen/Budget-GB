@@ -12,7 +12,7 @@ BoxFilter::BoxFilter(uint32_t sampleRate)
 	m_buffer.resize(SIZE);
 }
 
-void BoxFilter::pushSample(uint8_t sample)
+void BoxFilter::pushSample(float sample)
 {
 	m_runningSum += sample;
 
@@ -23,8 +23,9 @@ void BoxFilter::pushSample(uint8_t sample)
 		m_samplesAvail     = std::min(m_samplesAvail + 1, (uint32_t)m_buffer.size());
 		m_sampleCountInBox = 0;
 
-		float average    = static_cast<float>(m_runningSum) / widthWithError;
-		m_buffer[m_head] = average;
+		float average = static_cast<float>(m_runningSum) / widthWithError;
+
+		m_buffer[m_head] = m_highPass(average);
 		m_runningSum     = 0;
 
 		m_head = (m_head + 1) % m_buffer.size();
@@ -34,7 +35,7 @@ void BoxFilter::pushSample(uint8_t sample)
 		}
 
 		m_error -= static_cast<uint32_t>(m_error);
-		m_error += std::fabsf(SAMPLES_PER_AVERAGE - BOX_WIDTH);	
+		m_error += std::fabsf(SAMPLES_PER_AVERAGE - BOX_WIDTH);
 	}
 }
 
@@ -46,7 +47,7 @@ uint32_t BoxFilter::readSamples(float *buffer, uint32_t size)
 	while (count < size && m_samplesAvail > 0)
 	{
 		--m_samplesAvail;
-		buffer[count++] = ((m_buffer[m_tail] - 7.5f) / 7.5f) * MASTER_VOLUME;
+		buffer[count++] = m_buffer[m_tail] * MASTER_VOLUME;
 
 		if (m_tail != m_head)
 			m_tail = (m_tail + 1) % m_buffer.size();

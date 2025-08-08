@@ -227,8 +227,6 @@ class Apu
 		uint8_t LfsrWidth : 1;
 		uint8_t ClockDivider : 3;
 
-		uint32_t FrequencyPeriod;
-
 		uint8_t get() const
 		{
 			return static_cast<uint8_t>((ClockShift << 4) | (LfsrWidth << 3) | ClockDivider);
@@ -239,13 +237,6 @@ class Apu
 			ClockShift   = data >> 4;
 			LfsrWidth    = data >> 3;
 			ClockDivider = data;
-
-			constexpr uint32_t CLOCK_RATE_M = BudgetGbConstants::CLOCK_RATE_T / 4;
-
-			float divider = ClockDivider > 0 ? ClockDivider : 0.5f;
-
-			FrequencyPeriod = static_cast<uint32_t>(262144 / (divider * (1 << ClockShift)));
-			FrequencyPeriod = CLOCK_RATE_M / FrequencyPeriod;
 		}
 	};
 

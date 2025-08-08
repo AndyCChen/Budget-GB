@@ -57,7 +57,7 @@ bool Apu::beginAudioFrame()
 {
 	SDL_LockMutex(m_audioCallbackData.AudioThreadCtx.Mutex);
 
-	if (m_boxFilter.getSamplesAvail() > m_boxFilter.getAudioFrameSize() * 3)
+	if (m_boxFilter.getSamplesAvail() > m_boxFilter.getAudioFrameSize() * 2)
 	{
 		endAudioFrame();
 		return false;
@@ -252,7 +252,7 @@ void Apu::writeIO(uint16_t position, uint8_t data)
 		if (m_wave.Registers.PeriodHiAndControl.Trigger)
 		{
 			m_audioControl.WaveStatus = m_wave.Registers.DacEnable.get() != 0;
-			m_wave.LengthPeriod       = m_wave.islengthExpired() ? 0 : m_wave.Registers.WaveLength.LengthPeriod;
+			m_wave.LengthPeriod       = m_wave.islengthExpired() ? m_wave.Registers.WaveLength.LengthPeriod : m_wave.LengthPeriod;
 			m_wave.PeriodDivider      = (m_wave.Registers.PeriodHiAndControl.PeriodHi3Bits << 8) | (m_wave.Registers.PeriodLo.PeriodLo8Bits);
 			m_wave.WaveRamIndex       = 0;
 		}
@@ -277,10 +277,10 @@ void Apu::writeIO(uint16_t position, uint8_t data)
 		if (m_noise.Registers.Control.Trigger)
 		{
 			m_audioControl.NoiseStatus = m_noise.Registers.VolumeAndEnvelope.isDacOn();
-			m_noise.LengthTimer        = m_noise.isLengthExpired() ? 0 : m_noise.LengthTimer;
+			m_noise.LengthTimer        = m_noise.isLengthExpired() ? m_noise.Registers.InitialLength : m_noise.LengthTimer;
 			m_noise.EnvelopeTimer      = 0;
 			m_noise.Volume             = m_noise.Registers.VolumeAndEnvelope.InitialVolume;
-			m_noise.LFSR               = 0;
+			m_noise.LFSR               = 0xFF;
 		}
 
 		break;
@@ -419,6 +419,7 @@ void Apu::init(bool useBootrom)
 		m_noise.Registers.VolumeAndEnvelope.set(0x00);
 		m_noise.Registers.FreqAndRand.set(0x00);
 		m_noise.Registers.Control.set(0xBF);
+		m_noise.LFSR = 0xFF;
 	}
 
 	m_prevDivider = 0;
@@ -507,10 +508,10 @@ uint8_t Apu::Pulse2::outputSample() const
 
 void Apu::mixAudio()
 {
-	uint8_t pulse1Sample = m_pulse1.outputSample();
-	uint8_t pulse2Sample = m_pulse2.outputSample();
-	uint8_t waveSample   = m_wave.outputSample();
-	uint8_t noiseSample  = m_noise.outputSample();
+	float pulse1Sample = (m_pulse1.outputSample() - 7.5f) / 7.5f;
+	float pulse2Sample = (m_pulse2.outputSample() - 7.5f) / 7.5f;
+	float waveSample   = (m_wave.outputSample() - 7.5f) / 7.5f;
+	float noiseSample  = (m_noise.outputSample() - 7.5f) / 7.5f;
 
 	m_boxFilter.pushSample(pulse1Sample + pulse2Sample + waveSample + noiseSample);
 }
@@ -618,14 +619,24 @@ uint8_t Apu::Wave::outputSample() const
 
 void Apu::Noise::clockNoisePeriod()
 {
-	if (++PeriodDivider >= Registers.FreqAndRand.FrequencyPeriod)
+	if (PeriodDivider > 0)
+		--PeriodDivider;
+	else
 	{
-		PeriodDivider = 0;
+		/*constexpr uint32_t CLOCK_RATE_M = BudgetGbConstants::CLOCK_RATE_T / 4;
+
+		float divider = Registers.FreqAndRand.ClockDivider > 0 ? Registers.FreqAndRand.ClockDivider : 0.5f;
+
+		PeriodDivider = static_cast<uint32_t>(262144 / (divider * (1 << Registers.FreqAndRand.ClockShift)));
+		PeriodDivider = CLOCK_RATE_M / PeriodDivider;*/
+
+		PeriodDivider = Registers.FreqAndRand.ClockDivider > 0 ? Registers.FreqAndRand.ClockDivider << 4 : 8;
+		PeriodDivider <<= Registers.FreqAndRand.ClockShift;
 
 		uint8_t bit0 = LFSR & 1;
 		uint8_t bit1 = (LFSR >> 1) & 1;
 
-		uint8_t feedback = !(bit1 ^ bit0);
+		uint8_t feedback = bit1 ^ bit0;
 		LFSR |= (feedback << 15);
 
 		if (Registers.FreqAndRand.LfsrWidth)
@@ -673,7 +684,7 @@ uint8_t Apu::Noise::outputSample() const
 		if (Registers.Control.LengthEnable && isLengthExpired())
 			return sample;
 
-		sample = LFSR & 1;
+		sample = (~LFSR & 1);
 		sample *= Volume;
 	}
 
