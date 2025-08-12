@@ -12,8 +12,10 @@ cbuffer PALETTE_BUFFER : register(b0)
 };
 
 float4 ps_main(PS_INPUT input) : SV_Target
-{    
-    uint sampledColorIndex = viewportTexture.Load(int3(input.texCoord.x, input.texCoord.y, 0)).r;
+{
+    float textureWidth, textureHeight;
+    viewportTexture.GetDimensions(textureWidth, textureHeight);
+    uint sampledColorIndex = viewportTexture.Load(int3(input.texCoord.x * textureWidth, input.texCoord.y * textureHeight, 0)).r;
     
     return float4(colors[sampledColorIndex].rgb, 1.0f);
 }

@@ -469,10 +469,10 @@ RendererGB::TexturedQuadUniquePtr RendererGB::texturedQuadCreate(RenderContext *
 	// clang-format off
 	Vertex vertices[] =
 	{
-		{{-1.0f, -1.0f, 0.0f}, {0.0f,                  0.0f}},
-		{{-1.0f,  1.0f, 0.0f}, {0.0f,                  (float) textureSize.y}},
-		{{ 1.0f,  1.0f, 0.0f}, {(float) textureSize.x, (float) textureSize.y}},
-		{{ 1.0f, -1.0f, 0.0f}, {(float) textureSize.x, 0.0f}},
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
 	};
 	// clang-format on
 
