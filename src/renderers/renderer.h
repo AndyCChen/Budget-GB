@@ -69,6 +69,12 @@ void                  texturedQuadDraw(RenderContext *renderContext, TexturedQua
 
 // Screen quad
 
+enum class ShaderSelect
+{
+	None = 0,
+	Zfast,
+};
+
 void screenQuadFree(ScreenQuad *&screenQuad);
 
 struct ScreenQuadDeleter
@@ -83,5 +89,6 @@ typedef std::unique_ptr<RendererGB::ScreenQuad, ScreenQuadDeleter> ScreenQuadUni
 
 ScreenQuadUniquePtr screenQuadCreate(RenderContext *renderContext);
 void                screenQuadDraw(RenderContext *renderContext, ScreenQuad *screenQuad, ImTextureID textureID);
+void                screenQuadSwapShader(RenderContext *renderContext, ScreenQuad *screenQuad, ShaderSelect shaderSelect);
 
 } // namespace RendererGB

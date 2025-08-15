@@ -7,14 +7,14 @@
 class Shader
 {
   public:
-	Shader(std::string pathToVertexShader, const std::string &pathTofragmentShader);
+	Shader(const std::string &pathToVertexShader, const std::string &pathTofragmentShader);
 
 	~Shader()
 	{
 		glDeleteProgram(m_shaderProgramID);
 	}
 
-	void useProgram()
+	void useProgram() const
 	{
 		glUseProgram(m_shaderProgramID);
 	}
@@ -24,8 +24,10 @@ class Shader
 		return m_shaderProgramID;
 	}
 
+	void reset(const std::string &pathToVertexShader, const std::string &pathTofragmentShader);
+
   private:
-	GLuint m_shaderProgramID;
+	GLuint m_shaderProgramID = 0;
 
 	bool compileShader(GLuint shaderID, const std::string &pathToShader);
 

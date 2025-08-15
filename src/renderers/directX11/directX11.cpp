@@ -35,6 +35,14 @@ struct MainViewport
 	Utils::Vec2<uint32_t> ViewportTopLeft;
 };
 
+enum class ShaderType
+{
+	Vertex = 0,
+	Pixel,
+};
+
+HRESULT compileShader(mwrl::ComPtr<ID3DBlob> &shaderBlob, mwrl::ComPtr<ID3DBlob> &errorBlob, ShaderType shaderType, LPCWSTR path);
+
 } // namespace
 
 struct RendererGB::TextureRenderTarget
@@ -70,7 +78,7 @@ struct RendererGB::RenderContext
 	mwrl::ComPtr<ID3D11Device>           Device;
 	mwrl::ComPtr<IDXGISwapChain>         SwapChain;
 	mwrl::ComPtr<ID3D11DeviceContext>    DeviceContext;
-	mwrl::ComPtr<ID3D11RenderTargetView> MainRenderTargetView; // main viewpport is rendered directly onto the main application window
+	mwrl::ComPtr<ID3D11RenderTargetView> MainRenderTargetView; // main viewport is rendered directly onto the main application window
 
 	mwrl::ComPtr<ID3D11VertexShader> ShaderVertex;
 	mwrl::ComPtr<ID3D11PixelShader>  ShaderColorIndicesPixel;
@@ -277,18 +285,7 @@ RendererGB::RenderContext::RenderContext(HWND hwnd)
 	mwrl::ComPtr<ID3DBlob> pixelBlob;
 	mwrl::ComPtr<ID3DBlob> errorBlob;
 
-	result = D3DCompileFromFile(
-		L"resources/shaders/directX11/viewport.vs.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"vs_main",
-		"vs_5_0",
-		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
-		0,
-		vertexBlob.ReleaseAndGetAddressOf(),
-		errorBlob.ReleaseAndGetAddressOf()
-	);
-
+	result = compileShader(vertexBlob, errorBlob, ShaderType::Vertex, L"resources/shaders/directX11/viewport.vs.hlsl");
 	if (FAILED(result))
 	{
 		if (errorBlob.Get())
@@ -298,18 +295,7 @@ RendererGB::RenderContext::RenderContext(HWND hwnd)
 		CHECK_HR(result);
 	}
 
-	result = D3DCompileFromFile(
-		L"resources/shaders/directX11/viewport.ps.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"ps_main",
-		"ps_5_0",
-		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
-		0,
-		pixelBlob.ReleaseAndGetAddressOf(),
-		errorBlob.ReleaseAndGetAddressOf()
-	);
-
+	result = compileShader(pixelBlob, errorBlob, ShaderType::Pixel, L"resources/shaders/directX11/viewport.ps.hlsl");
 	if (FAILED(result))
 	{
 		if (errorBlob.Get())
@@ -606,17 +592,7 @@ RendererGB::ScreenQuadUniquePtr RendererGB::screenQuadCreate(RenderContext *rend
 	mwrl::ComPtr<ID3DBlob> pixelBlob;
 	mwrl::ComPtr<ID3DBlob> errorBlob;
 
-	result = D3DCompileFromFile(
-		L"resources/shaders/directX11/screen.ps.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"ps_main",
-		"ps_5_0",
-		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
-		0,
-		pixelBlob.ReleaseAndGetAddressOf(),
-		errorBlob.ReleaseAndGetAddressOf()
-	);
+	result = compileShader(pixelBlob, errorBlob, ShaderType::Pixel, L"resources/shaders/directX11/screen.ps.hlsl");
 
 	if (FAILED(result))
 	{
@@ -654,3 +630,74 @@ void RendererGB::screenQuadDraw(RenderContext *renderContext, ScreenQuad *screen
 	mwrl::ComPtr<ID3D11ShaderResourceView> nullShaderResView = nullptr;
 	renderContext->DeviceContext->PSSetShaderResources(0, 1, nullShaderResView.GetAddressOf());
 }
+
+void RendererGB::screenQuadSwapShader(RenderContext *renderContext, ScreenQuad *screenQuad, ShaderSelect shaderSelect)
+{
+	std::wstring fragPath;
+
+	switch (shaderSelect)
+	{
+	case RendererGB::ShaderSelect::None:
+		fragPath = L"resources/shaders/directX11/screen.ps.hlsl";
+		break;
+	case RendererGB::ShaderSelect::Zfast:
+		fragPath = L"resources/shaders/directX11/zfast-lcd.ps.hlsl";
+		break;
+	default:
+		break;
+	}
+
+	mwrl::ComPtr<ID3DBlob> pixelBlob;
+	mwrl::ComPtr<ID3DBlob> errorBlob;
+
+	HRESULT result = compileShader(pixelBlob, errorBlob, ShaderType::Pixel, fragPath.c_str());
+
+	if (FAILED(result))
+	{
+		if (errorBlob.Get())
+		{
+			OutputDebugStringA((LPCSTR)errorBlob->GetBufferPointer());
+		}
+		CHECK_HR(result);
+	}
+
+	result = renderContext->Device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, screenQuad->ScreenShader.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+}
+
+namespace
+{
+HRESULT compileShader(mwrl::ComPtr<ID3DBlob> &shaderBlob, mwrl::ComPtr<ID3DBlob> &errorBlob, ShaderType shaderType, LPCWSTR path)
+{
+	std::string entryPoint;
+	std::string shaderVersion;
+
+	switch (shaderType)
+	{
+	case ShaderType::Vertex:
+		entryPoint    = "vs_main";
+		shaderVersion = "vs_5_0";
+		break;
+	case ShaderType::Pixel:
+		entryPoint    = "ps_main";
+		shaderVersion = "ps_5_0";
+		break;
+	default:
+		break;
+	}
+
+	HRESULT result = D3DCompileFromFile(
+		path,
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		entryPoint.c_str(),
+		shaderVersion.c_str(),
+		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
+		0,
+		shaderBlob.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf()
+	);
+
+	return result;
+}
+} // namespace

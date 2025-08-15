@@ -67,6 +67,8 @@ class BudgetGB
 		int         guiPalettes_activePalette   = 0;
 		std::string guiPalettes_renameBuffer;
 
+		RendererGB::ShaderSelect shaderSelect = RendererGB::ShaderSelect::None;
+
 		bool guiCpuViewer_snapInstructionScrollY = false;
 	};
 

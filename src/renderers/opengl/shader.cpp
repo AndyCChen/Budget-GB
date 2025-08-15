@@ -5,8 +5,16 @@
 #include "shader.h"
 #include "utils/file.h"
 
-Shader::Shader(std::string pathToVertexShader, const std::string &pathTofragmentShader)
+Shader::Shader(const std::string &pathToVertexShader, const std::string &pathTofragmentShader)
 {
+	reset(pathToVertexShader, pathTofragmentShader);
+}
+
+void Shader::reset(const std::string &pathToVertexShader, const std::string &pathTofragmentShader)
+{
+	if (m_shaderProgramID != 0)
+		glDeleteProgram(m_shaderProgramID);
+
 	GLuint vertexShaderID   = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -27,8 +35,7 @@ Shader::Shader(std::string pathToVertexShader, const std::string &pathTofragment
 		if (status == GL_FALSE)
 		{
 			glGetProgramInfoLog(m_shaderProgramID, BUFFER_SIZE, nullptr, infoLog);
-			fmt::println(stderr, "Failed to link shaders {}\n{}\n{}", pathToVertexShader, pathTofragmentShader,
-			             infoLog);
+			fmt::println(stderr, "Failed to link shaders {}\n{}\n{}", pathToVertexShader, pathTofragmentShader, infoLog);
 
 			// delete shader program when linking fails
 			glDeleteProgram(m_shaderProgramID);
@@ -52,8 +59,8 @@ bool Shader::compileShader(GLuint shaderID, const std::string &pathToShader)
 	if (!Utils::loadShaderFromFile(pathToShader, shaderSource))
 		return false;
 
-	const GLchar *sources[] = {shaderVersion.c_str(), shaderSource.c_str()};
-	GLint sourceLengths[]   = {static_cast<GLint>(shaderVersion.length()), static_cast<GLint>(shaderSource.length())};
+	const GLchar *sources[]       = {shaderVersion.c_str(), shaderSource.c_str()};
+	GLint         sourceLengths[] = {static_cast<GLint>(shaderVersion.length()), static_cast<GLint>(shaderSource.length())};
 
 	glShaderSource(shaderID, 2, sources, sourceLengths);
 	glCompileShader(shaderID);

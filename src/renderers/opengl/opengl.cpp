@@ -449,6 +449,27 @@ void RendererGB::screenQuadDraw(RenderContext* renderContext, ScreenQuad* screen
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void RendererGB::screenQuadSwapShader(RenderContext * renderContext, ScreenQuad * screenQuad, ShaderSelect shaderSelect)
+{
+	(void) renderContext;
+
+	std::string fragPath;
+
+	switch (shaderSelect)
+	{
+	case RendererGB::ShaderSelect::None:
+		fragPath = "resources/shaders/opengl/screen.frag";
+		break;
+	case RendererGB::ShaderSelect::Zfast:
+		fragPath = "resources/shaders/opengl/zfast-lcd.frag";
+		break;
+	default:
+		break;
+	}
+
+	screenQuad->ScreenShaders.reset("resources/shaders/opengl/viewport.vert", fragPath);
+}
+
 namespace
 {
 

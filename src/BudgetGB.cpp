@@ -1,4 +1,3 @@
-#include <fstream>
 #include <stdexcept>
 #include <string>
 
@@ -281,15 +280,6 @@ void BudgetGB::guiMain()
 
 	if (ImGui::BeginPopup("Main Menu?", ImGuiWindowFlags_NoMove))
 	{
-		if (ImGui::MenuItem("Dump"))
-		{
-			std::ofstream saveFile("colorIndices.bin", std::ios::binary);
-			if (saveFile.is_open())
-			{
-				saveFile.write(reinterpret_cast<char *>(m_lcdColorBuffer.data()), m_lcdColorBuffer.size());
-			}
-		}
-
 		if (ImGui::MenuItem("Pause", "P", m_guiContext.flags & GuiContextFlags_PAUSE))
 		{
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
@@ -380,6 +370,23 @@ void BudgetGB::guiMain()
 		if (ImGui::Selectable("CartInfo"))
 			showCartInfo = true;
 		ImGui::EndDisabled();
+
+		if (ImGui::BeginMenu("Shaders"))
+		{
+			if (ImGui::MenuItem("None", "", m_guiContext.shaderSelect == RendererGB::ShaderSelect::None))
+			{
+				m_guiContext.shaderSelect = RendererGB::ShaderSelect::None;
+				RendererGB::screenQuadSwapShader(m_renderContext, m_screenQuad.get(), m_guiContext.shaderSelect);
+			}
+
+			if (ImGui::MenuItem("zfast-lcd", "", m_guiContext.shaderSelect == RendererGB::ShaderSelect::Zfast))
+			{
+				m_guiContext.shaderSelect = RendererGB::ShaderSelect::Zfast;
+				RendererGB::screenQuadSwapShader(m_renderContext, m_screenQuad.get(), m_guiContext.shaderSelect);
+			}
+
+			ImGui::EndMenu();
+		}
 
 		if (ImGui::BeginMenu("Recent roms", !m_config.recentRoms.empty()))
 		{
