@@ -83,6 +83,24 @@ struct RendererGB::TexturedQuad
 	}
 };
 
+struct RendererGB::ScreenQuad
+{
+	GLuint Vao          = 0;
+	GLuint BufferVertex = 0;
+	Shader ScreenShaders;
+
+	ScreenQuad()
+		: ScreenShaders("resources/shaders/opengl/viewport.vert", "resources/shaders/opengl/screen.frag")
+	{
+	}
+
+	~ScreenQuad()
+	{
+		glDeleteVertexArrays(1, &Vao);
+		glDeleteBuffers(1, &BufferVertex);
+	}
+};
+
 RendererGB::RenderContext *RendererGB::initWindowWithRenderer(SDL_Window *&window, const uint32_t windowScale)
 {
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO))
@@ -380,6 +398,55 @@ void RendererGB::texturedQuadDraw(RenderContext* renderContext, TexturedQuad* te
 
 	renderContext->MainShaders.useProgram();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void RendererGB::screenQuadFree(ScreenQuad*& screenQuad)
+{
+	delete screenQuad;
+}
+
+RendererGB::ScreenQuadUniquePtr RendererGB::screenQuadCreate(RenderContext* renderContext)
+{
+	ScreenQuadUniquePtr screenQuad(new ScreenQuad);
+
+	// clang-format off
+	Vertex vertices[] = 
+	{
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+	// clang-format-on
+	
+	glGenVertexArrays(1, &screenQuad->Vao);
+	glBindVertexArray(screenQuad->Vao);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext->BufferEBO);
+
+	glGenBuffers(1, &screenQuad->BufferVertex);
+	glBindBuffer(GL_ARRAY_BUFFER, screenQuad->BufferVertex);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, (GLint)vertices->Position.size(), GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, (GLint)vertices->TextureCoord.size(), GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) (vertices->Position.size() * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	return screenQuad;
+}
+
+void RendererGB::screenQuadDraw(RenderContext* renderContext, ScreenQuad* screenQuad, ImTextureID textureID)
+{
+	glBindVertexArray(screenQuad->Vao);
+	glBindTexture(GL_TEXTURE_2D, (GLuint) textureID);
+
+	screenQuad->ScreenShaders.useProgram();
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 namespace

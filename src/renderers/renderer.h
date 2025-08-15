@@ -16,6 +16,7 @@ namespace RendererGB
 struct RenderContext;
 struct TextureRenderTarget; // a texture that can be used as a render target
 struct TexturedQuad;        // A quad with a attached texture containing color indices
+struct ScreenQuad;          // a screen quad that renders a color texture
 
 RenderContext *initWindowWithRenderer(SDL_Window *&window, const uint32_t windowScale);
 void           freeWindowWithRenderer(SDL_Window *&window, RenderContext *&renderContext);
@@ -43,8 +44,8 @@ struct TextureRenderTargetDeleter
 
 typedef std::unique_ptr<RendererGB::TextureRenderTarget, TextureRenderTargetDeleter> TextureRenderTargetUniquePtr;
 
-TextureRenderTargetUniquePtr textureRenderTargetCreate(RenderContext *renderContext, const Utils::Vec2<float> &size);
-void                         textureRenderTargetSet(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &viewport); // set as current render target                                 // clears the render target
+TextureRenderTargetUniquePtr textureRenderTargetCreate(RenderContext *renderContext, const Utils::Vec2<float> &size);                                            // clears the render target
+void                         textureRenderTargetSet(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &viewport); // set as current render target
 void                         textureRenderTargetResize(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &size);
 ImTextureID                  textureRenderTargetGetTextureID(TextureRenderTarget *renderTargetTexture); // returns texture id of render target texture (i.e shaderResourceView for dx11 or a Opengl Gluint texture id)
 
@@ -65,5 +66,22 @@ typedef std::unique_ptr<RendererGB::TexturedQuad, TexturedQuadDeleter> TexturedQ
 TexturedQuadUniquePtr texturedQuadCreate(RenderContext *renderContext, const Utils::Vec2<float> &textureSize);
 void                  texturedQuadUpdateTexture(RenderContext *renderContext, TexturedQuad *texturedQuad, const uint8_t *const data, const std::size_t size); // Update attached texture containing new color indices, size must be the same as initial texture size
 void                  texturedQuadDraw(RenderContext *renderContext, TexturedQuad *texturedQuad);
+
+// Screen quad
+
+void screenQuadFree(ScreenQuad *&screenQuad);
+
+struct ScreenQuadDeleter
+{
+	void operator()(RendererGB::ScreenQuad *screenQuad) const
+	{
+		RendererGB::screenQuadFree(screenQuad);
+	}
+};
+
+typedef std::unique_ptr<RendererGB::ScreenQuad, ScreenQuadDeleter> ScreenQuadUniquePtr;
+
+ScreenQuadUniquePtr screenQuadCreate(RenderContext *renderContext);
+void                screenQuadDraw(RenderContext *renderContext, ScreenQuad *screenQuad, ImTextureID textureID);
 
 } // namespace RendererGB

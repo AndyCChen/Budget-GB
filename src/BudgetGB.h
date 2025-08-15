@@ -89,6 +89,11 @@ class BudgetGB
 
 	RendererGB::TexturedQuadUniquePtr m_lcdDisplayQuad;
 
+	RendererGB::TextureRenderTargetUniquePtr m_screenRenderTarget;
+	RendererGB::ScreenQuadUniquePtr          m_screenQuad;
+
+	Utils::Vec2<uint32_t> m_mainViewportSize{};
+
 	std::unique_ptr<PatternTileView> m_patternTileViewport;
 
 	void resetBudgetGB()

@@ -57,6 +57,12 @@ struct RendererGB::TexturedQuad
 	mwrl::ComPtr<ID3D11ShaderResourceView> TextureResourceView;
 };
 
+struct RendererGB::ScreenQuad
+{
+	mwrl::ComPtr<ID3D11Buffer>      BufferVertex;
+	mwrl::ComPtr<ID3D11PixelShader> ScreenShader;
+};
+
 struct RendererGB::RenderContext
 {
 	RenderContext(HWND hwnd);
@@ -67,7 +73,7 @@ struct RendererGB::RenderContext
 	mwrl::ComPtr<ID3D11RenderTargetView> MainRenderTargetView; // main viewpport is rendered directly onto the main application window
 
 	mwrl::ComPtr<ID3D11VertexShader> ShaderVertex;
-	mwrl::ComPtr<ID3D11PixelShader>  ShaderPixel;
+	mwrl::ComPtr<ID3D11PixelShader>  ShaderColorIndicesPixel;
 	mwrl::ComPtr<ID3D11InputLayout>  InputLayout;
 
 	mwrl::ComPtr<ID3D11Buffer> BufferIndex;
@@ -316,7 +322,7 @@ RendererGB::RenderContext::RenderContext(HWND hwnd)
 	result = Device->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, ShaderVertex.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
-	result = Device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, ShaderPixel.ReleaseAndGetAddressOf());
+	result = Device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, ShaderColorIndicesPixel.ReleaseAndGetAddressOf());
 	CHECK_HR(result);
 
 	// set input layout
@@ -428,8 +434,8 @@ void RendererGB::textureRenderTargetFree(TextureRenderTarget *&renderTargetTextu
 void RendererGB::textureRenderTargetSet(RenderContext *renderContext, TextureRenderTarget *renderTargetTexture, const Utils::Vec2<float> &viewport)
 {
 	D3D11_VIEWPORT vp{};
-	vp.Width    = viewport.x;
-	vp.Height   = viewport.y;
+	vp.Width    = (FLOAT)viewport.x;
+	vp.Height   = (FLOAT)viewport.y;
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
 	vp.TopLeftX = 0.0f;
@@ -557,9 +563,94 @@ void RendererGB::texturedQuadDraw(RenderContext *renderContext, TexturedQuad *te
 
 	renderContext->DeviceContext->VSSetShader(renderContext->ShaderVertex.Get(), nullptr, 0);
 
-	renderContext->DeviceContext->PSSetShader(renderContext->ShaderPixel.Get(), nullptr, 0);
+	renderContext->DeviceContext->PSSetShader(renderContext->ShaderColorIndicesPixel.Get(), nullptr, 0);
 	renderContext->DeviceContext->PSSetShaderResources(0, 1, texturedQuad->TextureResourceView.GetAddressOf());
 	renderContext->DeviceContext->PSSetConstantBuffers(0, 1, renderContext->BufferConstantPalettes.GetAddressOf());
 
 	renderContext->DeviceContext->DrawIndexed(6, 0, 0);
+}
+
+void RendererGB::screenQuadFree(ScreenQuad *&screenQuad)
+{
+	delete screenQuad;
+}
+
+RendererGB::ScreenQuadUniquePtr RendererGB::screenQuadCreate(RenderContext *renderContext)
+{
+	ScreenQuadUniquePtr screenQuad(new ScreenQuad);
+
+	// clang-format off
+	Vertex vertices[] =
+	{
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+	// clang-format on
+
+	D3D11_BUFFER_DESC vertexBufferDesc{};
+	vertexBufferDesc.ByteWidth           = sizeof(vertices);
+	vertexBufferDesc.Usage               = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.BindFlags           = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.StructureByteStride = sizeof(Vertex);
+
+	D3D11_SUBRESOURCE_DATA subResourceData{};
+	subResourceData.pSysMem = vertices;
+
+	HRESULT result = renderContext->Device->CreateBuffer(&vertexBufferDesc, &subResourceData, screenQuad->BufferVertex.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	// compile, create shaders
+
+	mwrl::ComPtr<ID3DBlob> pixelBlob;
+	mwrl::ComPtr<ID3DBlob> errorBlob;
+
+	result = D3DCompileFromFile(
+		L"resources/shaders/directX11/screen.ps.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"ps_main",
+		"ps_5_0",
+		D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_DEBUG,
+		0,
+		pixelBlob.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf()
+	);
+
+	if (FAILED(result))
+	{
+		if (errorBlob.Get())
+		{
+			OutputDebugStringA((LPCSTR)errorBlob->GetBufferPointer());
+		}
+		CHECK_HR(result);
+	}
+
+	result = renderContext->Device->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, screenQuad->ScreenShader.ReleaseAndGetAddressOf());
+	CHECK_HR(result);
+
+	return screenQuad;
+}
+
+void RendererGB::screenQuadDraw(RenderContext *renderContext, ScreenQuad *screenQuad, ImTextureID textureID)
+{
+	UINT vertexOffset = 0;
+	UINT vertexStride = sizeof(Vertex);
+
+	renderContext->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	renderContext->DeviceContext->IASetInputLayout(renderContext->InputLayout.Get());
+	renderContext->DeviceContext->IASetVertexBuffers(0, 1, screenQuad->BufferVertex.GetAddressOf(), &vertexStride, &vertexOffset);
+	renderContext->DeviceContext->IASetIndexBuffer(renderContext->BufferIndex.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+	renderContext->DeviceContext->VSSetShader(renderContext->ShaderVertex.Get(), nullptr, 0);
+
+	renderContext->DeviceContext->PSSetShader(screenQuad->ScreenShader.Get(), nullptr, 0);
+	renderContext->DeviceContext->PSSetShaderResources(0, 1, (ID3D11ShaderResourceView **)&textureID);
+
+	renderContext->DeviceContext->DrawIndexed(6, 0, 0);
+
+	// unbind shader resource after draw
+	mwrl::ComPtr<ID3D11ShaderResourceView> nullShaderResView = nullptr;
+	renderContext->DeviceContext->PSSetShaderResources(0, 1, nullShaderResView.GetAddressOf());
 }

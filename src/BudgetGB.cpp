@@ -1,3 +1,4 @@
+#include <fstream>
 #include <stdexcept>
 #include <string>
 
@@ -57,6 +58,13 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 	m_apu.init(m_config.useBootrom && m_cpu.m_bootrom.isLoaded());
 
 	m_lcdDisplayQuad = RendererGB::texturedQuadCreate(m_renderContext, Utils::Vec2<float>{BudgetGbConstants::LCD_WIDTH, BudgetGbConstants::LCD_HEIGHT});
+
+	int width, height;
+	SDL_GetWindowSize(m_window, &width, &height);
+	m_mainViewportSize = {(uint32_t)width, (uint32_t)height};
+
+	m_screenRenderTarget = RendererGB::textureRenderTargetCreate(m_renderContext, Utils::Vec2<float>{(float)width, (float)height});
+	m_screenQuad         = RendererGB::screenQuadCreate(m_renderContext);
 }
 
 BudgetGB::~BudgetGB()
@@ -83,9 +91,14 @@ void BudgetGB::onUpdate()
 
 	RendererGB::setGlobalPalette(m_renderContext, m_guiContext.guiPalettes_activePalette < 0 ? m_config.defaultPalette : m_config.palettes[m_guiContext.guiPalettes_activePalette]);
 
-	RendererGB::mainViewportSetRenderTarget(m_renderContext);
+	RendererGB::textureRenderTargetSet(m_renderContext, m_screenRenderTarget.get(), Utils::Vec2<float>{(float)m_mainViewportSize.x, (float)m_mainViewportSize.y});
 	RendererGB::texturedQuadUpdateTexture(m_renderContext, m_lcdDisplayQuad.get(), m_lcdColorBuffer.data(), m_lcdColorBuffer.size());
 	RendererGB::texturedQuadDraw(m_renderContext, m_lcdDisplayQuad.get());
+
+	ImTextureID textureID = RendererGB::textureRenderTargetGetTextureID(m_screenRenderTarget.get());
+
+	RendererGB::mainViewportSetRenderTarget(m_renderContext);
+	RendererGB::screenQuadDraw(m_renderContext, m_screenQuad.get(), textureID);
 
 	RendererGB::endFrame(m_window, m_renderContext);
 	RendererGB::newFrame(); // begin new frame at end of this game loop
@@ -205,6 +218,8 @@ void BudgetGB::resizeViewportStretched()
 	int viewportY = (resizedHeight - viewportSize.y) / 2;
 
 	RendererGB::mainViewportResize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
+	RendererGB::textureRenderTargetResize(m_renderContext, m_screenRenderTarget.get(), Utils::Vec2<float>{(float)viewportSize.x, (float)viewportSize.y});
+	m_mainViewportSize = viewportSize;
 }
 
 void BudgetGB::resizeViewportFit()
@@ -229,6 +244,8 @@ void BudgetGB::resizeViewportFit()
 	int viewportY = (resizedHeight - viewportSize.y) / 2;
 
 	RendererGB::mainViewportResize(m_renderContext, viewportX, viewportY, viewportSize.x, viewportSize.y);
+	RendererGB::textureRenderTargetResize(m_renderContext, m_screenRenderTarget.get(), Utils::Vec2<float>{(float)viewportSize.x, (float)viewportSize.y});
+	m_mainViewportSize = viewportSize;
 }
 
 void BudgetGB::resizeWindowFixed(BudgetGbConfig::WindowScale scale)
@@ -264,6 +281,15 @@ void BudgetGB::guiMain()
 
 	if (ImGui::BeginPopup("Main Menu?", ImGuiWindowFlags_NoMove))
 	{
+		if (ImGui::MenuItem("Dump"))
+		{
+			std::ofstream saveFile("colorIndices.bin", std::ios::binary);
+			if (saveFile.is_open())
+			{
+				saveFile.write(reinterpret_cast<char *>(m_lcdColorBuffer.data()), m_lcdColorBuffer.size());
+			}
+		}
+
 		if (ImGui::MenuItem("Pause", "P", m_guiContext.flags & GuiContextFlags_PAUSE))
 		{
 			m_guiContext.flags ^= GuiContextFlags_PAUSE;
