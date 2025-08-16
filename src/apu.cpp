@@ -513,7 +513,9 @@ void Apu::mixAudio()
 	float waveSample   = (m_wave.outputSample() - 7.5f) / 7.5f;
 	float noiseSample  = (m_noise.outputSample() - 7.5f) / 7.5f;
 
-	m_boxFilter.pushSample(pulse1Sample + pulse2Sample + waveSample + noiseSample);
+	float sum = pulse1Sample + pulse2Sample + waveSample + noiseSample;
+
+	m_boxFilter.pushSample(sum);
 }
 
 void Apu::updateChannelStatus()

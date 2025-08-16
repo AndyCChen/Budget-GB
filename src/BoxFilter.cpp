@@ -12,8 +12,10 @@ BoxFilter::BoxFilter(uint32_t sampleRate)
 	m_buffer.resize(SIZE);
 }
 
-void BoxFilter::pushSample(float sample)
+bool BoxFilter::pushSample(float sample)
 {
+	bool status = false;
+
 	m_runningSum += sample;
 
 	uint32_t widthWithError = BOX_WIDTH + static_cast<uint32_t>(m_error);
@@ -36,7 +38,11 @@ void BoxFilter::pushSample(float sample)
 
 		m_error -= static_cast<uint32_t>(m_error);
 		m_error += std::fabsf(SAMPLES_PER_AVERAGE - BOX_WIDTH);
+
+		status = true;
 	}
+
+	return status;
 }
 
 uint32_t BoxFilter::readSamples(float *buffer, uint32_t size)

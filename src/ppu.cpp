@@ -1,8 +1,8 @@
 #include "ppu.h"
 #include "sm83.h"
 
-PPU::PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFlags)
-	: lcdColorBuffer(lcdColorBuffer), m_interruptLine(interruptFlags)
+PPU::PPU(uint8_t &interruptFlags)
+	: m_lcdColorBuffer(m_lcdColorBuffer), m_interruptLine(interruptFlags)
 {
 }
 
@@ -449,7 +449,7 @@ void PPU::pushPixelToLCD()
 	uint16_t lcdPixelIndex = (160 * (143 - r_lcdY)) + (m_pixelX - 8);
 	m_pixelX += 1;
 
-	lcdColorBuffer[lcdPixelIndex] = outputColorIndex;
+	m_lcdColorBuffer[lcdPixelIndex] = outputColorIndex;
 
 	// enter H-blank once 160 pixels are drawn
 	if (m_pixelX == 160 + 8)
@@ -654,6 +654,8 @@ bool PPU::processSpriteFetching()
 
 void PPU::init(bool useBootrom)
 {
+	m_lcdColorBuffer.fill(static_cast<uint8_t>(0));
+
 	r_lcdControl         = useBootrom ? 0x00 : 0x91;
 	r_LYC                = 0;
 	r_scrollX            = 0;

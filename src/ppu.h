@@ -231,7 +231,7 @@ class PPU
 		CYCLE_5,
 	};
 
-	BudgetGbConstants::LcdColorBuffer &lcdColorBuffer;
+	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer{};
 
 	// 0: mode 0 state
 	// 1: mode 1 state
@@ -327,7 +327,7 @@ class PPU
 	}
 	
   public:
-	PPU(BudgetGbConstants::LcdColorBuffer &lcdColorBuffer, uint8_t &interruptFlags);
+	PPU(uint8_t &interruptFlags);
 
 	OamDmaController m_oamDmaController;
 
@@ -401,6 +401,11 @@ class PPU
 		}
 
 		r_lcdControl = data;
+	}
+
+	const BudgetGbConstants::LcdColorBuffer &getColorBuffer() const
+	{	
+		return m_lcdColorBuffer;
 	}
 
 	void ppuDisable();

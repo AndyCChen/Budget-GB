@@ -8,7 +8,7 @@ class BoxFilter
   public:
 	BoxFilter(uint32_t sampleRate);
 
-	void pushSample(float sample);
+	bool pushSample(float sample);
 
 	// samples are read into buffer and clamped into a 32 bit float sample in the range (-1.0f - 1.0f)
 	uint32_t readSamples(float *buffer, uint32_t size);

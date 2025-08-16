@@ -25,7 +25,7 @@ BudgetGB::BudgetGB(const std::string &cartridgePath)
 	  m_cartridge(),
 	  m_bus(m_cartridge, m_cpu, m_ppu, m_apu),
 	  m_cpu(m_bus),
-	  m_ppu(m_lcdColorBuffer, m_cpu.m_interrupts.m_interruptFlags),
+	  m_ppu(m_cpu.m_interrupts.m_interruptFlags),
 	  m_apu(BudgetGbConstants::AUDIO_SAMPLE_RATE),
 	  m_disassembler(m_bus)
 {
@@ -91,7 +91,7 @@ void BudgetGB::onUpdate()
 	RendererGB::setGlobalPalette(m_renderContext, m_guiContext.guiPalettes_activePalette < 0 ? m_config.defaultPalette : m_config.palettes[m_guiContext.guiPalettes_activePalette]);
 
 	RendererGB::textureRenderTargetSet(m_renderContext, m_screenRenderTarget.get(), Utils::Vec2<float>{(float)m_mainViewportSize.x, (float)m_mainViewportSize.y});
-	RendererGB::texturedQuadUpdateTexture(m_renderContext, m_lcdDisplayQuad.get(), m_lcdColorBuffer.data(), m_lcdColorBuffer.size());
+	RendererGB::texturedQuadUpdateTexture(m_renderContext, m_lcdDisplayQuad.get(), m_ppu.getColorBuffer().data(), m_ppu.getColorBuffer().size());
 	RendererGB::texturedQuadDraw(m_renderContext, m_lcdDisplayQuad.get());
 
 	ImTextureID textureID = RendererGB::textureRenderTargetGetTextureID(m_screenRenderTarget.get());

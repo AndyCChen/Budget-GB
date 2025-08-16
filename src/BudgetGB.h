@@ -87,8 +87,6 @@ class BudgetGB
 
 	float m_accumulatedDeltaTime = 0.0f;
 
-	BudgetGbConstants::LcdColorBuffer m_lcdColorBuffer{};
-
 	RendererGB::TexturedQuadUniquePtr m_lcdDisplayQuad;
 
 	RendererGB::TextureRenderTargetUniquePtr m_screenRenderTarget;
