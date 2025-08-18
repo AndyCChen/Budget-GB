@@ -52,7 +52,7 @@ bool BoxFilter::pushSample(const Samples &samples, AudioLogging::AudioLogBuffers
 		}
 
 		m_error -= static_cast<uint32_t>(m_error);
-		m_error += std::fabsf(SAMPLES_PER_AVERAGE - BOX_WIDTH);
+		m_error += std::fabs(SAMPLES_PER_AVERAGE - BOX_WIDTH);
 
 		status = true;
 	}

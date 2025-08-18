@@ -55,6 +55,7 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, pulse1Color);
 			ImPlot::PlotLine("Pulse 1", &buffers.Pulse1.Data[0].x, &buffers.Pulse1.Data[0].y, buffers.Pulse1.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Pulse1.Data[0]));
+			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
 
@@ -65,6 +66,7 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, pulse2Color);
 			ImPlot::PlotLine("Pulse 2", &buffers.Pulse2.Data[0].x, &buffers.Pulse2.Data[0].y, buffers.Pulse2.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Pulse2.Data[0]));
+			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
 
@@ -75,6 +77,7 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, waveColor);
 			ImPlot::PlotLine("Wave", &buffers.Wave.Data[0].x, &buffers.Wave.Data[0].y, buffers.Wave.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Wave.Data[0]));
+			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
 
@@ -85,6 +88,7 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, noiseColor);
 			ImPlot::PlotLine("Noise", &buffers.Noise.Data[0].x, &buffers.Noise.Data[0].y, buffers.Noise.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Noise.Data[0]));
+			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
 
@@ -95,10 +99,9 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -4.0f, 4.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, allColor);
 			ImPlot::PlotLine("All", &buffers.All.Data[0].x, &buffers.All.Data[0].y, buffers.All.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.All.Data[0]));
+			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
-
-		ImPlot::PopStyleColor(4);
 
 		apu.setAudioChannelToggle(audioChannelToggle);
 	}
