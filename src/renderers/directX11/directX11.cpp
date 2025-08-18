@@ -4,6 +4,7 @@
 #include "emulatorConstants.h"
 #include "renderer.h"
 #include "utils/vec.h"
+#include "implot.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -123,6 +124,7 @@ RendererGB::RenderContext *RendererGB::initWindowWithRenderer(SDL_Window *&windo
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
@@ -222,6 +224,7 @@ void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 {
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
+	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
 	delete renderContext;

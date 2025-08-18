@@ -3,12 +3,22 @@
 #include <cstdint>
 #include <vector>
 
+#include "audioLogBuffer.h"
+
 class BoxFilter
 {
   public:
 	BoxFilter(uint32_t sampleRate);
 
-	bool pushSample(float sample);
+	struct Samples
+	{
+		float Pulse1;
+		float Pulse2;
+		float Wave;
+		float Noise;
+	};
+
+	bool pushSample(const Samples &samples, AudioLogging::AudioLogBuffers &buffers);
 
 	// samples are read into buffer and clamped into a 32 bit float sample in the range (-1.0f - 1.0f)
 	uint32_t readSamples(float *buffer, uint32_t size);
@@ -26,7 +36,7 @@ class BoxFilter
 	void clear()
 	{
 		std::fill(m_buffer.begin(), m_buffer.end(), (float)0);
-		m_runningSum       = 0;
+		m_runningSum       = RunningChannelSums{};
 		m_sampleCountInBox = 0;
 		m_error            = 0;
 		m_head             = 0,
@@ -41,7 +51,14 @@ class BoxFilter
 
 	std::vector<float> m_buffer;
 
-	float    m_runningSum       = 0;
+	struct RunningChannelSums
+	{
+		float Pulse1 = 0;
+		float Pulse2 = 0;
+		float Wave   = 0;
+		float Noise  = 0;
+	} m_runningSum;
+
 	uint32_t m_sampleCountInBox = 0;
 	float    m_error            = 0;
 
@@ -63,13 +80,15 @@ class BoxFilter
 
 			out = (out * adjust) + delta;
 			return out;
-
-			/*float out = in - capacitor;
-			capacitor = in - (out * 0.996f);
-
-			return out;*/
 		}
 	};
 
-	HighPass m_highPass;
+	struct ChannelHighPasses
+	{
+		HighPass Pulse1;
+		HighPass Pulse2;
+		HighPass Wave;
+		HighPass Noise;
+		HighPass All;
+	} m_channelHighPasses;
 };

@@ -2,9 +2,12 @@
 
 #include <array>
 #include <cstdint>
+#include <utility>
 
 #include "BoxFilter.h"
 #include "SDL3/SDL.h"
+#include "Utils/vec.h"
+#include "audioLogBuffer.h"
 #include "emulatorConstants.h"
 
 class Apu
@@ -24,6 +27,11 @@ class Apu
 
 	void pauseAudio();
 	void resumeAudio();
+
+	AudioLogging::AudioLogBuffers &getAudioLogBuffers()
+	{
+		return m_audioLogBuffers;
+	}
 
 	void init(bool useBootrom);
 
@@ -411,6 +419,24 @@ class Apu
 		} AudioThreadCtx;
 	};
 
+	struct AudioChannelToggle
+	{
+		bool Pulse1 = true;
+		bool Pulse2 = true;
+		bool Wave   = true;
+		bool Noise  = true;
+	};
+
+	void setAudioChannelToggle(const AudioChannelToggle &channelToggle)
+	{
+		m_audioChannelToggle = channelToggle;
+	}
+
+	const AudioChannelToggle &getAudioChannelToggle() const
+	{
+		return m_audioChannelToggle;
+	}
+
   private:
 	void mixAudio();
 	void updateChannelStatus();
@@ -436,4 +462,8 @@ class Apu
 	AudioCallbackData m_audioCallbackData{};
 
 	BoxFilter m_boxFilter;
+
+	AudioLogging::AudioLogBuffers m_audioLogBuffers;
+
+	AudioChannelToggle m_audioChannelToggle;
 };

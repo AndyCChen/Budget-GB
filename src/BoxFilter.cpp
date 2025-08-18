@@ -1,4 +1,6 @@
 #include "BoxFilter.h"
+#include "SDL3/SDL_timer.h"
+#include "audioLogBuffer.h"
 #include "emulatorConstants.h"
 
 #include <cmath>
@@ -12,11 +14,14 @@ BoxFilter::BoxFilter(uint32_t sampleRate)
 	m_buffer.resize(SIZE);
 }
 
-bool BoxFilter::pushSample(float sample)
+bool BoxFilter::pushSample(const Samples &samples, AudioLogging::AudioLogBuffers &buffers)
 {
 	bool status = false;
 
-	m_runningSum += sample;
+	m_runningSum.Pulse1 += samples.Pulse1;
+	m_runningSum.Pulse2 += samples.Pulse2;
+	m_runningSum.Wave += samples.Wave;
+	m_runningSum.Noise += samples.Noise;
 
 	uint32_t widthWithError = BOX_WIDTH + static_cast<uint32_t>(m_error);
 
@@ -25,10 +30,20 @@ bool BoxFilter::pushSample(float sample)
 		m_samplesAvail     = std::min(m_samplesAvail + 1, (uint32_t)m_buffer.size());
 		m_sampleCountInBox = 0;
 
-		float average = static_cast<float>(m_runningSum) / widthWithError;
+		float pulse1Average = static_cast<float>(m_runningSum.Pulse1) / widthWithError;
+		float pulse2Average = static_cast<float>(m_runningSum.Pulse2) / widthWithError;
+		float waveAverage   = static_cast<float>(m_runningSum.Wave) / widthWithError;
+		float noiseAverage  = static_cast<float>(m_runningSum.Noise) / widthWithError;
 
-		m_buffer[m_head] = m_highPass(average);
-		m_runningSum     = 0;
+		m_buffer[m_head] = m_channelHighPasses.All(pulse1Average + pulse2Average + waveAverage + noiseAverage);
+
+		buffers.All.AddPoint(m_buffer[m_head]);
+		buffers.Pulse1.AddPoint(m_channelHighPasses.Pulse1(pulse1Average));
+		buffers.Pulse2.AddPoint(m_channelHighPasses.Pulse2(pulse2Average));
+		buffers.Wave.AddPoint(m_channelHighPasses.Wave(waveAverage));
+		buffers.Noise.AddPoint(m_channelHighPasses.Noise(noiseAverage));
+
+		m_runningSum = RunningChannelSums{};
 
 		m_head = (m_head + 1) % m_buffer.size();
 		if (m_head == m_tail)

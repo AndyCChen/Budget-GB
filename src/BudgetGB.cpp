@@ -4,6 +4,7 @@
 #include "fmt/base.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
+#include "implot.h"
 #include "mappers/mapper.h"
 #include "misc/cpp/imgui_stdlib.h"
 
@@ -137,6 +138,26 @@ SDL_AppResult BudgetGB::processEvent(SDL_Event *event)
 	{
 		switch (event->key.scancode)
 		{
+
+		case SDL_SCANCODE_F5:
+			m_audioChannelToggle.Pulse1 ^= 1;
+			m_apu.setAudioChannelToggle(m_audioChannelToggle);
+			break;
+
+		case SDL_SCANCODE_F6:
+			m_audioChannelToggle.Pulse2 ^= 1;
+			m_apu.setAudioChannelToggle(m_audioChannelToggle);
+			break;
+
+		case SDL_SCANCODE_F7:
+			m_audioChannelToggle.Wave ^= 1;
+			m_apu.setAudioChannelToggle(m_audioChannelToggle);
+			break;
+
+		case SDL_SCANCODE_F8:
+			m_audioChannelToggle.Noise ^= 1;
+			m_apu.setAudioChannelToggle(m_audioChannelToggle);
+			break;
 
 		case SDL_SCANCODE_F11:
 			m_guiContext.flags ^= GuiContextFlags_FULLSCREEN;
@@ -344,15 +365,25 @@ void BudgetGB::guiMain()
 		if (ImGui::MenuItem("Toggle Imgui Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 
+		if (ImGui::MenuItem("Toggle Implot Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMPLOT_DEMO))
+			m_guiContext.flags ^= GuiContextFlags_SHOW_IMPLOT_DEMO;
+
 		if (ImGui::MenuItem("Palettes", "", m_guiContext.flags & GuiContextFlags_SHOW_PALETTES))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_PALETTES;
 
 		if (ImGui::MenuItem("Tile Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_TILES))
 		{
-			if (m_guiContext.flags ^= GuiContextFlags_SHOW_TILES)
+			m_guiContext.flags ^= GuiContextFlags_SHOW_TILES;
+
+			if (m_guiContext.flags & GuiContextFlags_SHOW_TILES)
 				m_patternTileViewport = std::make_unique<PatternTileView>(m_ppu, m_renderContext);
 			else
 				m_patternTileViewport.reset();
+		}
+
+		if (ImGui::MenuItem("Audio", "", m_guiContext.flags & GuiContextFlags_SHOW_AUDIO))
+		{
+			m_guiContext.flags ^= GuiContextFlags_SHOW_AUDIO;
 		}
 
 		if (ImGui::MenuItem("CPU Viewer", "", m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER))
@@ -424,18 +455,34 @@ void BudgetGB::guiMain()
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 	}
 
+	if (m_guiContext.flags & GuiContextFlags_SHOW_IMPLOT_DEMO)
+	{
+		bool toggle = true;
+		ImPlot::ShowDemoWindow(&toggle);
+		if (!toggle)
+			m_guiContext.flags ^= GuiContextFlags_SHOW_IMPLOT_DEMO;
+	}
+
 	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
 		guiCpuViewer();
 
 	if (m_guiContext.flags & GuiContextFlags_SHOW_PALETTES)
 		guiPalettes();
 
-	if (m_guiContext.flags & GuiContextFlags_SHOW_TILES)
+	if (m_patternTileViewport)
 	{
 		if (!m_patternTileViewport->drawViewportGui(m_renderContext))
 		{
 			m_patternTileViewport.reset();
 			m_guiContext.flags &= ~GuiContextFlags_SHOW_TILES;
+		}
+	}
+
+	if (m_guiContext.flags & GuiContextFlags_SHOW_AUDIO)
+	{
+		if (!AudioWidget::draw(m_apu, m_audioChannelToggle))
+		{
+			m_guiContext.flags &= ~GuiContextFlags_SHOW_AUDIO;
 		}
 	}
 

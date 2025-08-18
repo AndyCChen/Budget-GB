@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl3.h"
+#include "implot.h"
 
 #include "emulatorConstants.h"
 #include "glad/glad.h"
@@ -163,6 +164,7 @@ RendererGB::RenderContext *RendererGB::initWindowWithRenderer(SDL_Window *&windo
 	// set up ImGui
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
@@ -257,6 +259,7 @@ void RendererGB::freeWindowWithRenderer(SDL_Window *&window, RenderContext *&ren
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
+	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
 	SDL_GL_DestroyContext(renderContext->GlContext);

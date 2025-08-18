@@ -33,13 +33,27 @@ target_include_directories(Glad PRIVATE
 
 # imgui library using sdl3 as platform backend
 set(IMGUI_SOURCE_FILES
+
+	# imgui core
 	vendor/imgui/imgui.cpp
-	vendor/imgui/imgui_demo.cpp
+	vendor/imgui/imgui.h
+	vendor/imgui/imgui_internal.h
 	vendor/imgui/imgui_draw.cpp
 	vendor/imgui/imgui_tables.cpp
 	vendor/imgui/imgui_widgets.cpp
 	vendor/imgui/backends/imgui_impl_sdl3.cpp
+	vendor/imgui/backends/imgui_impl_sdl3.h
 	vendor/imgui/misc/cpp/imgui_stdlib.cpp
+	vendor/imgui/misc/cpp/imgui_stdlib.h
+
+	#implot
+	vendor/implot/implot.cpp
+	vendor/implot/implot.h
+	vendor/implot/implot_internal.h
+	vendor/implot/implot_items.cpp
+
+	vendor/imgui/imgui_demo.cpp
+	vendor/implot/implot_demo.cpp
 )
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)
@@ -62,6 +76,7 @@ target_include_directories(Imgui PRIVATE
 	vendor/imgui/
 	vendor/imgui/backends/
 	vendor/SDL/include/
+	vendor/implot/
 )
 
 target_compile_features(Imgui PRIVATE cxx_std_17)
@@ -104,6 +119,9 @@ set(SOURCE_FILES
 	src/IORegisters.h
 	src/BoxFilter.cpp
 	src/BoxFilter.h
+	src/audioWidget.cpp
+	src/audioWidget.h
+	src/audioLogBuffer.h
 
 	src/mappers/mapper.cpp
 	src/mappers/mapper.h
@@ -145,6 +163,7 @@ target_include_directories(BudgetGB PRIVATE
 	vendor/glad/include/
 	vendor/imgui/
 	vendor/imgui/backends/
+	vendor/implot/
 )
 
 set(BudgetGbLibs 

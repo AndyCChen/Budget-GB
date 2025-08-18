@@ -508,14 +508,12 @@ uint8_t Apu::Pulse2::outputSample() const
 
 void Apu::mixAudio()
 {
-	float pulse1Sample = (m_pulse1.outputSample() - 7.5f) / 7.5f;
-	float pulse2Sample = (m_pulse2.outputSample() - 7.5f) / 7.5f;
-	float waveSample   = (m_wave.outputSample() - 7.5f) / 7.5f;
-	float noiseSample  = (m_noise.outputSample() - 7.5f) / 7.5f;
+	float pulse1Sample = ((m_pulse1.outputSample() - 7.5f) / 7.5f) * (m_audioChannelToggle.Pulse1 ? 1.0f : 0.0f);
+	float pulse2Sample = ((m_pulse2.outputSample() - 7.5f) / 7.5f) * (m_audioChannelToggle.Pulse2 ? 1.0f : 0.0f);
+	float waveSample   = ((m_wave.outputSample() - 7.5f) / 7.5f) * (m_audioChannelToggle.Wave ? 1.0f : 0.0f);
+	float noiseSample  = ((m_noise.outputSample() - 7.5f) / 7.5f) * (m_audioChannelToggle.Noise ? 1.0f : 0.0f);
 
-	float sum = pulse1Sample + pulse2Sample + waveSample + noiseSample;
-
-	m_boxFilter.pushSample(sum);
+	m_boxFilter.pushSample(BoxFilter::Samples{pulse1Sample, pulse2Sample, waveSample, noiseSample}, m_audioLogBuffers);
 }
 
 void Apu::updateChannelStatus()

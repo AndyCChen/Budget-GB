@@ -8,6 +8,7 @@
 
 #include "SDL3/SDL.h"
 #include "apu.h"
+#include "audioWidget.h"
 #include "bus.h"
 #include "cartridge.h"
 #include "config.h"
@@ -45,17 +46,19 @@ class BudgetGB
   private:
 	enum GuiContextFlags
 	{
-		GuiContextFlags_SHOW_IMGUI_DEMO = 1 << 0,
-		GuiContextFlags_SHOW_MAIN_MENU  = 1 << 1,
-		GuiContextFlags_PAUSE           = 1 << 2,
-		GuiContextFlags_FULLSCREEN      = 1 << 3,
-		GuiContextFlags_SHOW_TILES      = 1 << 5,
-		GuiContextFlags_SHOW_CPU_VIEWER = 1 << 6,
-		GuiContextFlags_SHOW_PALETTES   = 1 << 7,
+		GuiContextFlags_SHOW_IMGUI_DEMO  = 1 << 0,
+		GuiContextFlags_SHOW_IMPLOT_DEMO = 1 << 1,
+		GuiContextFlags_SHOW_MAIN_MENU   = 1 << 2,
+		GuiContextFlags_PAUSE            = 1 << 3,
+		GuiContextFlags_FULLSCREEN       = 1 << 4,
+		GuiContextFlags_SHOW_TILES       = 1 << 5,
+		GuiContextFlags_SHOW_AUDIO       = 1 << 6,
+		GuiContextFlags_SHOW_CPU_VIEWER  = 1 << 7,
+		GuiContextFlags_SHOW_PALETTES    = 1 << 8,
 
-		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 8,
+		GuiContextFlags_SHOW_BOOTROM_ERROR = 1 << 9,
 
-		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 9,
+		GuiContextFlags_TOGGLE_INSTRUCTION_LOG = 1 << 10,
 	};
 
 	struct GuiContext
@@ -74,6 +77,8 @@ class BudgetGB
 
 	GuiContext             m_guiContext;
 	BudgetGbConfig::Config m_config;
+
+	Apu::AudioChannelToggle m_audioChannelToggle;
 
 	SDL_Window                *m_window;
 	RendererGB::RenderContext *m_renderContext;
