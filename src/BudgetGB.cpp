@@ -362,11 +362,15 @@ void BudgetGB::guiMain()
 			ImGui::EndMenu();
 		}
 
+#ifdef SHOW_IMGUI_DEMOS
+
 		if (ImGui::MenuItem("Toggle Imgui Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMGUI_DEMO;
 
 		if (ImGui::MenuItem("Toggle Implot Demo", "", m_guiContext.flags & GuiContextFlags_SHOW_IMPLOT_DEMO))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMPLOT_DEMO;
+
+#endif
 
 		if (ImGui::MenuItem("Palettes", "", m_guiContext.flags & GuiContextFlags_SHOW_PALETTES))
 			m_guiContext.flags ^= GuiContextFlags_SHOW_PALETTES;
@@ -446,7 +450,10 @@ void BudgetGB::guiMain()
 		ImGui::EndPopup();
 	}
 
-	// imgui demo window
+	// imgui & implot demo windows
+
+#ifdef SHOW_IMGUI_DEMOS
+
 	if (m_guiContext.flags & GuiContextFlags_SHOW_IMGUI_DEMO)
 	{
 		bool toggle = true;
@@ -462,6 +469,8 @@ void BudgetGB::guiMain()
 		if (!toggle)
 			m_guiContext.flags ^= GuiContextFlags_SHOW_IMPLOT_DEMO;
 	}
+
+#endif
 
 	if (m_guiContext.flags & GuiContextFlags_SHOW_CPU_VIEWER)
 		guiCpuViewer();
@@ -480,7 +489,7 @@ void BudgetGB::guiMain()
 
 	if (m_guiContext.flags & GuiContextFlags_SHOW_AUDIO)
 	{
-		if (!AudioWidget::draw(m_apu, m_audioChannelToggle))
+		if (!AudioWidget::drawAudioWidget(m_apu, m_audioChannelToggle))
 		{
 			m_guiContext.flags &= ~GuiContextFlags_SHOW_AUDIO;
 		}

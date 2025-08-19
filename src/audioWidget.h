@@ -6,5 +6,5 @@
 class AudioWidget
 {
   public:
-	static bool draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle);
+	static bool drawAudioWidget(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle);
 };

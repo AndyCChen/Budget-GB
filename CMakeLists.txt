@@ -9,6 +9,7 @@ if (MSVC)
 endif(MSVC)
 
 option(USE_DX11_ON_WINDOWS "Use directX11 graphics api on windows" OFF)
+option(ENABLE_IMGUI_DEMO "Compile with imgui & implot windows" OFF)
 
 # nlhomannJson parsing library
 add_library(NlohmannJson INTERFACE)
@@ -51,10 +52,14 @@ set(IMGUI_SOURCE_FILES
 	vendor/implot/implot.h
 	vendor/implot/implot_internal.h
 	vendor/implot/implot_items.cpp
-
-	vendor/imgui/imgui_demo.cpp
-	vendor/implot/implot_demo.cpp
 )
+
+if (ENABLE_IMGUI_DEMO)
+	list(APPEND IMGUI_SOURCE_FILES
+		vendor/imgui/imgui_demo.cpp
+		vendor/implot/implot_demo.cpp
+	)
+endif()
 
 if (WIN32 AND USE_DX11_ON_WINDOWS)
 	# directX11 renderer backend for imgui
@@ -153,6 +158,13 @@ target_compile_features(BudgetGB PRIVATE cxx_std_17)
 if (APPLE)
 	target_compile_definitions(BudgetGB PRIVATE USE_GL_VERSION_410)
 endif(APPLE)
+
+if (ENABLE_IMGUI_DEMO)
+	target_compile_definitions(BudgetGB PRIVATE SHOW_IMGUI_DEMOS)
+	message(STATUS "Imgui & Implot demos: ON")
+else()
+	message(STATUS "Imgui & Implot demos: OFF")
+endif()
 
 target_include_directories(BudgetGB PRIVATE
 	src/

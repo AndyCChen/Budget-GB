@@ -18,7 +18,7 @@ constexpr ImVec4 Color4(const uint8_t r, const uint8_t g, const uint8_t b)
 
 } // namespace
 
-bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
+bool AudioWidget::drawAudioWidget(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 {
 	bool toggle = true;
 
@@ -51,10 +51,10 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 		if (ImPlot::BeginPlot("Pulse 1", plotSize, plotFlags))
 		{
 			ImPlot::SetupAxes(nullptr, nullptr, plotLineFlags, plotLineFlags);
-			ImPlot::SetupAxisLimits(ImAxis_X1, 0, buffers.Pulse1.Data.size(), ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_X1, 0, (double)buffers.Pulse1.Data.size(), ImGuiCond_Always);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, pulse1Color);
-			ImPlot::PlotLine("Pulse 1", &buffers.Pulse1.Data[0].x, &buffers.Pulse1.Data[0].y, buffers.Pulse1.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Pulse1.Data[0]));
+			ImPlot::PlotLine("Pulse 1", &buffers.Pulse1.Data[0].x, &buffers.Pulse1.Data[0].y, (int)buffers.Pulse1.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Pulse1.Data[0]));
 			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
@@ -62,10 +62,10 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 		if (ImPlot::BeginPlot("Pulse 2", plotSize, plotFlags))
 		{
 			ImPlot::SetupAxes(nullptr, nullptr, plotLineFlags, plotLineFlags);
-			ImPlot::SetupAxisLimits(ImAxis_X1, 0, buffers.Pulse2.Data.size(), ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_X1, 0, (double)buffers.Pulse2.Data.size(), ImGuiCond_Always);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, pulse2Color);
-			ImPlot::PlotLine("Pulse 2", &buffers.Pulse2.Data[0].x, &buffers.Pulse2.Data[0].y, buffers.Pulse2.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Pulse2.Data[0]));
+			ImPlot::PlotLine("Pulse 2", &buffers.Pulse2.Data[0].x, &buffers.Pulse2.Data[0].y, (int)buffers.Pulse2.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Pulse2.Data[0]));
 			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
@@ -73,10 +73,10 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 		if (ImPlot::BeginPlot("Wave", plotSize, plotFlags))
 		{
 			ImPlot::SetupAxes(nullptr, nullptr, plotLineFlags, plotLineFlags);
-			ImPlot::SetupAxisLimits(ImAxis_X1, 0, buffers.Wave.Data.size(), ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_X1, 0, (double)buffers.Wave.Data.size(), ImGuiCond_Always);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, waveColor);
-			ImPlot::PlotLine("Wave", &buffers.Wave.Data[0].x, &buffers.Wave.Data[0].y, buffers.Wave.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Wave.Data[0]));
+			ImPlot::PlotLine("Wave", &buffers.Wave.Data[0].x, &buffers.Wave.Data[0].y, (int)buffers.Wave.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Wave.Data[0]));
 			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
@@ -84,10 +84,10 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 		if (ImPlot::BeginPlot("Noise", plotSize, plotFlags))
 		{
 			ImPlot::SetupAxes(nullptr, nullptr, plotLineFlags, plotLineFlags);
-			ImPlot::SetupAxisLimits(ImAxis_X1, 0, buffers.All.Data.size(), ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_X1, 0, (double)buffers.All.Data.size(), ImGuiCond_Always);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -2.0f, 2.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, noiseColor);
-			ImPlot::PlotLine("Noise", &buffers.Noise.Data[0].x, &buffers.Noise.Data[0].y, buffers.Noise.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Noise.Data[0]));
+			ImPlot::PlotLine("Noise", &buffers.Noise.Data[0].x, &buffers.Noise.Data[0].y, (int)buffers.Noise.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.Noise.Data[0]));
 			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
@@ -95,10 +95,10 @@ bool AudioWidget::draw(Apu &apu, Apu::AudioChannelToggle &audioChannelToggle)
 		if (ImPlot::BeginPlot("All", plotSize, plotFlags))
 		{
 			ImPlot::SetupAxes(nullptr, nullptr, plotLineFlags, plotLineFlags);
-			ImPlot::SetupAxisLimits(ImAxis_X1, 0, buffers.All.Data.size(), ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_X1, 0, (double)buffers.All.Data.size(), ImGuiCond_Always);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -4.0f, 4.0f);
 			ImPlot::PushStyleColor(ImPlotCol_Line, allColor);
-			ImPlot::PlotLine("All", &buffers.All.Data[0].x, &buffers.All.Data[0].y, buffers.All.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.All.Data[0]));
+			ImPlot::PlotLine("All", &buffers.All.Data[0].x, &buffers.All.Data[0].y, (int)buffers.All.Data.size(), ImPlotLineFlags_None, 0, sizeof(buffers.All.Data[0]));
 			ImPlot::PopStyleColor(1);
 			ImPlot::EndPlot();
 		}
