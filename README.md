@@ -14,7 +14,7 @@ Gameboy emulator written in C++.
 
 ## Build/Install
 
-Build with CMake.
+Build with CMake using your prefered generator.
 
 I have only tested BudgetGB on windows and mac, but it should work on linux with some minor
 changes. All dependencies are included inside the vendor directory as either submodules or
@@ -28,14 +28,16 @@ git clone --recurse-submodules https://github.com/AndyCChen/Budget-GB.git
 cmake  -S ./ -B out 
 ```
 
-Build files will be outputed into out/, use your prefered build system
-to build and compile such as make or msbuild.
+Build files will be outputed into `out/`, use your prefered build system
+to build and compile such as make or msbuild. Remember to set the working directory
+to the project root for whatever IDE or text editor you are using so files from `resource/`
+can be loaded. Or just copy paste `resource/` into the same directory as the outputed executable.
 
-## cmake options
+## Options
 
 You can also provide the following cmake switches.
 
-Use dx11 renderer when on windows, default is OpenGl.
+Use directX11 renderer when on windows, default is opengl.
 ```bash
 cmake -DUSE_DX11_ON_WINDOWS=ON ...
 ```
