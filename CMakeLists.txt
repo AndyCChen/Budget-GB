@@ -98,8 +98,6 @@ set(SOURCE_FILES
 	src/apu.h
 	src/bus.cpp
 	src/bus.h
-	src/sm83JsonTest.cpp
-	src/sm83JsonTest.h
 	src/cartridge.cpp
 	src/cartridge.h
 	src/disassembler.cpp

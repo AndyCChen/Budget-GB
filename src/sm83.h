@@ -11,8 +11,6 @@
 
 class Sm83
 {
-	friend class Sm83JsonTest;
-
   public:
 	struct Sm83FlagsRegister
 	{
