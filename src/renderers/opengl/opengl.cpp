@@ -13,6 +13,7 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #ifndef USE_GL_VERSION_410
 #define ENABLE_GL_DEBUG_CALLBACK // debug callback only available on opengl version 4.3 and onwards which means no mac
@@ -470,7 +471,7 @@ void RendererGB::screenQuadSwapShader(RenderContext * renderContext, ScreenQuad 
 		break;
 	}
 
-	screenQuad->ScreenShaders.reset("resources/shaders/opengl/viewport.vert", fragPath);
+	screenQuad->ScreenShaders = std::move(Shader("resources/shaders/opengl/viewport.vert", fragPath));
 }
 
 namespace

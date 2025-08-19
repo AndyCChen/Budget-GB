@@ -9,6 +9,16 @@ class Shader
   public:
 	Shader(const std::string &pathToVertexShader, const std::string &pathTofragmentShader);
 
+	Shader &operator=(Shader &&other) noexcept // move assignment operator
+	{
+		glDeleteProgram(m_shaderProgramID);
+
+		m_shaderProgramID       = other.m_shaderProgramID;
+		other.m_shaderProgramID = 0;
+
+		return *this;
+	}
+
 	~Shader()
 	{
 		glDeleteProgram(m_shaderProgramID);
@@ -24,11 +34,8 @@ class Shader
 		return m_shaderProgramID;
 	}
 
-	void reset(const std::string &pathToVertexShader, const std::string &pathTofragmentShader);
-
   private:
 	GLuint m_shaderProgramID = 0;
 
 	bool compileShader(GLuint shaderID, const std::string &pathToShader);
-
 };

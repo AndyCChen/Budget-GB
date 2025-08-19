@@ -7,14 +7,6 @@
 
 Shader::Shader(const std::string &pathToVertexShader, const std::string &pathTofragmentShader)
 {
-	reset(pathToVertexShader, pathTofragmentShader);
-}
-
-void Shader::reset(const std::string &pathToVertexShader, const std::string &pathTofragmentShader)
-{
-	if (m_shaderProgramID != 0)
-		glDeleteProgram(m_shaderProgramID);
-
 	GLuint vertexShaderID   = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
