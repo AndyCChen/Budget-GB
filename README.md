@@ -12,6 +12,15 @@ Gameboy emulator written in C++.
 - [x] Option to provide dmg bootrom on cartridge startup
 - [x] [zfast-lcd](https://github.com/libretro/slang-shaders/blob/master/handheld/shaders/zfast_lcd.slang) shader from retroarch
 
+https://github.com/user-attachments/assets/512e47ae-9f1d-466a-aa03-9962cbb43b20
+
+<img width="1920" height="1080" alt="BudgetGB" src="https://github.com/user-attachments/assets/245432fb-c484-479c-88c1-af375fb5fc43" />
+
+<img width="973" height="463" alt="zeldaLinksAwakening" src="https://github.com/user-attachments/assets/00e2a647-3664-47ff-9222-f840849bc9b4" />
+
+<img width="641" height="606" alt="pokemonRed" src="https://github.com/user-attachments/assets/361aa7db-8649-4185-831b-6ee5335b5904" />
+
+
 ## Build/Install
 
 Build with CMake using your prefered generator.
