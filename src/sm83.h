@@ -198,6 +198,7 @@ class Sm83
 	uint16_t computedJumpAddress = 0; // saves computed jump address for logging purposes
 
 	bool m_isHalted = false;
+	bool m_pcIncrementInhibit = false;
 
 	void formatToOpcodeString(const std::string &format, uint16_t arg);
 	void formatToOpcodeString(const std::string &format);

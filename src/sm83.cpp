@@ -38,7 +38,8 @@ void Sm83::init(bool useBootrom)
 {
 	m_interrupts.reset();
 	m_timer.reset();
-	m_isHalted = false;
+	m_isHalted           = false;
+	m_pcIncrementInhibit = false;
 
 	if (useBootrom)
 		initWithBootrom();
@@ -151,10 +152,15 @@ void Sm83::handleInterrupt()
 
 uint8_t Sm83::cpuFetch_u8()
 {
-	uint8_t value = m_bus.cpuRead(m_programCounter++);
+	uint8_t value = m_bus.cpuRead(m_programCounter);
 	opcodeOperand = value;
+
 	if (m_logEnable)
 		m_opcodeLogger.appendOpcodeByte(value);
+
+	m_programCounter     = m_pcIncrementInhibit ? m_programCounter : ++m_programCounter;
+	m_pcIncrementInhibit = false;
+
 	return value;
 }
 
@@ -3654,13 +3660,16 @@ void Sm83::EI()
 
 void Sm83::HALT()
 {
-	m_isHalted = true;
-
-	// pending interrupt but ime is disabled which causes the "halt bug" (PC is not correctly incremented)
-	if (!m_interrupts.m_interruptMasterEnable && m_interrupts.interruptPending())
+	// immediately exit halt when interrupt is pending
+	if (m_interrupts.interruptPending())
 	{
-		m_programCounter -= 1;
+		m_isHalted = false;
+
+		if (!m_interrupts.m_interruptMasterEnable)
+			m_pcIncrementInhibit = true; // emulate halt bug where pc counter increment is inhibited for next instruction fetch
 	}
+	else
+		m_isHalted = true;
 }
 
 void Sm83::Sm83InterruptRegisters::handle_ie_requests()
