@@ -2,7 +2,7 @@
 #include "sm83.h"
 
 PPU::PPU(uint8_t &interruptFlags)
-	: m_lcdColorBuffer(m_lcdColorBuffer), m_interruptLine(interruptFlags)
+	: m_interruptLine(interruptFlags)
 {
 }
 

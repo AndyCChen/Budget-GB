@@ -158,7 +158,7 @@ uint8_t Sm83::cpuFetch_u8()
 	if (m_logEnable)
 		m_opcodeLogger.appendOpcodeByte(value);
 
-	m_programCounter     = m_pcIncrementInhibit ? m_programCounter : ++m_programCounter;
+	m_programCounter     = m_pcIncrementInhibit ? m_programCounter : m_programCounter + 1;
 	m_pcIncrementInhibit = false;
 
 	return value;
