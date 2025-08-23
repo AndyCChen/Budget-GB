@@ -55,3 +55,20 @@ Toggle Imgui and Implot demo windows
 cmake -DENABLE_IMGUI_DEMO=ON ...
 ```
 
+## Controls
+
+`W` - Up  
+
+`A` - Left  
+
+`S` - Down  
+
+`D` - Right 
+
+`Q` - Start  
+
+`E` - Select  
+
+`K` - B  
+
+`L` - A  
